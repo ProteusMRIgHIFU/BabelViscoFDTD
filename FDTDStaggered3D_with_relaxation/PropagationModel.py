@@ -2,7 +2,6 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import ndimage
-from H5pySimple import ReadFromH5py
 
 import pdb
 
