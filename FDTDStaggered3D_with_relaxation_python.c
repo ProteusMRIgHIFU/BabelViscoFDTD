@@ -55,7 +55,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
-#if !defined(__MACH__) || defined(USE_OPENMP)
+#if defined(USE_OPENMP)
 #include <omp.h>
 #endif
 
@@ -281,6 +281,12 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	unsigned int INHOST(SizePMLyp1) = (INHOST(N1))*(INHOST(N2)+1)*INHOST(N3) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLzp1) = (INHOST(N1))*(INHOST(N2))*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLxp1yp1zp1) = (INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
+
+	PRINTF("SizePML=%i\n",SizePML);
+	PRINTF("SizePMLxp1=%i\n",SizePMLxp1);
+	PRINTF("SizePMLyp1=%i\n",SizePMLyp1);
+	PRINTF("SizePMLzp1=%i\n",SizePMLzp1);
+	PRINTF("SizePMLxp1yp1zp1=%i\n",SizePMLxp1yp1zp1);
 
 	//for SPP
 	// unsigned int SizeMatMap_zone = INHOST(TotalIndexCount)*INHOST(ZoneCount);

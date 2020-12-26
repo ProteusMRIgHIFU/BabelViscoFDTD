@@ -51,16 +51,16 @@
 
 
 
-   #if !defined(__MACH__) || defined(USE_OPENMP)
+   #if  defined(USE_OPENMP)
    int ntx= omp_get_max_threads();
-    #endif
+
   #ifdef MATLAB_MEX
   	PRINTF("Max number of threads =%i\n",ntx);
   #else
   	PySys_WriteStdout("Max number of threads =%i\n",ntx);
   #endif
-
-#if !defined(__MACH__) || defined(USE_OPENMP)
+#endif
+#if  defined(USE_OPENMP)
     omp_set_num_threads(ntx);
 #endif
 

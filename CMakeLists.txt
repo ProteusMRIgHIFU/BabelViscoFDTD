@@ -22,11 +22,22 @@ set(STAGGERED_PYTHON_C_MODULE_NAME  CACHE STRING "Name of the C extension module
 
 # Find OpenMP if required
 if(STAGGERED_OMP_SUPPORT)
-    find_package(OpenMP REQUIRED)
-    if(OPENMP_FOUND)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-    endif()
+  #if(APPLE)
+  #  if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  #      set(OpenMP_C "${CMAKE_C_COMPILER}" CACHE STRING "" FORCE)
+  #      set(OpenMP_C_FLAGS "-fopenmp=libomp -Wno-unused-command-line-argument -DUSE_OPENMP" CACHE STRING "" FORCE)
+  #      set(OpenMP_C_LIB_NAMES "libomp" "libgomp" "libiomp5" CACHE STRING "" FORCE)
+  #      set(OpenMP_libomp_LIBRARY ${OpenMP_C_LIB_NAMES} CACHE STRING "" FORCE)
+  #      set(OpenMP_libgomp_LIBRARY ${OpenMP_C_LIB_NAMES} CACHE STRING "" FORCE)
+  #      set(OpenMP_libiomp5_LIBRARY ${OpenMP_C_LIB_NAMES} CACHE STRING "" FORCE)
+  #  endif()
+  #else()
+      find_package(OpenMP REQUIRED)
+      if(OPENMP_FOUND)
+          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -DUSE_OPENMP")
+          set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+      endif()
+  #endif()
 else()
     if(NOT MSVC)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
@@ -93,6 +104,11 @@ if(STAGGERED_CUDA_SUPPORT)
 
 endif()
 
+if(STAGGERED_OPENCL_SUPPORT)
+    add_definitions(-DOPENCL)
+    add_link_options(-Wl,-framework,OpenCL)
+endif()
+
 # Add Python component if requested
 if(STAGGERED_PYTHON_SUPPORT)
     set(Python_FIND_VIRTUALENV FIRST)
@@ -120,6 +136,10 @@ if(STAGGERED_PYTHON_SUPPORT)
 
     # This goes after, since it uses PythonInterp as a hint
     if(WIN32)
+        find_package(PythonLibs 3.6 REQUIRED)
+    endif()
+
+    if(STAGGERED_MACOS)
         find_package(PythonLibs 3.6 REQUIRED)
     endif()
 
@@ -164,7 +184,6 @@ if(STAGGERED_PYTHON_SUPPORT)
             ${PROJECT_SOURCE_DIR}/cuda/headers
             ${CUDA_SAMPLES_INCLUDE}
             )
-
         target_link_libraries(python_c_extension)
     endif()
 
@@ -172,5 +191,11 @@ if(STAGGERED_PYTHON_SUPPORT)
     if(WIN32)
         target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
     endif()
+    if(STAGGERED_MACOS)
+        target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
+    endif()
+    if(APPLE)
+      set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+    endif(APPLE)
 
 endif()

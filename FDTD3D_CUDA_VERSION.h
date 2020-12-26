@@ -129,7 +129,16 @@ int NumberAlloc=0;
   commands = clCreateCommandQueue(context, device_id[SelDevice], 0, &err);
   mxcheckGPUErrors(err);
 
-  sprintf(BUFFER_FOR_OPENCL_CODE,"\n#define mexType %s\n#define OPENCL\n#include \"Indexing.h\"\n",MEX_STR);
+  sprintf(BUFFER_FOR_OPENCL_CODE,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
+  char * indexingSource = load_file("_indexing.h");
+  if (indexingSource==0)
+  {
+    ERROR_STRING("Unable to read _indexing.h file!!")
+  }
+  strncat(BUFFER_FOR_OPENCL_CODE,indexingSource,MAXP_BUFFER_OPENCL);
+  strncat(BUFFER_FOR_OPENCL_CODE,"\n",MAXP_BUFFER_OPENCL);
+  free(indexingSource);
+
 #endif
 
 //initilizing constant memory variables
@@ -175,10 +184,10 @@ InitSymbol(Oz,mexType,G_FLOAT);
   InitSymbolArray(InvDXDTplushp,G_FLOAT,PML_Thickness+1);
   InitSymbolArray(DXDTminushp,G_FLOAT,PML_Thickness+1);
 
-  char * KernelSource = load_file("GPU_KERNELS.h");
+  char * KernelSource = load_file("_opencl_kernel.c");
   if (KernelSource==0)
   {
-    ERROR_STRING("Unable to read GPU_KERNELS.h file!!")
+    ERROR_STRING("Unable to read _opencl_kernel.c file!!")
   }
   strncat(BUFFER_FOR_OPENCL_CODE,KernelSource,MAXP_BUFFER_OPENCL);
   strncat(BUFFER_FOR_OPENCL_CODE,"\n",MAXP_BUFFER_OPENCL);
@@ -503,13 +512,13 @@ InitSymbol(Oz,mexType,G_FLOAT);
 
 #else
         int nextSnap=SnapshotsPos_pr[CurrSnap]-1;
-        mxcheckGPUErrors(clSetKernelArg(StressKernel, 88, sizeof(unsigned int), &nStep));
-        mxcheckGPUErrors(clSetKernelArg(StressKernel, 89, sizeof(unsigned int), &INHOST(TypeSource)));
+        mxcheckGPUErrors(clSetKernelArg(StressKernel, 51, sizeof(unsigned int), &nStep));
 
 
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 88, sizeof(unsigned int), &nStep));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 89, sizeof(unsigned int), &CurrSnap));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 90, sizeof(unsigned int), &nextSnap));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 51, sizeof(unsigned int), &nStep));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 52, sizeof(unsigned int), &CurrSnap));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 53, sizeof(unsigned int), &nextSnap));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));

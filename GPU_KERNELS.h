@@ -7,8 +7,7 @@ __global__ void StressKernel(InputDataKernel *p,unsigned int nStep)
 #else
 __kernel void StressKernel(
 	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep,
-	unsigned int TypeSource)
+	, unsigned int nStep)
 {
   const unsigned int i = get_global_id(0);
   const unsigned int j = get_global_id(1);
@@ -32,7 +31,8 @@ __kernel void ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep,
 	int CurrSnap,
-	unsigned int NextSnap)
+	unsigned int NextSnap, 
+	unsigned int TypeSource)
 {
 		const unsigned int i = get_global_id(0);
 	  const unsigned int j = get_global_id(1);

@@ -8,6 +8,29 @@ from distutils import sysconfig
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import numpy as np
+import glob
+from shutil import copyfile
+
+from distutils.command.install_headers import install_headers
+
+def PrepareOpenCLKernel():
+    #this function merges the kernel code to be usable for opencl
+    with open('GPU_KERNELS.h','r') as f:
+        GPU_KERNELS=f.readlines()
+
+    with open('_opencl_kernel.c','w') as f:
+        for l in GPU_KERNELS:
+            if "#include" not in l:
+                f.write(l)
+            else:
+                incfile = l.split('"')[1]
+                with open(incfile,'r') as g:
+                    inclines=g.readlines()
+                f.writelines(inclines)
+    copyfile('Indexing.h','_indexing.h')
+
+
+npinc=np.get_include()+os.sep+'numpy'
 
 CUDA_SAMPLES_LOCATION=os.environ.get('CUDA_SAMPLES_LOCATION',None)
 
@@ -47,18 +70,29 @@ class CMakeBuild(build_ext):
             print('ext',ext.name)
             extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
             cfg = 'Debug' if _get_env_variable('STAGGERED_DEBUG') == 'ON' else 'Release'
+            #'-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if platform.system()=='Darwin' else 'ON') ,
             cmake_args =[
                 '-DSTAGGERED_DEBUG=%s' % ('ON' if cfg == 'Debug' else 'OFF'),
                 '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
                 '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF') ,
+                '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON') ,
                 '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
+                '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
                 '-DSTAGGERED_PYTHON_SUPPORT=ON',
+                '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
                 '-DCUDA_SAMPLES_LOCATION=%s' %(CUDA_SAMPLES_LOCATION),
                 '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sysconfig.get_config_var('EXT_SUFFIX'))[0]),
                 '-DCMAKE_BUILD_TYPE=%s' % cfg,
                 '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
                 '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
                 '-DPYTHON_EXECUTABLE={}'.format(sys.executable)]
+
+            # if platform.system()=='Darwin' and 'OPENCL' not in ext.name:
+            #     cmake_args.append('-DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang')
+            #     cmake_args.append('-DCMAKE_C_COMPILER_WORKS=1')
+                #cmake_args.append('-DC_INCLUDE_DIRS=/usr/local/opt/llvm/include')
+                #cmake_args.append('-DOPENMP_LIBRARIES=/usr/local/Cellar/llvm/11.0.0/lib/')
+                #cmake_args.append('-DOPENMP_INCLUDES=/usr/local/Cellar/llvm/11.0.0/lib/clang/11.0.0/include/')
 
             if platform.system() == 'Windows':
                 plat = ('x64' if platform.architecture()[0] == '64bit' else 'Win32')
@@ -82,6 +116,10 @@ class CMakeBuild(build_ext):
             if not os.path.exists(self.build_temp):
                 os.makedirs(self.build_temp)
 
+            #force delete of object files, as CMake may sklp compilation
+            PrevSO=glob.glob('./**/*FDTDStaggered3D_with_relaxation_python.c.o',recursive=True)
+            if len(PrevSO)>0:
+                os.remove(PrevSO[0])
             # Config and build the extension
             subprocess.check_call(['cmake', ext.cmake_lists_dir] + cmake_args,
                                   cwd=self.build_temp)
@@ -93,11 +131,16 @@ version = '1.0.0'
 
 print()
 
-modules=[CMakeExtension(c_module_name+'_CUDA_single'),
-         CMakeExtension(c_module_name+'_CUDA_double'),
-         CMakeExtension(c_module_name+'_single'),
-         CMakeExtension(c_module_name+'_double')]
-# if platform.system() != 'Windows':
+if platform.system() in ['Limux','Windows']:
+    modules=[CMakeExtension(c_module_name+'_CUDA_single'),
+             CMakeExtension(c_module_name+'_CUDA_double'),
+             CMakeExtension(c_module_name+'_single'),
+             CMakeExtension(c_module_name+'_double')]
+else:
+    modules=[CMakeExtension(c_module_name+'_single'),
+             CMakeExtension(c_module_name+'_double')]
+
+# if platform.system() == 'Limux':
 #     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_double',
 #             ['FDTDStaggered3D_with_relaxation_python.c'],
 #             extra_compile_args = ["-DOPENCL"],
@@ -106,7 +149,28 @@ modules=[CMakeExtension(c_module_name+'_CUDA_single'),
 #             ['FDTDStaggered3D_with_relaxation_python.c'],
 #             extra_compile_args = ["-DOPENCL","-DSINGLE_PREC"],
 #             extra_link_args=["-lOpenCL"]))
+# elif platform.system()=='Darwin':
+#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_double',
+#             ['FDTDStaggered3D_with_relaxation_python.c'],
+#             extra_compile_args = ["-DOPENCL", "-I"+npinc],
+#             extra_link_args=["-Wl,-framework,OpenCL"]))
+#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_single',
+#             ['FDTDStaggered3D_with_relaxation_python.c'],
+#             extra_compile_args = ["-DOPENCL","-DSINGLE_PREC","-I"+npinc],
+#             extra_link_args=["-Wl,-framework,OpenCL"]))
 
+#if(STAGGERED_MACOS)
+#  set(CMAKE_C_COMPILER "/usr/local/opt/llvm/bin/clang")
+#  set(MACOS_OMP_INCLUDE "/usr/local/Cellar/llvm/11.0.0/lib/clang/11.0.0/include/omp.h")
+#else()
+#  set(MACOS_OMP_INCLUDE "")
+#endif()
+
+if platform.system() in ['Limux','Darwin']:
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
+
+PrepareOpenCLKernel()
 
 setup(name='FDTDStaggered3D_with_relaxation',
       packages=['FDTDStaggered3D_with_relaxation'],
@@ -122,7 +186,9 @@ setup(name='FDTDStaggered3D_with_relaxation',
       install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0'],
       ext_modules=modules,
       py_modules=['__init__','PropagationModel','H5pySimple','StaggeredFDTD_3D_With_Relaxation_CUDA','StaggeredFDTD_3D_With_Relaxation','StaggeredFDTD_3D_With_Relaxation_OPENCL'],
-      cmdclass={'build_ext': CMakeBuild},
+      headers=['_opencl_kernel.c','_indexing.h'],
+      cmdclass={'build_ext': CMakeBuild,
+                'install_headers': install_headers},
       zip_safe=False,
       classifiers=[
           "Programming Language :: Python :: 3",

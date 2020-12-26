@@ -271,3 +271,9 @@ FDTDStaggered3D_with_relaxation.egg-info/
 *.egg
 __pycache__/
 Example Notebooks/.ipynb_checkpoints/
+Example Notebooks/_indexing.h
+Example Notebooks/_opencl_kernel.c
+Example Notebooks/KERNEL.BIN
+Example Notebooks/kernel.cu
+Example Notebooks/pi_ocl
+pi_ocl/deviceInfoQuery

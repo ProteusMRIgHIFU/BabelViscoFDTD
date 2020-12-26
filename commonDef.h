@@ -209,6 +209,15 @@ static PyMethodDef _FDTDStaggered_3DMethods[] = {
 #endif
 #endif
 
+#define XSTR(x) STR(x)
+#define STR(x) #x
+
+#pragma message ("****************************************************************")
+#pragma message ("****************************************************************")
+#pragma message ("MAIN_NAME=" XSTR(MAIN_NAME) ", STR_MAIN_NAME_1= " STR_MAIN_NAME_1 ", INIT_MAIN_NAME= "  XSTR(INIT_MAIN_NAME))
+#pragma message ("****************************************************************")
+#pragma message ("****************************************************************")
+
 
 #define INITERROR {}
 

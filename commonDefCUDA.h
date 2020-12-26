@@ -223,7 +223,7 @@ __constant__ mexType gpuDXDTminushppr[MAX_SIZE_PML];
 
 #else
 //OPENCL
-#define MAXP_BUFFER_OPENCL 100000
+#define MAXP_BUFFER_OPENCL 200000
 char BUFFER_FOR_OPENCL_CODE[MAXP_BUFFER_OPENCL];
 int __InitBuffer =0;
 #endif
