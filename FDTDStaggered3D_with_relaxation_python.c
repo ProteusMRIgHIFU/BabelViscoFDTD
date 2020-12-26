@@ -151,7 +151,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(MaterialMap);
 	GET_FIELD(PMLThickness);
   GET_FIELD(TypeSource);
-	GET_FIELD_GENERIC(DefaultCUDADeviceName);
+	GET_FIELD_GENERIC(DefaultGPUDeviceName);
 	GET_FIELD(Ox);
 	GET_FIELD(Oy);
 	GET_FIELD(Oz);
@@ -191,7 +191,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	 VALIDATE_FIELD_MEX_TYPE(SourceFunctions);
 	 VALIDATE_FIELD_UINT32(SourceMap);
    VALIDATE_FIELD_UINT32(TypeSource);
-	 VALIDATE_FIELD_STRING(DefaultCUDADeviceName);
+	 VALIDATE_FIELD_STRING(DefaultGPUDeviceName);
 	 VALIDATE_FIELD_MEX_TYPE(Ox);
 	 VALIDATE_FIELD_MEX_TYPE(Oy);
 	 VALIDATE_FIELD_MEX_TYPE(Oz);
@@ -246,7 +246,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	INHOST(Oy) =  *GET_DATA_PR(Oy);
 	INHOST(Oz) =  *GET_DATA_PR(Oz);
 
-	GET_DATA_STRING(DefaultCUDADeviceName);
+	GET_DATA_STRING(DefaultGPUDeviceName);
 
 	if (TimeStepsSource!=INHOST(LengthSource))
 		ERROR_STRING("The limit for time steps in source is different from N-dimension in SourceFunctions ");
@@ -405,7 +405,7 @@ PRINTF("Done\n");
 
 #else
 
-	 RELEASE_STRING_OBJ(DefaultCUDADeviceName);
+	 RELEASE_STRING_OBJ(DefaultGPUDeviceName);
 
 	//return Py_BuildValue("OOOOOOO", SensorOutput_mx,Vx_mx,Vy_mx,Sigma_xx_mx,Sigma_yy_mx,Sigma_xy_mx,Snapshots_mx);
 

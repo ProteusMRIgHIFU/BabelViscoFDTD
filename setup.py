@@ -131,12 +131,14 @@ version = '1.0.0'
 
 print()
 
-if platform.system() in ['Limux','Windows']:
+if platform.system() in ['Linux','Windows']:
+    print('Adding CUDA and CPU')
     modules=[CMakeExtension(c_module_name+'_CUDA_single'),
              CMakeExtension(c_module_name+'_CUDA_double'),
              CMakeExtension(c_module_name+'_single'),
              CMakeExtension(c_module_name+'_double')]
 else:
+    print('Adding  CPU')
     modules=[CMakeExtension(c_module_name+'_single'),
              CMakeExtension(c_module_name+'_double')]
 
@@ -166,7 +168,7 @@ else:
 #  set(MACOS_OMP_INCLUDE "")
 #endif()
 
-if platform.system() in ['Limux','Darwin']:
+if platform.system() in ['Darwin']:
     modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
     modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
 

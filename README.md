@@ -54,21 +54,21 @@ Just be sure of having a VStudio installation that is compatible with your CUDA 
 Any recent version of MacOS and XCode should be enough. Please note that the CPU version in MacOS does not support OpenMP (still working in a definitive solution via brew llvm or brew gcc). However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs.
 
 ## Installation
-If CUDA and supporting compiler are correctly installed, then it is straightforward to install. You need to specify the location where the CUDA samples are installed as those are required for the compilation.
+If CUDA and supporting compiler are correctly installed, then it is straightforward to install using `pip install <directory>`. You need to specify the location where the CUDA samples are installed as those are required for the compilation.
 
-Below a few examples for both Linux and Windows
+Below a few examples for both Linux and Windows; the command must be run in the directory where FDTDStaggered3D_with_relaxation was cloned (i.e. /home/<user>/Github)
 ### Linux
 ```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc python3 setup.py  install
+CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install  FDTDStaggered3D_with_relaxation/
 ```
 or
 ```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc python3 setup.py  install --user
+CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install --user FDTDStaggered3D_with_relaxation/
 ```
 if you do not have write access to the global Python installation
 ### Windows
 ```
-set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\common\inc" && python setup.py install
+set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\common\inc" && pip install  FDTDStaggered3D_with_relaxation\
 ```
 
 # Structure of code

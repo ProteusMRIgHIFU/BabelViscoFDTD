@@ -46,7 +46,7 @@ class PropagationModel:
                                          NDelta=40,
                                          ReflectionLimit=0.0001,
                                          IntervalSnapshots=-1,
-                                         USE_CUDA=1,
+                                         COMPUTING_BACKEND=1,
                                          USE_SINGLE=True,
                                          USE_SPP = False,
                                          SparseMargin=2,
@@ -55,7 +55,7 @@ class PropagationModel:
                                          QfactorCorrection=True,
                                          CheckOnlyParams=False,
                                          TypeSource=0,
-                                         DefaultCUDADeviceName='TITAN',
+                                         DefaultGPUDeviceName='TITAN',
                                          Ox=0.,
                                          Oy=0.,
                                          Oz=1.):
@@ -312,7 +312,7 @@ class PropagationModel:
         InputParam['SnapshotsPos']=np.uint32(SnapshotsPos);
         InputParam['PMLThickness']=np.uint32(NDelta);
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
-        InputParam['DefaultCUDADeviceName']=DefaultCUDADeviceName
+        InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
 
 
         if USE_SPP:
@@ -338,7 +338,7 @@ class PropagationModel:
 
         print ('Matrix size= %i x %i x %i , spatial resolution = %g, time steps = %i, temporal step = %g, total sonication length %g ' %(N1,N2,N3,h,TimeVector.size,dt,DurationSimulation))
 
-        SensorOutput_orig,V,RMSValue,Snapshots_orig=self.ExecuteSimulation(InputParam,USE_CUDA)# This will be executed either locally or remotely using Pyro4
+        SensorOutput_orig,V,RMSValue,Snapshots_orig=self.ExecuteSimulation(InputParam,COMPUTING_BACKEND)# This will be executed either locally or remotely using Pyro4
 
         for n in range(len(SnapShots)):
             SnapShots[n]['V']=np.squeeze(Snapshots_orig[:,:,n]).copy()
@@ -357,9 +357,9 @@ class PropagationModel:
 
         return dt,SensorOutput,V,RMSValue,AnalysisQFactorLong,AnalysisQFactorShear,RetSnap,PoisonRatio,InputParam
 
-    def ExecuteSimulation(self,InputParam,USE_CUDA):
-        if USE_CUDA in [1,2]:
-            if USE_CUDA==1:
+    def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
+        if COMPUTING_BACKEND in [1,2]:
+            if COMPUTING_BACKEND==1:
                 print( "Performing Simulation wtih GPU CUDA")
                 SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_CUDA(InputParam)
             else:

@@ -45,7 +45,7 @@ int NumberAlloc=0;
             PRINTF("  Shared memory per block: %i bytes\n", (int) deviceProperties.sharedMemPerBlock);
             PRINTF("  Registers per block: %i\n", deviceProperties.regsPerBlock);
             // Check major/minor CUDA versions
-            if(deviceProperties.major >=3 && strstr(deviceProperties.name, DefaultCUDADeviceName_pr) )
+            if(deviceProperties.major >=3 && strstr(deviceProperties.name, DefaultGPUDeviceName_pr) )
             {
                PRINTF("  Selecting device [%s] for calculations \n", deviceProperties.name);
                 // Add device to 3-capable list
@@ -113,9 +113,9 @@ int NumberAlloc=0;
     mxcheckGPUErrors(output_device_info(device_id[icpu]));
     err = clGetDeviceInfo(device_id[icpu], CL_DEVICE_NAME, sizeof(device_name), &device_name, NULL);
     PRINTF("GPU device = %s\n",device_name);
-    if (NULL!=strstr((char *)device_name,DefaultCUDADeviceName_pr))
+    if (NULL!=strstr((char *)device_name,DefaultGPUDeviceName_pr))
     {
-      PRINTF("Found %s device!\n",DefaultCUDADeviceName_pr);
+      PRINTF("Found %s device!\n",DefaultGPUDeviceName_pr);
       SelDevice=icpu;
     }
   }
