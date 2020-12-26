@@ -15,7 +15,7 @@ from distutils.command.install_headers import install_headers
 
 def PrepareOpenCLKernel():
     #this function merges the kernel code to be usable for opencl
-    with open('GPU_KERNELS.h','r') as f:
+    with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
         GPU_KERNELS=f.readlines()
 
     with open('_opencl_kernel.c','w') as f:
@@ -24,10 +24,10 @@ def PrepareOpenCLKernel():
                 f.write(l)
             else:
                 incfile = l.split('"')[1]
-                with open(incfile,'r') as g:
+                with open('src'+os.sep+incfile,'r') as g:
                     inclines=g.readlines()
                 f.writelines(inclines)
-    copyfile('Indexing.h','_indexing.h')
+    copyfile('src'+os.sep+'Indexing.h','_indexing.h')
 
 
 npinc=np.get_include()+os.sep+'numpy'
