@@ -74,6 +74,7 @@
 #include <unistd.h>
 #else
 #include <CL/cl.h>
+#include <unistd.h>
 #endif
 #endif
 

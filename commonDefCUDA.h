@@ -156,7 +156,7 @@ const char *opencl_err_code (cl_int err_in)
 #include <helper_cuda.h>
 #endif
 
-bool mxcheck(int result, char const *const func, const char *const file, int const line)
+int mxcheck(int result, char const *const func, const char *const file, int const line)
 {
 	/*
 	mxcheck verifies status of GPU operation and print msg in case of error

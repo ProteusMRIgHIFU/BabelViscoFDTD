@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.11)
 
 set( CMAKE_VERBOSE_MAKEFILE ON )
 
-project(disptools LANGUAGES C)
+project(FDTDStaggered3D_with_relaxation LANGUAGES C)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -106,7 +106,12 @@ endif()
 
 if(STAGGERED_OPENCL_SUPPORT)
     add_definitions(-DOPENCL)
-    add_link_options(-Wl,-framework,OpenCL)
+    if (APPLE)
+        add_link_options(-Wl,-framework,OpenCL)
+    else()
+        add_link_options(-L /usr/local/cuda-11.0/targets/x86_64-linux/lib/
+                        -lOpenCL)
+    endif()
 endif()
 
 # Add Python component if requested
