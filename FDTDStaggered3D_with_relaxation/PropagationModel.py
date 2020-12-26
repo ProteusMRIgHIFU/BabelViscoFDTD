@@ -168,7 +168,7 @@ class PropagationModel:
         if dt < 0.0:
             raise ValueError('Invalid dt conditions!!! dt =' + str(dt))
         if CheckOnlyParams:
-            return bValidPoisonRatio
+            return bValidPoisonRatio, dt
 
         OneOverTauSigma=1.0/TauSigma
 
