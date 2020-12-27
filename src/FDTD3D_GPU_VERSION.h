@@ -317,7 +317,7 @@ InitSymbol(Oz,mexType,G_FLOAT);
    cl_mem gpu_Snapshots_pr;
 #endif
 
-	CreateAndCopyFromMXVarOnGPU2(Snapshots,mexType);
+  CreateAndCopyFromMXVarOnGPU2(Snapshots,mexType);
 
   CreateAndCopyFromMXVarOnGPU(SensorOutput,mexType);
   CreateAndCopyFromMXVarOnGPU(SqrAcc,mexType);
@@ -486,11 +486,13 @@ InitSymbol(Oz,mexType,G_FLOAT);
 #else
   const  size_t global_stress_particle[3] ={N1,N2,N3};
   const  size_t global_sensors[1] ={NumberSensors};
-
-  mxcheckGPUErrors(clSetKernelArg(SnapShot, 1, sizeof(cl_mem), &gpu_Snapshots_pr));
-  mxcheckGPUErrors(clSetKernelArg(SnapShot, 2, sizeof(cl_mem), &gpu_Sigma_xx_pr));
-  mxcheckGPUErrors(clSetKernelArg(SnapShot, 3, sizeof(cl_mem), &gpu_Sigma_yy_pr));
-  mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
+  if (NumberSnapshots>0)
+  {
+      mxcheckGPUErrors(clSetKernelArg(SnapShot, 1, sizeof(cl_mem), &gpu_Snapshots_pr));
+      mxcheckGPUErrors(clSetKernelArg(SnapShot, 2, sizeof(cl_mem), &gpu_Sigma_xx_pr));
+      mxcheckGPUErrors(clSetKernelArg(SnapShot, 3, sizeof(cl_mem), &gpu_Sigma_yy_pr));
+      mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
+  }
 
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 0, sizeof(cl_mem), &gpu_SensorOutput_pr));
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 1, sizeof(cl_mem), &gpu_Vx_pr));
@@ -513,18 +515,17 @@ InitSymbol(Oz,mexType,G_FLOAT);
         //********************************
         //Then we do the particle displacements
         //********************************
-        ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[0]>>>(pGPU,nStep,CurrSnap, SnapshotsPos_pr[CurrSnap]-1,INHOST(TypeSource));
+        ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[0]>>>(pGPU,nStep,INHOST(TypeSource));
         mxcheckGPUErrors(cudaDeviceSynchronize());
 
 #else
-        int nextSnap=SnapshotsPos_pr[CurrSnap]-1;
+        int nextSnap=-1;
+        if (NumberSnapshots>0)
+            nextSnap=SnapshotsPos_pr[CurrSnap]-1;
         mxcheckGPUErrors(clSetKernelArg(StressKernel, 54, sizeof(unsigned int), &nStep));
 
-
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &nStep));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &CurrSnap));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 56, sizeof(unsigned int), &nextSnap));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 57, sizeof(unsigned int), &INHOST(TypeSource)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
@@ -611,10 +612,8 @@ InitSymbol(Oz,mexType,G_FLOAT);
 		    mxcheckGPUErrors(cudaStreamDestroy ( streams[n])) ;
 #endif
 
-    if (NumberSnapshots>0)
-    {
-		CopyFromGPUToMX3(Snapshots,mexType);
-	}
+	CopyFromGPUToMX3(Snapshots,mexType);
+
 #if defined(CUDA)
 	mxcheckGPUErrors(cudaFree(pGPU)); NumberAlloc--;
   	free(sm13DeviceList);

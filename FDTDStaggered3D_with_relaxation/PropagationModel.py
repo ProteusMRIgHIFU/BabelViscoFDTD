@@ -343,8 +343,10 @@ class PropagationModel:
         #%final calculation to have the real RMS
         RMSValue=np.sqrt(RMSValue/len(TimeVector))
 
-        return dt,SensorOutput,V,RMSValue,AnalysisQFactorLong,AnalysisQFactorShear,RetSnap,PoisonRatio,InputParam
-
+        if  IntervalSnapshots>0:
+            return SensorOutput,V,RMSValue,InputParam,RetSnap
+        else:
+            return SensorOutput,V,RMSValue,InputParam
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
         if COMPUTING_BACKEND in [1,2]:
             if COMPUTING_BACKEND==1:

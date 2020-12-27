@@ -21,7 +21,7 @@ __kernel void StressKernel(
 }
 
 #if defined(CUDA)
-__global__ void ParticleKernel(InputDataKernel * p, unsigned int nStep, int CurrSnap,unsigned int NextSnap,unsigned int TypeSource)
+__global__ void ParticleKernel(InputDataKernel * p, unsigned int nStep,unsigned int TypeSource)
 {
 	  const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -30,8 +30,6 @@ __global__ void ParticleKernel(InputDataKernel * p, unsigned int nStep, int Curr
 __kernel void ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep,
-	int CurrSnap,
-	unsigned int NextSnap,
 	unsigned int TypeSource)
 {
 		const unsigned int i = get_global_id(0);

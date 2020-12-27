@@ -322,7 +322,11 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	ndim=3;
 	dims[0]=INHOST(N1);
 	dims[1]=INHOST(N2);
-	dims[2]=NumberSnapshots;
+	if (NumberSnapshots>0)
+		dims[2]=NumberSnapshots;
+	else
+		dims[2]=1;
+
 	CREATE_ARRAY(Snapshots);
 	GET_DATA(Snapshots);
 	memset(Snapshots_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
@@ -409,8 +413,7 @@ PRINTF("Done\n");
 	//return Py_BuildValue("OOOOOOO", SensorOutput_mx,Vx_mx,Vy_mx,Sigma_xx_mx,Sigma_yy_mx,Sigma_xy_mx,Snapshots_mx);
 
     PyObject *MyResult;
-	 if (NumberSnapshots>0)
-     {
+
 		MyResult =  Py_BuildValue("N{sNsNsNsNsNsNsNsNsN}NN", SensorOutput_mx, "Vx",Vx_res_mx,
 																        "Vy",Vy_res_mx,
 																        "Vz",Vz_res_mx,
@@ -421,21 +424,6 @@ PRINTF("Done\n");
 																        "Sigma_xz",Sigma_xz_res_mx,
 																        "Sigma_yz",Sigma_yz_res_mx,SqrAcc_mx,Snapshots_mx);
 
-    }
-	 else
-     {
-		MyResult= Py_BuildValue("N{sNsNsNsNsNsNsNsNsN}N", SensorOutput_mx, "Vx",Vx_res_mx,
-																        "Vy",Vy_res_mx,
-																        "Vz",Vz_res_mx,
-																        "Sigma_xx",Sigma_xx_res_mx,
-																        "Sigma_yy",Sigma_yy_res_mx,
-																        "Sigma_zz",Sigma_zz_res_mx,
-																        "Sigma_xy",Sigma_xy_res_mx,
-																        "Sigma_xz",Sigma_xz_res_mx,
-																        "Sigma_yz",Sigma_yz_res_mx,SqrAcc_mx);
-
-
-    }
 
 
    return MyResult;
