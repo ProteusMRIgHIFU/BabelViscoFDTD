@@ -219,13 +219,15 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA(InvRhoMatH);
 	GET_DATA_UINT32(IndexSensorMap);
 	GET_DATA(SourceFunctions);
+	GET_DATA(Ox);
+	GET_DATA(Oy);
+	GET_DATA(Oz);
 	GET_DATA_UINT32(SourceMap);
 	GET_DATA_UINT32(SnapshotsPos);
 	GET_DATA_UINT32(MaterialMap);
 
 
 	INHOST(ZoneCount)=INHOST(USE_SPP);
-
 
 
 	TimeStepsSource=(unsigned int) GET_N(SourceFunctions);
@@ -243,9 +245,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
   INHOST(TypeSource)=*GET_DATA_UINT32_PR(TypeSource);
 
-	INHOST(Ox) =  *GET_DATA_PR(Ox);
-	INHOST(Oy) =  *GET_DATA_PR(Oy);
-	INHOST(Oz) =  *GET_DATA_PR(Oz);
 
 	GET_DATA_STRING(DefaultGPUDeviceName);
 
@@ -260,8 +259,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 			ERROR_STRING("Material map dim 3 must be N3+1 ");
 	if ((INHOST(ZoneCount)) != GET_P(MaterialMap))
 			ERROR_STRING("Material map dim 4 must be ZoneCount ");
-
-
 
 	///// PML conditions, you truly do not want to modify this, the smallest error and you got a nasty field.
 	INHOST(PML_Thickness)=*GET_DATA_UINT32_PR(PMLThickness);

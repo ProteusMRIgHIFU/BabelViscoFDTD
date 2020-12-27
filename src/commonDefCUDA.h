@@ -330,8 +330,10 @@ int __InitBuffer =0;
       * InvRhoMatH_pr,
       * SqrAcc_pr;
 			unsigned int * MaterialMap_pr,
-      * SourceMap_pr ;
-
+      * SourceMap_pr;
+			mexType * Ox_pr,
+			* Oy_pr,
+			* Oz_pr;
   };
 
 #else
@@ -512,6 +514,12 @@ int __InitBuffer =0;
 						return 49;
 					if (strcmp(NameVar,"SourceMap")==0)
 						return 50;
+					if (strcmp(NameVar,"Ox")==0)
+						return 51;
+					if (strcmp(NameVar,"Oy")==0)
+						return 52;
+					if (strcmp(NameVar,"Oz")==0)
+						return 53;
 
 					ERROR_STRING("Unknown parameter");
 					return -1;

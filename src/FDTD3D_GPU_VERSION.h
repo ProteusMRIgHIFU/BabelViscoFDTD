@@ -292,6 +292,9 @@ InitSymbol(Oz,mexType,G_FLOAT);
 	CreateAndCopyFromMXVarOnGPU(OneOverTauSigma	,mexType);
 	CreateAndCopyFromMXVarOnGPU(TauShear,mexType);
 	CreateAndCopyFromMXVarOnGPU(InvRhoMatH		,mexType);
+  CreateAndCopyFromMXVarOnGPU(Ox		,mexType);
+  CreateAndCopyFromMXVarOnGPU(Oy		,mexType);
+  CreateAndCopyFromMXVarOnGPU(Oz		,mexType);
 	CreateAndCopyFromMXVarOnGPU(IndexSensorMap	,unsigned int);
 	CreateAndCopyFromMXVarOnGPU(SourceFunctions	,mexType);
 	CreateAndCopyFromMXVarOnGPU(SourceMap		,unsigned int);
@@ -371,6 +374,9 @@ InitSymbol(Oz,mexType,G_FLOAT);
   InParamP(Sigma_yz);
   InParamP(Snapshots);
   InParamP(SqrAcc);
+  InParamP(Ox);
+  InParamP(Oy);
+  InParamP(Oz);
 
 
 //unsigned int MaxIndex = INHOST(InternalIndexCount)> INHOST(EdgeIndexCount) ? INHOST(InternalIndexCount):INHOST(EdgeIndexCount);
@@ -512,13 +518,13 @@ InitSymbol(Oz,mexType,G_FLOAT);
 
 #else
         int nextSnap=SnapshotsPos_pr[CurrSnap]-1;
-        mxcheckGPUErrors(clSetKernelArg(StressKernel, 51, sizeof(unsigned int), &nStep));
+        mxcheckGPUErrors(clSetKernelArg(StressKernel, 54, sizeof(unsigned int), &nStep));
 
 
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 51, sizeof(unsigned int), &nStep));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 52, sizeof(unsigned int), &CurrSnap));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 53, sizeof(unsigned int), &nextSnap));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(TypeSource)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &nStep));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &CurrSnap));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 56, sizeof(unsigned int), &nextSnap));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 57, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
@@ -659,6 +665,9 @@ InitSymbol(Oz,mexType,G_FLOAT);
 	ownCudaFree(IndexSensorMap);
 	ownCudaFree(SourceFunctions);
 	ownCudaFree(SourceMap);
+  ownCudaFree(Ox);
+  ownCudaFree(Oy);
+  ownCudaFree(Oz);
 	ownCudaFree(MaterialMap);
   ownCudaFree(Vx);
   ownCudaFree(Vy);

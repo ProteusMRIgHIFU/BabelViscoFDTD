@@ -231,27 +231,26 @@
 				accum_z+=EL(Vz,i,j,k);
 			}
 
-  		index=Ind_Sigma_xx(i,j,k);
   		if (nStep < LengthSource)
   		{
-  			//NOW we add the sources, we assume a "soft" source ,maybe later we can add a parameter to decide if the source is "hard"
-  			source=ELD(SourceMap,IndN1N2N3(i,j,k,0));
+				index=IndN1N2N3(i,j,k,0);
+  			source=ELD(SourceMap,index);
   			if (source>0)
   			{
   			  source--; //need to use C index
   			  value=ELD(SourceFunctions,nStep*NumberSources+source);
-                if (TypeSource==0)
-                {
-                    EL(Vx,i,j,k)+=value*Ox;
-                    EL(Vy,i,j,k)+=value*Oy;
-                    EL(Vz,i,j,k)+=value*Oz;
-                }
-                else
-                {
-                    EL(Vx,i,j,k)=value*Ox;
-                    EL(Vy,i,j,k)=value*Oy;
-                    EL(Vz,i,j,k)=value*Oz;
-                }
+            if (TypeSource==0)
+            {
+                EL(Vx,i,j,k)+=value*ELD(Ox,index);
+                EL(Vy,i,j,k)+=value*ELD(Oy,index);
+                EL(Vz,i,j,k)+=value*ELD(Oz,index);
+            }
+            else
+            {
+                EL(Vx,i,j,k)=value*ELD(Ox,index);
+                EL(Vy,i,j,k)=value*ELD(Oy,index);
+                EL(Vz,i,j,k)=value*ELD(Oz,index);
+            }
 
   			}
   		}

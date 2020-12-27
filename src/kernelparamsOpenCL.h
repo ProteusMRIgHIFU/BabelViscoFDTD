@@ -48,4 +48,7 @@ __global mexType * TauShear_pr,
 __global mexType * InvRhoMatH_pr,
 __global mexType * SqrAcc_pr,
 __global unsigned int * MaterialMap_pr,
-__global unsigned int * SourceMap_pr
+__global unsigned int * SourceMap_pr,
+__global mexType * Ox_pr,
+__global mexType * Oy_pr,
+__global mexType * Oz_pr

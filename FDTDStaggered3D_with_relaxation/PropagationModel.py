@@ -38,27 +38,26 @@ class PropagationModel:
                                          Frequency,
                                          SourceMap,
                                          SourceFunctions,
-                                         SourceTimeVector,
+                                         Ox,
+                                         Oy,
+                                         Oz,
                                          SpatialStep,
                                          DurationSimulation,
                                          SensorMap,
                                          AlphaCFL=0.99,
-                                         NDelta=40,
-                                         ReflectionLimit=0.0001,
+                                         NDelta=12,
+                                         ReflectionLimit=1.0000e-05,
                                          IntervalSnapshots=-1,
                                          COMPUTING_BACKEND=1,
                                          USE_SINGLE=True,
                                          USE_SPP = False,
-                                         SparseMargin=2,
+                                         SPP_ZONES=2,
                                          SPP_VolumeFractionFile='',
                                          DT=None,
                                          QfactorCorrection=True,
                                          CheckOnlyParams=False,
                                          TypeSource=0,
-                                         DefaultGPUDeviceName='TITAN',
-                                         Ox=0.,
-                                         Oy=0.,
-                                         Oz=1.):
+                                         DefaultGPUDeviceName='TITAN'):
         '''
         Samuel Pichardo, Ph.D.
         2020
@@ -103,7 +102,7 @@ class PropagationModel:
 
         Use
         [Sensor,LastMap,SnapShots]=StaggeredFDTD_3D(MaterialMap,MaterialProperties,
-        SourceMap,SourceFunctions,SourceTimeVector,SpatialStep,DurationSimulation,SensorMap)
+        SourceMap,SourceFunctions,SpatialStep,DurationSimulation,SensorMap)
 
         where
         'MaterialMap' is an uint32 N1xN2xN3 3D matrix where each different
@@ -118,7 +117,7 @@ class PropagationModel:
         indicate. Any value different to 0 is considered as a source. The value
         indicate which source function must be refered.
 
-        'SourceFunctions' is a N-sources x length(SourceTimeVector) matrix
+        'SourceFunctions' is a N-sources x NumberTimeSteps matrix
         where N-sources is the maximun value of SourceMap. Each row in
         SourceFuntions is the evolution on time of the stress (xx,yy) (negative
         version of the pressure)
@@ -134,8 +133,10 @@ class PropagationModel:
 
 
         SzMap=MaterialMap.shape
-        if not(np.all(SzMap[0:3]==SourceMap.shape)  and np.all(SzMap[0:3]==SensorMap.shape)):
-            raise ValueError('The size SourceMap, MaterialMap and SensorMap must be equal!!!')
+        if not(np.all(SzMap[0:3]==SourceMap.shape)  and np.all(SzMap[0:3]==SensorMap.shape)
+            and np.all(SzMap[0:3]==Ox.shape) and np.all(SzMap[0:3]==Oy.shape) and
+            np.all(SzMap[0:3]==Oz.shape)):
+            raise ValueError('The size SourceMap, Ox, Oy, Oz, MaterialMap, SensorMap must be equal!!!')
 
 
         N1=SzMap[0]
@@ -203,20 +204,7 @@ class PropagationModel:
         if SourceFunctions.shape[0]<np.max(SourceMap.flatten()):
              raise ValueError('The maximum identifier in SourceMap  is larger than the maximum source function (maximum row) in SourceFunctions')
 
-        if SourceFunctions.shape[1]!=SourceTimeVector.size:
-             raise ValueError('The number of columns in SourceFunctions must match the length of SourceTimeVector');
-
-        LengthSource = np.nonzero(TimeVector>SourceTimeVector[-1])[0]
-        if LengthSource.shape[0]==0:
-             LengthSource=TimeVector.size
-        else:
-             LengthSource =LengthSource[0]-1 #%this is the limit for input source
-
-        NewSourceFunctions = np.ones((SourceFunctions.shape[0],LengthSource))
-        #%the source functions must be interpolated to the same time vector to
-        #%be used for the simulations.
-        for n in range(SourceFunctions.shape[0]):
-            NewSourceFunctions[n,:] = np.interp(TimeVector[0:LengthSource],SourceTimeVector,SourceFunctions[n,:])
+        LengthSource = SourceFunctions.shape[1]
 
         delta=(NDelta-2.0)*h;# %% We do a trick to force the PML to act in the regions where there are calculations.
         delta=(NDelta)*h;# %% We do a trick to force the PML to act in the regions where there are calculations.
@@ -275,28 +263,28 @@ class PropagationModel:
             InputParam['TauShear']=TauShear;
             InputParam['OneOverTauSigma']=OneOverTauSigma;
             InputParam['InvRhoMatH']=InvRhoMatH;
-            InputParam['SourceFunctions']=NewSourceFunctions;
+            InputParam['SourceFunctions']=SourceFunctions;
             InputParam['DT']=dt;
             InputParam['Ox']=Ox;
             InputParam['Oy']=Oy;
             InputParam['Oz']=Oz;
         else:
-            InputParam['InvDXDTplus']=np.float32(InvDXDTplus)
-            InputParam['DXDTminus']=np.float32(DXDTminus)
-            InputParam['InvDXDTplushp']=np.float32(InvDXDTplushp)
-            InputParam['DXDTminushp']=np.float32(DXDTminushp)
-            InputParam['LambdaMiuMatOverH']=np.float32(LambdaMiuMatOverH)
-            InputParam['LambdaMatOverH']=np.float32(LambdaMatOverH)
-            InputParam['MiuMatOverH']=np.float32(MiuMatOverH)
-            InputParam['TauLong']=np.float32(TauLong)
-            InputParam['TauShear']=np.float32(TauShear)
-            InputParam['OneOverTauSigma']=np.float32(OneOverTauSigma)
-            InputParam['InvRhoMatH']=np.float32(InvRhoMatH)
-            InputParam['SourceFunctions']=np.float32(NewSourceFunctions)
+            InputParam['InvDXDTplus']=InvDXDTplus.astype(np.float32)
+            InputParam['DXDTminus']=DXDTminus.astype(np.float32)
+            InputParam['InvDXDTplushp']=InvDXDTplushp.astype(np.float32)
+            InputParam['DXDTminushp']=DXDTminushp.astype(np.float32)
+            InputParam['LambdaMiuMatOverH']=LambdaMiuMatOverH.astype(np.float32)
+            InputParam['LambdaMatOverH']=LambdaMatOverH.astype(np.float32)
+            InputParam['MiuMatOverH']=MiuMatOverH.astype(np.float32)
+            InputParam['TauLong']=TauLong.astype(np.float32)
+            InputParam['TauShear']=TauShear.astype(np.float32)
+            InputParam['OneOverTauSigma']=OneOverTauSigma.astype(np.float32)
+            InputParam['InvRhoMatH']=InvRhoMatH.astype(np.float32)
+            InputParam['SourceFunctions']=SourceFunctions.astype(np.float32)
             InputParam['DT']=np.float32(dt);
-            InputParam['Ox']=np.float32(Ox);
-            InputParam['Oy']=np.float32(Oy);
-            InputParam['Oz']=np.float32(Oz);
+            InputParam['Ox']=Ox.astype(np.float32);
+            InputParam['Oy']=Oy.astype(np.float32);
+            InputParam['Oz']=Oz.astype(np.float32);
 
         InputParam['MaterialMap']=MaterialMap3D;
         InputParam['IndexSensorMap']=np.uint32(IndexSensors)
@@ -313,7 +301,7 @@ class PropagationModel:
 
 
         if USE_SPP:
-            InputParam['USE_SPP']=np.uint32(SparseMargin)
+            InputParam['USE_SPP']=np.uint32(SPP_ZONES)
             print('We will use SPP')
             print('read volume fraction from file', SPP_VolumeFractionFile)
             fVol=ReadFromH5py(SPP_VolumeFractionFile)
@@ -321,7 +309,7 @@ class PropagationModel:
             SkullRing=fVol['SkullRing']
             print('Calculating SPP matrices')
             MatMap_zone,AllIndexesSparse,AllIndexesLarge,EdgeIndexesSparse,EdgeIndexesLarge,\
-                    InternalIndexesSparse, InternalIndexesLarge, InternalIndDic,MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SkullFraction,SkullRing,bDisplay=False,SparseMargin=SparseMargin);
+                    InternalIndexesSparse, InternalIndexesLarge, InternalIndDic,MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SkullFraction,SkullRing,bDisplay=False,SPP_ZONES=SPP_ZONES);
 
         else:
             InputParam['USE_SPP']=np.uint32(1)
@@ -640,9 +628,9 @@ def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
     return AnalysisQFactor,Tau,TauSigma_l
 
 
-def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SparseMargin=5,OrderExtra=2,USE_SPP=True,bDisplay=False):
+def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SPP_ZONES=5,OrderExtra=2,USE_SPP=True,bDisplay=False):
         #if USE_SPP is False, we just create dummy arrays, as these are need to be passed to the low level function for completeness
-        ZoneCount=SparseMargin
+        ZoneCount=SPP_ZONES
         if USE_SPP:
             SkullRegion=SourceMaterialMap!=0
 
@@ -684,7 +672,7 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SparseM
 
             SuperpositionMap = np.zeros(SourceMaterialMap.shape,dtype=np.uint8)
             SkullRingFraction=((SkullFraction>0)&(SkullFraction<1.0))
-            ExpandedRing=ndimage.binary_dilation(SkullRingFraction,iterations=SparseMargin)
+            ExpandedRing=ndimage.binary_dilation(SkullRingFraction,iterations=SPP_ZONES)
             ExpandedRing[SkullFraction==1.0]=True
             SuperpositionMap[ExpandedRing]=1
 
