@@ -487,9 +487,9 @@ InitSymbol(Oz,mexType,G_FLOAT);
   mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
 
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 0, sizeof(cl_mem), &gpu_SensorOutput_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 1, sizeof(cl_mem), &gpu_Sigma_xx_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 2, sizeof(cl_mem), &gpu_Sigma_yy_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 3, sizeof(cl_mem), &gpu_Sigma_zz_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 1, sizeof(cl_mem), &gpu_Vx_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 2, sizeof(cl_mem), &gpu_Vy_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 3, sizeof(cl_mem), &gpu_Vz_pr));
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 4, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
 
 
@@ -546,11 +546,13 @@ InitSymbol(Oz,mexType,G_FLOAT);
 			}
 		//~ //Finally, the sensors
 #if defined(CUDA)
-     SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(gpu_SensorOutput_pr,gpu_Sigma_xx_pr, gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,gpu_IndexSensorMap_pr,nStep,NumberSensors);
+     SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(gpu_SensorOutput_pr,gpu_Vx_pr,
+       gpu_Vy_pr,gpu_Vz_pr,gpu_IndexSensorMap_pr,nStep,NumberSensors,TimeSteps);
 		 mxcheckGPUErrors(cudaDeviceSynchronize());
 #else
       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 5, sizeof(unsigned int), &nStep));
       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 6, sizeof(unsigned int), &NumberSensors));
+      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 7, sizeof(unsigned int), &TimeSteps));
 
       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
       mxcheckGPUErrors(clFinish(commands));

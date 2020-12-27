@@ -331,12 +331,13 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	memset(Snapshots_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
 
 
-	ndim=2;
+	ndim=3;
 	dims[0]=NumberSensors;
 	dims[1]=TimeSteps;
+	dims[2]=3;
 	CREATE_ARRAY(SensorOutput);
 	GET_DATA(SensorOutput);
-	memset(SensorOutput_pr,0,dims[0]*dims[1]*sizeof(mexType));
+	memset(SensorOutput_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
 
 #ifdef MATLAB_MEX
 	PRINTF(" Staggered FDTD - compiled at %s - %s\n",__DATE__,__TIME__);
@@ -356,7 +357,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 // #endif
 
 #if defined(CUDA) || defined(OPENCL)
-  #include "FDTD3D_CUDA_VERSION.h"
+  #include "FDTD3D_GPU_VERSION.h"
 #else
 	//////////BEGIN CPU SPECIFC
   FILE * FDEBUG =fopen("DEBUG.OUT","w");

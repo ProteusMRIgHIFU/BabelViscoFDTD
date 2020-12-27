@@ -251,9 +251,6 @@ class PropagationModel:
         SensorOutput={}
 
         SensorOutput['time']=TimeVector
-        SensorOutput['Sensors']=[]
-        for n in range(IndexSensors.size):
-            SensorOutput['Sensors'].append(np.ones((1,TimeVector.size)))
 
         SnapshotsPos=[]
         SnapShots=[]
@@ -341,10 +338,13 @@ class PropagationModel:
         SensorOutput_orig,V,RMSValue,Snapshots_orig=self.ExecuteSimulation(InputParam,COMPUTING_BACKEND)# This will be executed either locally or remotely using Pyro4
 
         for n in range(len(SnapShots)):
-            SnapShots[n]['V']=np.squeeze(Snapshots_orig[:,:,n]).copy()
+            SnapShots[n]['V']=np.squeeze(Snapshots_orig[:,:,n])
 
+        #SensorOutput_orig=np.sqrt(SensorOutput_orig); #Sensors captured the sum of squares of Vx, Vy and Vz
         for n in range(len(IndexSensors)):
-            SensorOutput['Sensors'][n]=SensorOutput_orig[n,:].copy()
+            SensorOutput['Vx']=SensorOutput_orig[:,:,0]
+            SensorOutput['Vy']=SensorOutput_orig[:,:,1]
+            SensorOutput['Vz']=SensorOutput_orig[:,:,2]
 
         if (IntervalSnapshots>0):
             RetSnap=SnapShots

@@ -228,18 +228,9 @@
 
 		//Finally, the sensors
 		#pragma omp parallel for private(CurZone)
-		for(jj=0; jj<( int)NumberSensors; jj++)
+		for(int sj=0; sj<( int)NumberSensors; sj++)
 		{
-			unsigned int j= (unsigned int)jj;
-			int index=nStep*NumberSensors+j;
-			mexType accum=0.0;
-			for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-				{
-					unsigned int index2=IndexSensorMap_pr[j]-1 + Ind_Sigma_xx(0,0,0);
-					accum+=(Sigma_xx_pr[index2]+Sigma_yy_pr[index2]+Sigma_zz_pr[index2])/3.0;
-
-				}
-			SensorOutput_pr[index]=accum/INHOST(ZoneCount);
+				#include"SensorsParticleKernel.h"
 		}
 
 	}
