@@ -101,10 +101,9 @@
 							for(ii=0; ii<( int)N1+1; ii++)
 							{
 								unsigned int i= (unsigned int)ii;
-								for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-			                {
-			                #include "StressKernel.h"
-			                }
+
+			          #include "StressKernel.h"
+
 							}
 						}
 					}
@@ -156,10 +155,8 @@
 							for(ii=0; ii<( int)N1+1; ii++)
 							{
 								unsigned int i= (unsigned int)ii;
-								for (CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-								{
-				            #include "ParticleKernel.h"
-								}
+				         #include "ParticleKernel.h"
+
 							}
 						}
 					}
