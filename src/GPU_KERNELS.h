@@ -75,7 +75,7 @@ __global__ void SensorsKernel(mexType * SensorOutput_pr,mexType * Vx_pr,
 														unsigned int * IndexSensorMap_pr,
 														unsigned int nStep,unsigned int NumberSensors, unsigned int TimeSteps)
 {
-	unsigned int j =blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int sj =blockIdx.x * blockDim.x + threadIdx.x;
 #else
 __kernel void SensorsKernel(__global mexType * SensorOutput_pr,__global mexType * Vx_pr,
 													__global mexType * Vy_pr,__global mexType * Vz_pr,
