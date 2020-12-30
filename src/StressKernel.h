@@ -441,17 +441,37 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     CurZone=0;
     index=IndN1N2N3(i,j,k,0);
     index2=N1*N2*N3;
-    if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)+=accum_xx*accum_xx;
-    if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy)+=accum_yy*accum_yy;
-    if (IS_Sigmazz_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz)+=accum_zz*accum_zz;
-    if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)+=accum_xy*accum_xy;
-    if (IS_Sigmaxz_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz)+=accum_xz*accum_xz;
-    if (IS_Sigmayz_SELECTED(SelMapsRMSPeak))
-        ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz)+=accum_yz*accum_yz;
+    if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+    {
+        if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)+=accum_xx*accum_xx;
+        if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy)+=accum_yy*accum_yy;
+        if (IS_Sigmazz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz)+=accum_zz*accum_zz;
+        if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)+=accum_xy*accum_xy;
+        if (IS_Sigmaxz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz)+=accum_xz*accum_xz;
+        if (IS_Sigmayz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz)+=accum_yz*accum_yz;
+    }
+    if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
+        index+=index2*NumberSelRMSPeakMaps;
+    if (SelRMSorPeak & SEL_PEAK)
+    {
+        if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)=accum_xx>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx) ? accum_xx: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx);
+        if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy)=accum_yy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy) ? accum_yy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy);
+        if (IS_Sigmazz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz)=accum_zz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz) ? accum_zz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz);
+        if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)=accum_xy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy) ? accum_xy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy);
+        if (IS_Sigmaxz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz)=accum_xz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz) ? accum_xz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz);
+        if (IS_Sigmayz_SELECTED(SelMapsRMSPeak))
+            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz)=accum_yz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz) ? accum_yz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz);
+    }
 
   }

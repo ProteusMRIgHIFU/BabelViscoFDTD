@@ -369,19 +369,45 @@ class PropagationModel:
         else:
             RetSnap=[]
 
-        #%in RMSValue we have the sum of square values over time, we need a
-        #%final calculation to have the real RMS
-        RMSValue=np.sqrt(RMSValue/len(TimeVector))
         #now time to organize this a dictionary
         RetValueRMS={}
-        for key,index in IndexRMSMaps.items():
-            if index>=0:
-                RetValueRMS[key]=RMSValue[:,:,:,index]
+        RetValuePeak={}
+        if SelRMSorPeak==1 or SelRMSorPeak==3:
+            for key,index in IndexRMSMaps.items():
+                if index>=0:
+                    #%in RMSValue we have the sum of square values over time, we need a
+                    #%final calculation to have the real RMS
+                    RetValueRMS[key]=np.sqrt(RMSValue[:,:,:,index,0]/len(TimeVector))
+        if SelRMSorPeak==2:
+            for key,index in IndexRMSMaps.items():
+                if index>=0:
+                    RetValuePeak[key]=RMSValue[:,:,:,index,0]
+        elif SelRMSorPeak==3:
+            for key,index in IndexRMSMaps.items():
+                if index>=0:
+                    RetValuePeak[key]=RMSValue[:,:,:,index,1]
+        if 'ALLV' in RetValuePeak:
+            #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
+            RetValuePeak['ALLV'] =np.sqrt(RetValuePeak['ALLV'] )
 
         if  IntervalSnapshots>0:
-            return SensorOutput,V,RetValueRMS,InputParam,RetSnap
+            if len(RetValueRMS)>0 and len(RetValuePeak)>0:
+                return SensorOutput,V,RetValueRMS,RetValuePeak,InputParam,RetSnap
+            elif len(RetValueRMS)>0:
+                return SensorOutput,V,RetValueRMS,InputParam,RetSnap
+            elif len(RetValuePeak)>0:
+                return SensorOutput,V,RetValuePeak,InputParam,RetSnap
+            else:
+                raise SystemError("How we got a condition where no RMS or Peak value was selected")
         else:
-            return SensorOutput,V,RetValueRMS,InputParam
+            if len(RetValueRMS)>0 and len(RetValuePeak)>0:
+                return SensorOutput,V,RetValueRMS,RetValuePeak,InputParam
+            elif len(RetValueRMS)>0:
+                return SensorOutput,V,RetValueRMS,InputParam
+            elif len(RetValuePeak)>0:
+                return SensorOutput,V,RetValuePeak,InputParam
+            else:
+                raise SystemError("How we got a condition where no RMS or Peak value was selected")
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
         if COMPUTING_BACKEND in [1,2]:
             if COMPUTING_BACKEND==1:

@@ -226,6 +226,7 @@ __constant__ unsigned int IndexRMSPeak_Sigmazz;
 __constant__ unsigned int IndexRMSPeak_Sigmaxy;
 __constant__ unsigned int IndexRMSPeak_Sigmaxz;
 __constant__ unsigned int IndexRMSPeak_Sigmayz;
+__constant__ unsigned int NumberSelRMSPeakMaps;
 
 __constant__ mexType gpuInvDXDTpluspr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];

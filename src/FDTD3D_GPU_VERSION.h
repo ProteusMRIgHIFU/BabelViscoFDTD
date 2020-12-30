@@ -181,7 +181,7 @@ InitSymbol(IndexRMSPeak_Sigmazz,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Sigmaxy,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Sigmaxz,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Sigmayz,unsigned int,G_INT);
-
+InitSymbol(NumberSelRMSPeakMaps,unsigned int,G_INT);
 //~
 #ifdef CUDA //CUDA specifics
 

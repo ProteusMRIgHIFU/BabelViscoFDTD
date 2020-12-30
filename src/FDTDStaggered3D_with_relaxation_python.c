@@ -283,6 +283,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	if ( !((INHOST(SelRMSorPeak))& SEL_PEAK) && !((INHOST(SelRMSorPeak))&SEL_RMS))
 			ERROR_STRING("SelRMSorPeak must be either 1 (RMS), 2 (Peak) or 3 (Both RMS and Peak)");
 
+
+
   COUNT_SELECTIONS(INHOST(NumberSelRMSPeakMaps),INHOST(SelMapsRMSPeak));
 	if (INHOST(NumberSelRMSPeakMaps)==0)
 		ERROR_STRING("SelMapsRMSPeak must select at least one type of map to track");
@@ -338,14 +340,14 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 //We define a few variable required to create arrays depending if it is for Numpy or Mex
 #ifdef MATLAB_MEX
 	    mwSize ndim=1;
-			mwSize dims[4];
+			mwSize dims[5];
 			dims[0]=1;
 
 	    const char *fieldNames[] = {"Vx", "Vy", "Vz","Sigma_xx", "Sigma_yy" ,"Sigma_zz", "Sigma_xy","Sigma_xz","Sigma_yz"};
 	    mxArray * LastVMap_mx=mxCreateStructArray( 1, dims, 9, fieldNames );
 #else
 
-			npy_intp dims[4];
+			npy_intp dims[5];
 			//int dims[3];
 			int ndim;
 
@@ -363,15 +365,19 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	CREATE_ARRAY_AND_INIT(Sigma_xz_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
 	CREATE_ARRAY_AND_INIT(Sigma_yz_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
 
-	ndim=4;
+	ndim=5;
 	dims[0]=INHOST(N1);
 	dims[1]=INHOST(N2);
 	dims[2]=INHOST(N3);
 	dims[3]=INHOST(NumberSelRMSPeakMaps);
-	CREATE_ARRAY(SqrAcc);
+	if 	 ((INHOST(SelRMSorPeak) & SEL_PEAK)  && (INHOST(SelRMSorPeak) & SEL_RMS))
+	 	dims[4]=2; //both peak and RMS
+	else
+		dims[4]=1; //just one of them
+  CREATE_ARRAY(SqrAcc);
 	GET_DATA(SqrAcc);
-	memset(SqrAcc_pr,0,dims[0]*dims[1]*dims[2]*dims[3]*sizeof(mexType));
-	
+	memset(SqrAcc_pr,0,dims[0]*dims[1]*dims[2]*dims[3]*dims[4]*sizeof(mexType));
+
   unsigned int CurrSnap=0;
 
 	ndim=3;

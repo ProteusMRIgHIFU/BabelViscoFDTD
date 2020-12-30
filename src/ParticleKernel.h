@@ -265,12 +265,32 @@
 	    CurZone=0;
 	    index=IndN1N2N3(i,j,k,0);
 			index2=N1*N2*N3;
-			if (IS_ALLV_SELECTED(SelMapsRMSPeak))
-	    		ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
-			if (IS_Vx_SELECTED(SelMapsRMSPeak))
-			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
-			if (IS_Vy_SELECTED(SelMapsRMSPeak))
-			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
-			if (IS_Vz_SELECTED(SelMapsRMSPeak))
-			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
-	  }
+			if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+			{
+					if (IS_ALLV_SELECTED(SelMapsRMSPeak))
+			    		ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
+					if (IS_Vx_SELECTED(SelMapsRMSPeak))
+					 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
+					if (IS_Vy_SELECTED(SelMapsRMSPeak))
+					 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
+					if (IS_Vz_SELECTED(SelMapsRMSPeak))
+					 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
+			}
+			if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
+					index+=index2*NumberSelRMSPeakMaps;
+			if (SelRMSorPeak & SEL_PEAK)
+			{
+						if (IS_ALLV_SELECTED(SelMapsRMSPeak))
+						{
+							  value=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z; //in the Python function we will do the final sqr root`
+								ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)=value > ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV) ? value : ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV);
+						}
+						if (IS_Vx_SELECTED(SelMapsRMSPeak))
+								ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)=accum_x > ELD(SqrAcc,index+index2*IndexRMSPeak_Vx) ? accum_x : ELD(SqrAcc,index+index2*IndexRMSPeak_Vx);
+						if (IS_Vy_SELECTED(SelMapsRMSPeak))
+								ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)=accum_y > ELD(SqrAcc,index+index2*IndexRMSPeak_Vy) ? accum_y : ELD(SqrAcc,index+index2*IndexRMSPeak_Vy);
+						if (IS_Vz_SELECTED(SelMapsRMSPeak))
+								ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)=accum_z > ELD(SqrAcc,index+index2*IndexRMSPeak_Vz) ? accum_z : ELD(SqrAcc,index+index2*IndexRMSPeak_Vz);
+
+	    }
+		}
