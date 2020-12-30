@@ -252,4 +252,50 @@ typedef unsigned char interface_t;
 #define InvDXDThp_K 	(IsOnLowPML_K(k) ? InvDXDTplushp_pr[kPML(k)] : InvDXDTplus_pr[kPML(k)] )
 #define DXDThp_K 		(IsOnLowPML_I(k) ? DXDTminushp_pr[kPML(k)] : DXDTminus_pr[kPML(k)])
 #endif
+
+
+#define MASK_ALLV				0x0000000001
+#define MASK_Vx   			0x0000000002
+#define MASK_Vy   			0x0000000004
+#define MASK_Vz   			0x0000000008
+#define MASK_Sigmaxx    0x0000000010
+#define MASK_Sigmayy    0x0000000020
+#define MASK_Sigmazz    0x0000000040
+#define MASK_Sigmaxy    0x0000000080
+#define MASK_Sigmaxz    0x0000000100
+#define MASK_Sigmayz    0x0000000200
+
+#define IS_ALLV_SELECTED(_Value) 					(_Value &MASK_ALLV)
+#define IS_Vx_SELECTED(_Value) 						(_Value &MASK_Vx)
+#define IS_Vy_SELECTED(_Value) 						(_Value &MASK_Vy)
+#define IS_Vz_SELECTED(_Value) 						(_Value &MASK_Vz)
+#define IS_Sigmaxx_SELECTED(_Value) 			(_Value &MASK_Sigmaxx)
+#define IS_Sigmayy_SELECTED(_Value) 			(_Value &MASK_Sigmayy)
+#define IS_Sigmazz_SELECTED(_Value) 			(_Value &MASK_Sigmazz)
+#define IS_Sigmaxy_SELECTED(_Value) 			(_Value &MASK_Sigmaxy)
+#define IS_Sigmaxz_SELECTED(_Value) 			(_Value &MASK_Sigmaxz)
+#define IS_Sigmayz_SELECTED(_Value) 			(_Value &MASK_Sigmayz)
+
+#define COUNT_SELECTIONS(_VarName,_Value) \
+				{ _VarName =0;\
+					_VarName += IS_ALLV_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Vx_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Vy_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Vz_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmaxx_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmayy_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmazz_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmaxy_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmaxz_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Sigmayz_SELECTED(_Value) ? 1 : 0; }
+
+#define SEL_RMS			  	0x0000000001
+#define SEL_PEAK   			0x0000000002
+
+#define ACCOUNT_RMSPEAK(_VarName)\
+if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
+{\
+	 INHOST(IndexRMSPeak_ ## _VarName)=curMapIndex;\
+	 curMapIndex++; }
+
 #endif

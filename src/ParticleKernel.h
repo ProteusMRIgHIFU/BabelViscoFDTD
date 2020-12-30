@@ -263,6 +263,14 @@
 	    accum_y/=ZoneCount;
 	    accum_z/=ZoneCount;
 	    CurZone=0;
-	    index=Ind_Sigma_xx(i,j,k);
-	    ELD(SqrAcc,index)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
+	    index=IndN1N2N3(i,j,k,0);
+			index2=N1*N2*N3;
+			if (IS_ALLV_SELECTED(SelMapsRMSPeak))
+	    		ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
+			if (IS_Vx_SELECTED(SelMapsRMSPeak))
+			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
+			if (IS_Vy_SELECTED(SelMapsRMSPeak))
+			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
+			if (IS_Vz_SELECTED(SelMapsRMSPeak))
+			 		ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
 	  }

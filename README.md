@@ -10,7 +10,7 @@ www.neurofus.ca
 
 **Software library for FDTD of viscoelastic equation using an staggered grid arrangement with  CPU- or GPU-based backends (OpenMP, CUDA and OpenCL)**
 
-This tool solves in time domain the viscoelastic equation for wave propagation using an staggered grid solution.
+This tool solves in time domain the viscoelastic equation for wave propagation using an staggered grid solution. While the underlying equations and methods were  developed primarily for seismic simulation, the StaggaredFDTD library was developed for biomedical applications to study the ultrasound transmission through bone material.
 
 Users are invited to read first the paper associated to this work to review specifics of the solution (including details on boundary matching layers and averaging operators for heterogenous media):
 

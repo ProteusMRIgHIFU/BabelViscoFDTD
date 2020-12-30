@@ -203,6 +203,8 @@ __constant__ unsigned int SizeCorrK;
 __constant__ unsigned int PML_Thickness;
 __constant__ unsigned int NumberSources;
 __constant__ unsigned int LengthSource;
+__constant__ unsigned int NumberSensors;
+__constant__ unsigned int TimeSteps;
 
 // __constant__ unsigned int USE_SPP;
 __constant__ unsigned int SizePML;
@@ -211,10 +213,19 @@ __constant__ unsigned int SizePMLyp1;
 __constant__ unsigned int SizePMLzp1;
 __constant__ unsigned int SizePMLxp1yp1zp1;
 __constant__ unsigned int ZoneCount;
-__constant__ mexType Ox;
-__constant__ mexType Oy;
-__constant__ mexType Oz;
 
+__constant__ unsigned int SelRMSorPeak;
+__constant__ unsigned int SelMapsRMSPeak;
+__constant__ unsigned int IndexRMSPeak_ALLV;
+__constant__ unsigned int IndexRMSPeak_Vx;
+__constant__ unsigned int IndexRMSPeak_Vy;
+__constant__ unsigned int IndexRMSPeak_Vz;
+__constant__ unsigned int IndexRMSPeak_Sigmaxx;
+__constant__ unsigned int IndexRMSPeak_Sigmayy;
+__constant__ unsigned int IndexRMSPeak_Sigmazz;
+__constant__ unsigned int IndexRMSPeak_Sigmaxy;
+__constant__ unsigned int IndexRMSPeak_Sigmaxz;
+__constant__ unsigned int IndexRMSPeak_Sigmayz;
 
 __constant__ mexType gpuInvDXDTpluspr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];

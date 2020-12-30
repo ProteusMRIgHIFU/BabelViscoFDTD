@@ -80,12 +80,12 @@
 
 	//fflush( FDEBUG );
 
-	for (unsigned int nStep=0;nStep<TimeSteps;nStep++)
+	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
 	{
 		if ((nStep % 200)==0)
 		{
-			PRINTF("Doing step %i of %i\n",nStep,TimeSteps);
-			fprintf(FDEBUG,"Doing step %i of %i\n",nStep,TimeSteps);
+			PRINTF("Doing step %i of %i\n",nStep,INHOST(TimeSteps));
+			fprintf(FDEBUG,"Doing step %i of %i\n",nStep,INHOST(TimeSteps));
 			fflush(FDEBUG);
 		}
 		//********************************
@@ -225,7 +225,7 @@
 
 		//Finally, the sensors
 		#pragma omp parallel for private(CurZone)
-		for(int sj=0; sj<( int)NumberSensors; sj++)
+		for(int sj=0; sj<( int)INHOST(NumberSensors); sj++)
 		{
 				#include"SensorsParticleKernel.h"
 		}

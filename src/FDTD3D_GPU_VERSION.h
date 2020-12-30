@@ -166,9 +166,21 @@ InitSymbol(SizePMLyp1,unsigned int,G_INT);
 InitSymbol(SizePMLzp1,unsigned int,G_INT);
 InitSymbol(SizePML,unsigned int,G_INT);
 InitSymbol(SizePMLxp1yp1zp1,unsigned int,G_INT);
-InitSymbol(Ox,mexType,G_FLOAT);
-InitSymbol(Oy,mexType,G_FLOAT);
-InitSymbol(Oz,mexType,G_FLOAT);
+
+InitSymbol(NumberSensors,unsigned int,G_INT);
+InitSymbol(TimeSteps,unsigned int,G_INT);
+InitSymbol(SelRMSorPeak,unsigned int,G_INT);
+InitSymbol(SelMapsRMSPeak,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_ALLV,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Vx,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Vy,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Vz,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmaxx,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmayy,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmazz,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmaxy,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmaxz,unsigned int,G_INT);
+InitSymbol(IndexRMSPeak_Sigmayz,unsigned int,G_INT);
 
 //~
 #ifdef CUDA //CUDA specifics
@@ -461,7 +473,7 @@ InitSymbol(Oz,mexType,G_FLOAT);
   PRINTF("minGridSize and Blocksize from API for SensorsKernel = %i and %i\n",minGridSizeSensor,blockSizeSensor);
   dimBlockSensors.x=blockSizeSensor;
   dimBlockSensors.y=1;
-  dimGridSensors.x  = (unsigned int)ceil((float)(NumberSensors) / dimBlockSensors.x);
+  dimGridSensors.x  = (unsigned int)ceil((float)(INHOST(NumberSensors)) / dimBlockSensors.x);
   dimGridSensors.y=1;
 
 
@@ -485,7 +497,7 @@ InitSymbol(Oz,mexType,G_FLOAT);
 
 #else
   const  size_t global_stress_particle[3] ={N1,N2,N3};
-  const  size_t global_sensors[1] ={NumberSensors};
+  const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
   {
       mxcheckGPUErrors(clSetKernelArg(SnapShot, 1, sizeof(cl_mem), &gpu_Snapshots_pr));
@@ -504,7 +516,7 @@ InitSymbol(Oz,mexType,G_FLOAT);
 #endif
 
 
-	for (unsigned int nStep=0;nStep<TimeSteps;nStep++)
+	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
 	{
 
 #if defined(CUDA)
@@ -554,12 +566,13 @@ InitSymbol(Oz,mexType,G_FLOAT);
 		//~ //Finally, the sensors
 #if defined(CUDA)
      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(gpu_SensorOutput_pr,gpu_Vx_pr,
-       gpu_Vy_pr,gpu_Vz_pr,gpu_IndexSensorMap_pr,nStep,NumberSensors,TimeSteps);
+       gpu_Vy_pr,gpu_Vz_pr,gpu_IndexSensorMap_pr,nStep);
 		 mxcheckGPUErrors(cudaDeviceSynchronize());
 #else
       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 5, sizeof(unsigned int), &nStep));
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 6, sizeof(unsigned int), &NumberSensors));
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 7, sizeof(unsigned int), &TimeSteps));
+
+    /*  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 6, sizeof(unsigned int), &NumberSensors));
+      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 7, sizeof(unsigned int), &TimeSteps));*/
 
       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
       mxcheckGPUErrors(clFinish(commands));

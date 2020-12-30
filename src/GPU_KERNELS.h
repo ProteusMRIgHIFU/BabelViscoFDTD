@@ -73,14 +73,14 @@ __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__globa
 __global__ void SensorsKernel(mexType * SensorOutput_pr,mexType * Vx_pr,
 														mexType * Vy_pr,mexType * Vz_pr,
 														unsigned int * IndexSensorMap_pr,
-														unsigned int nStep,unsigned int NumberSensors, unsigned int TimeSteps)
+														unsigned int nStep)
 {
 	unsigned int sj =blockIdx.x * blockDim.x + threadIdx.x;
 #else
 __kernel void SensorsKernel(__global mexType * SensorOutput_pr,__global mexType * Vx_pr,
 													__global mexType * Vy_pr,__global mexType * Vz_pr,
 													__global unsigned int * IndexSensorMap_pr,
-													unsigned int nStep,unsigned int NumberSensors, unsigned int TimeSteps)
+													unsigned int nStep)
 {
 	unsigned int sj =get_global_id(0);
 #endif

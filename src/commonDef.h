@@ -295,4 +295,5 @@ PyMODINIT_FUNC INIT_MAIN_NAME (){
 	_index = hInd_ ## _VarName(i,j,k);\
 	ELDO(_VarName ##_res,_index)=accum/INHOST(ZoneCount);\
 }
+
 #endif

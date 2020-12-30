@@ -57,6 +57,8 @@ class PropagationModel:
                                          QfactorCorrection=True,
                                          CheckOnlyParams=False,
                                          TypeSource=0,
+                                         SelRMSorPeak=1,
+                                         SelMapsRMSPeakList=['ALLV'],
                                          DefaultGPUDeviceName='TITAN'):
         '''
         Samuel Pichardo, Ph.D.
@@ -251,6 +253,32 @@ class PropagationModel:
                     tPlot+=+1
         InputParam={}
 
+#define MASK_ALLV				0x0000000001
+#define MASK_Vx   			0x0000000002
+#define MASK_Vy   			0x0000000004
+#define MASK_Vz   			0x0000000008
+#define MASK_Sigmaxx    0x0000000010
+#define MASK_Sigmayy    0x0000000020
+#define MASK_Sigmazz    0x0000000040
+#define MASK_Sigmaxy    0x0000000080
+#define MASK_Sigmaxz    0x0000000100
+#define MASK_Sigmayz    0x0000000200
+        #We decode what maps to collect for RMS-Peak
+        SelMapsRMSPeak=int(0)
+        curIndex=0
+        IndexRMSMaps={}
+        curMask=int(0x0001)
+        #Do not modify the order of this search without matching the low level functions!
+        for pMap in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz']:
+            if pMap in  SelMapsRMSPeakList:
+                SelMapsRMSPeak=SelMapsRMSPeak | curMask
+                IndexRMSMaps[pMap]=curIndex
+                curIndex+=1
+            else:
+                IndexRMSMaps[pMap]=-1
+            curMask=curMask<<1
+
+
         if USE_SINGLE==False:
             InputParam['InvDXDTplus']=InvDXDTplus;
             InputParam['DXDTminus']=DXDTminus;
@@ -282,20 +310,22 @@ class PropagationModel:
             InputParam['InvRhoMatH']=InvRhoMatH.astype(np.float32)
             InputParam['SourceFunctions']=SourceFunctions.astype(np.float32)
             InputParam['DT']=np.float32(dt);
-            InputParam['Ox']=Ox.astype(np.float32);
-            InputParam['Oy']=Oy.astype(np.float32);
-            InputParam['Oz']=Oz.astype(np.float32);
+            InputParam['Ox']=Ox.astype(np.float32)
+            InputParam['Oy']=Oy.astype(np.float32)
+            InputParam['Oz']=Oz.astype(np.float32)
 
         InputParam['MaterialMap']=MaterialMap3D;
         InputParam['IndexSensorMap']=np.uint32(IndexSensors)
-        InputParam['N1']=np.uint32(N1);
-        InputParam['N2']=np.uint32(N2);
-        InputParam['N3']=np.uint32(N3);
+        InputParam['N1']=np.uint32(N1)
+        InputParam['N2']=np.uint32(N2)
+        InputParam['N3']=np.uint32(N3)
         InputParam['TypeSource']=np.uint32(TypeSource)
-        InputParam['TimeSteps']=np.uint32(TimeVector.size);
-        InputParam['SourceMap']=np.uint32(SourceMap);
-        InputParam['SnapshotsPos']=np.uint32(SnapshotsPos);
-        InputParam['PMLThickness']=np.uint32(NDelta);
+        InputParam['TimeSteps']=np.uint32(TimeVector.size)
+        InputParam['SourceMap']=np.uint32(SourceMap)
+        InputParam['SnapshotsPos']=np.uint32(SnapshotsPos)
+        InputParam['PMLThickness']=np.uint32(NDelta)
+        InputParam['SelRMSorPeak']=np.uint32(SelRMSorPeak)
+        InputParam['SelMapsRMSPeak']=np.uint32(SelMapsRMSPeak)
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
 
@@ -342,11 +372,16 @@ class PropagationModel:
         #%in RMSValue we have the sum of square values over time, we need a
         #%final calculation to have the real RMS
         RMSValue=np.sqrt(RMSValue/len(TimeVector))
+        #now time to organize this a dictionary
+        RetValueRMS={}
+        for key,index in IndexRMSMaps.items():
+            if index>=0:
+                RetValueRMS[key]=RMSValue[:,:,:,index]
 
         if  IntervalSnapshots>0:
-            return SensorOutput,V,RMSValue,InputParam,RetSnap
+            return SensorOutput,V,RetValueRMS,InputParam,RetSnap
         else:
-            return SensorOutput,V,RMSValue,InputParam
+            return SensorOutput,V,RetValueRMS,InputParam
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
         if COMPUTING_BACKEND in [1,2]:
             if COMPUTING_BACKEND==1:
