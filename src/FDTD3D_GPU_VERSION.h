@@ -170,6 +170,7 @@ InitSymbol(SizePMLxp1yp1zp1,unsigned int,G_INT);
 InitSymbol(NumberSensors,unsigned int,G_INT);
 InitSymbol(TimeSteps,unsigned int,G_INT);
 InitSymbol(SelRMSorPeak,unsigned int,G_INT);
+
 InitSymbol(SelMapsRMSPeak,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_ALLV,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Vx,unsigned int,G_INT);
@@ -182,6 +183,20 @@ InitSymbol(IndexRMSPeak_Sigmaxy,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Sigmaxz,unsigned int,G_INT);
 InitSymbol(IndexRMSPeak_Sigmayz,unsigned int,G_INT);
 InitSymbol(NumberSelRMSPeakMaps,unsigned int,G_INT);
+
+InitSymbol(SelMapsSensors,unsigned int,G_INT);
+InitSymbol(IndexSensor_ALLV,unsigned int,G_INT);
+InitSymbol(IndexSensor_Vx,unsigned int,G_INT);
+InitSymbol(IndexSensor_Vy,unsigned int,G_INT);
+InitSymbol(IndexSensor_Vz,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmaxx,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmayy,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmazz,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmaxy,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmaxz,unsigned int,G_INT);
+InitSymbol(IndexSensor_Sigmayz,unsigned int,G_INT);
+InitSymbol(NumberSelSensorMaps,unsigned int,G_INT);
+InitSymbol(SensorSteps,unsigned int,G_INT);
 //~
 #ifdef CUDA //CUDA specifics
 
@@ -506,11 +521,8 @@ InitSymbol(NumberSelRMSPeakMaps,unsigned int,G_INT);
       mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
   }
 
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 0, sizeof(cl_mem), &gpu_SensorOutput_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 1, sizeof(cl_mem), &gpu_Vx_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 2, sizeof(cl_mem), &gpu_Vy_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 3, sizeof(cl_mem), &gpu_Vz_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 4, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 54, sizeof(cl_mem), &gpu_SensorOutput_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
 
 
 #endif
@@ -564,19 +576,17 @@ InitSymbol(NumberSelRMSPeakMaps,unsigned int,G_INT);
 				CurrSnap++;
 			}
 		//~ //Finally, the sensors
+    if ((nStep % INHOST(SensorSteps))==0)
+		{
 #if defined(CUDA)
-     SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(gpu_SensorOutput_pr,gpu_Vx_pr,
-       gpu_Vy_pr,gpu_Vz_pr,gpu_IndexSensorMap_pr,nStep);
-		 mxcheckGPUErrors(cudaDeviceSynchronize());
+      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_SensorOutput_pr,gpu_IndexSensorMap_pr,nStep);
+		    mxcheckGPUErrors(cudaDeviceSynchronize());
 #else
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 5, sizeof(unsigned int), &nStep));
-
-    /*  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 6, sizeof(unsigned int), &NumberSensors));
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 7, sizeof(unsigned int), &TimeSteps));*/
-
+      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &nStep));
       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
       mxcheckGPUErrors(clFinish(commands));
 #endif
+    }
 
 	}
   LOCAL_CALLOC(Vx,GET_NUMBER_ELEMS(Vx_res));

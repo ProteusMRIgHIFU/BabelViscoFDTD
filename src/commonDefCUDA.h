@@ -228,6 +228,20 @@ __constant__ unsigned int IndexRMSPeak_Sigmaxz;
 __constant__ unsigned int IndexRMSPeak_Sigmayz;
 __constant__ unsigned int NumberSelRMSPeakMaps;
 
+__constant__ unsigned int SelMapsSensors;
+__constant__ unsigned int IndexSensor_ALLV;
+__constant__ unsigned int IndexSensor_Vx;
+__constant__ unsigned int IndexSensor_Vy;
+__constant__ unsigned int IndexSensor_Vz;
+__constant__ unsigned int IndexSensor_Sigmaxx;
+__constant__ unsigned int IndexSensor_Sigmayy;
+__constant__ unsigned int IndexSensor_Sigmazz;
+__constant__ unsigned int IndexSensor_Sigmaxy;
+__constant__ unsigned int IndexSensor_Sigmaxz;
+__constant__ unsigned int IndexSensor_Sigmayz;
+__constant__ unsigned int NumberSelSensorMaps;
+__constant__ unsigned int SensorSteps;
+
 __constant__ mexType gpuInvDXDTpluspr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];
 __constant__ mexType gpuInvDXDTplushppr[MAX_SIZE_PML];
@@ -539,7 +553,8 @@ int __InitBuffer =0;
 
 #define InParamP(_NameVar) {int __NParam = _IndexDataKernel(#_NameVar);\
 			mxcheckGPUErrors(clSetKernelArg(StressKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));\
-			mxcheckGPUErrors(clSetKernelArg(ParticleKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));}
+			mxcheckGPUErrors(clSetKernelArg(ParticleKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));\
+			mxcheckGPUErrors(clSetKernelArg(SensorsKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));}
 
 int output_device_info(cl_device_id device_id)
 			{

@@ -285,25 +285,23 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   		//We are in the center, no need to check any limits, the use of the PML simplify this
   		index=Ind_Sigma_xx(i,j,k);
 
+      if (REQUIRES_2ND_ORDER_M(X))
+          Dx=EL(Vx,i,j,k)-EL(Vx,i-1,j,k);
+      else
+          Dx=CA*(EL(Vx,i,j,k)-EL(Vx,i-1,j,k))-
+             CB*(EL(Vx,i+1,j,k)-EL(Vx,i-2,j,k));
 
+      if REQUIRES_2ND_ORDER_M(Y)
+          Dy=EL(Vy,i,j,k)-EL(Vy,i,j-1,k);
+      else
+          Dy=CA*(EL(Vy,i,j,k)-EL(Vy,i,j-1,k))-
+             CB*(EL(Vy,i,j+1,k)-EL(Vy,i,j-2,k));
 
-          if (REQUIRES_2ND_ORDER_M(X))
-              Dx=EL(Vx,i,j,k)-EL(Vx,i-1,j,k);
-          else
-              Dx=CA*(EL(Vx,i,j,k)-EL(Vx,i-1,j,k))-
-                 CB*(EL(Vx,i+1,j,k)-EL(Vx,i-2,j,k));
-
-          if REQUIRES_2ND_ORDER_M(Y)
-              Dy=EL(Vy,i,j,k)-EL(Vy,i,j-1,k);
-          else
-              Dy=CA*(EL(Vy,i,j,k)-EL(Vy,i,j-1,k))-
-                 CB*(EL(Vy,i,j+1,k)-EL(Vy,i,j-2,k));
-
-          if REQUIRES_2ND_ORDER_M(Y)
-              Dz=EL(Vz,i,j,k)-EL(Vz,i,j,k-1);
-          else
-              Dz=CA*(EL(Vz,i,j,k)-EL(Vz,i,j,k-1))-
-                  CB*(EL(Vz,i,j,k+1)-EL(Vz,i,j,k-2));
+      if REQUIRES_2ND_ORDER_M(Y)
+          Dz=EL(Vz,i,j,k)-EL(Vz,i,j,k-1);
+      else
+          Dz=CA*(EL(Vz,i,j,k)-EL(Vz,i,j,k-1))-
+              CB*(EL(Vz,i,j,k+1)-EL(Vz,i,j,k-2));
 
 
   		LambdaMiu=ELD(LambdaMiuMatOverH,MaterialID)*(1.0+ELD(TauLong,MaterialID));

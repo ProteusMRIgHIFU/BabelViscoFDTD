@@ -90,8 +90,12 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 {
 	unsigned int			   INHOST(N1),INHOST(N2),INHOST(N3),INHOST(LengthSource),INHOST(TypeSource),
 								INHOST(TimeSteps),NumberSnapshots,INHOST(NumberSources),TimeStepsSource,
-								INHOST(NumberSensors),INHOST(PML_Thickness), INHOST(SelRMSorPeak), INHOST(SelMapsRMSPeak),
+								INHOST(NumberSensors),INHOST(PML_Thickness), INHOST(SelRMSorPeak),
+								INHOST(SelMapsRMSPeak),
+								INHOST(SelMapsSensors),
+								INHOST(SensorSteps),
 								INHOST(NumberSelRMSPeakMaps),
+								INHOST(NumberSelSensorMaps),
 								INHOST(IndexRMSPeak_ALLV)=0,
 								INHOST(IndexRMSPeak_Vx)=0,
 								INHOST(IndexRMSPeak_Vy)=0,
@@ -101,7 +105,17 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexRMSPeak_Sigmazz)=0,
 								INHOST(IndexRMSPeak_Sigmaxy)=0,
 								INHOST(IndexRMSPeak_Sigmaxz)=0,
-								INHOST(IndexRMSPeak_Sigmayz)=0;
+								INHOST(IndexRMSPeak_Sigmayz)=0,
+								INHOST(IndexSensor_ALLV)=0,
+								INHOST(IndexSensor_Vx)=0,
+								INHOST(IndexSensor_Vy)=0,
+								INHOST(IndexSensor_Vz)=0,
+								INHOST(IndexSensor_Sigmaxx)=0,
+								INHOST(IndexSensor_Sigmayy)=0,
+								INHOST(IndexSensor_Sigmazz)=0,
+								INHOST(IndexSensor_Sigmaxy)=0,
+								INHOST(IndexSensor_Sigmaxz)=0,
+								INHOST(IndexSensor_Sigmayz)=0;
     mexType INHOST(DT);
 
 
@@ -169,6 +183,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(Oz);
 	GET_FIELD(SelRMSorPeak);
 	GET_FIELD(SelMapsRMSPeak);
+	GET_FIELD(SelMapsSensors);
+	GET_FIELD(SensorSteps);
 
 	GET_FIELD(USE_SPP);
 
@@ -211,6 +227,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	 VALIDATE_FIELD_MEX_TYPE(Oz);
 	 VALIDATE_FIELD_UINT32(SelRMSorPeak);
 	 VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
+	 VALIDATE_FIELD_UINT32(SelMapsSensors);
+	 VALIDATE_FIELD_UINT32(SensorSteps);
 
 
 	INHOST(TimeSteps)=*GET_DATA_UINT32_PR(TimeSteps);
@@ -262,6 +280,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
   INHOST(SelRMSorPeak)=*GET_DATA_UINT32_PR(SelRMSorPeak);
 	INHOST(SelMapsRMSPeak)=*GET_DATA_UINT32_PR(SelMapsRMSPeak);
+	INHOST(SelMapsSensors)=*GET_DATA_UINT32_PR(SelMapsSensors);
+	INHOST(SensorSteps)=*GET_DATA_UINT32_PR(SensorSteps);
 
 	VALIDATE_FIELD_UINT32(SelRMSorPeak);
 	VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
@@ -289,6 +309,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	if (INHOST(NumberSelRMSPeakMaps)==0)
 		ERROR_STRING("SelMapsRMSPeak must select at least one type of map to track");
 
+	COUNT_SELECTIONS(INHOST(NumberSelSensorMaps),INHOST(SelMapsSensors));
+	if (INHOST(NumberSelSensorMaps)==0)
+		ERROR_STRING("NumberSelSensorMaps must select at least one type of map to track");
 	//We detect how many maps we need to keep track
 	unsigned int curMapIndex =0;
 	ACCOUNT_RMSPEAK(ALLV);
@@ -303,11 +326,28 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	ACCOUNT_RMSPEAK(Sigmayz);
 
 	if (INHOST(NumberSelRMSPeakMaps)!=curMapIndex)
-		{
+	{
 			PRINTF("NumberSelRMSPeakMaps =%i, curMapIndex=%i\n",INHOST(NumberSelRMSPeakMaps),curMapIndex )
 			ERROR_STRING("curMapIndex and NumberSelRMSPeakMaps should be the same.... how did this happen?");
-		}
+	}
 
+	curMapIndex =0;
+	ACCOUNT_SENSOR(ALLV);
+	ACCOUNT_SENSOR(Vx);
+	ACCOUNT_SENSOR(Vy);
+	ACCOUNT_SENSOR(Vz);
+	ACCOUNT_SENSOR(Sigmaxx);
+	ACCOUNT_SENSOR(Sigmayy);
+	ACCOUNT_SENSOR(Sigmazz);
+	ACCOUNT_SENSOR(Sigmaxy);
+	ACCOUNT_SENSOR(Sigmaxz);
+	ACCOUNT_SENSOR(Sigmayz);
+
+	if (INHOST(NumberSelSensorMaps)!=curMapIndex)
+	{
+			PRINTF("NumberSelRMSPeakMaps =%i, curMapIndex=%i\n",INHOST(NumberSelRMSPeakMaps),curMapIndex )
+			ERROR_STRING("curMapIndex and NumberSelRMSPeakMaps should be the same.... how did this happen?");
+	}
 
 	///// PML conditions, you truly do not want to modify this, the smallest error and you got a nasty field.
 	INHOST(PML_Thickness)=*GET_DATA_UINT32_PR(PMLThickness);
@@ -395,8 +435,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 	ndim=3;
 	dims[0]=INHOST(NumberSensors);
-	dims[1]=INHOST(TimeSteps);
-	dims[2]=3;
+	dims[1]=INHOST(TimeSteps)/INHOST(SensorSteps)+1;
+	dims[2]=INHOST(NumberSelSensorMaps);
 	CREATE_ARRAY(SensorOutput);
 	GET_DATA(SensorOutput);
 	memset(SensorOutput_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
@@ -408,7 +448,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 #endif
 
     PRINTF("N1, N2,N3 , ZoneCount and DT= %i,%i,%i,%g\n",INHOST(N1),INHOST(N2),INHOST(N3),INHOST(ZoneCount),INHOST(DT));
-    PRINTF("Number of sensors x timesteps= %i, %i\n",INHOST(NumberSensors),INHOST(TimeSteps));
+    PRINTF("Number of sensors , timesteps for sensors and total maps= %i, %i, %i\n",INHOST(NumberSensors),	dims[1],INHOST(NumberSelSensorMaps));
 
 	time_t start_t, end_t;
 	time(&start_t);

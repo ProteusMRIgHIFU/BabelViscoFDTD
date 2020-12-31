@@ -298,4 +298,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 	 INHOST(IndexRMSPeak_ ## _VarName)=curMapIndex;\
 	 curMapIndex++; }
 
+ #define ACCOUNT_SENSOR(_VarName)\
+ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsSensors)) \
+ {\
+ 	 INHOST(IndexSensor_ ## _VarName)=curMapIndex;\
+ 	 curMapIndex++; }
+
 #endif

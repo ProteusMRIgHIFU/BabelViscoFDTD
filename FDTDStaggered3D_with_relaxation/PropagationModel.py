@@ -59,6 +59,8 @@ class PropagationModel:
                                          TypeSource=0,
                                          SelRMSorPeak=1,
                                          SelMapsRMSPeakList=['ALLV'],
+                                         SelMapsSensorsList=['Vx','Vy','Vz'],
+                                         SensorSteps=2,
                                          DefaultGPUDeviceName='TITAN'):
         '''
         Samuel Pichardo, Ph.D.
@@ -181,20 +183,18 @@ class PropagationModel:
         MaterialMap3D[:,-1,:]=MaterialMap3D[:,-2,:]
         MaterialMap3D[:,:,-1]=MaterialMap3D[:,:,-2]
 
-        #we have to put water in the PML to simplify calculation
-        #
-        #nExtra=8
-        nExtra=0
-        MaterialMap3D[0:NDelta+nExtra,:,:]=0
-        MaterialMap3D[N1-NDelta-nExtra:,:,:]=0
-        MaterialMap3D[:,0:NDelta+nExtra,:]=0
-        MaterialMap3D[:,N2-NDelta-nExtra:,:]=0
-        MaterialMap3D[:,:,0:NDelta+nExtra]=0
-        MaterialMap3D[:,:,N3-NDelta-nExtra:]=0
+        #TODO: Dec 30, 2020: We have some issues with the PML if it is a solid....
+        MaterialMap3D[0:NDelta,:,:]=0
+        MaterialMap3D[N1-NDelta:,:,:]=0
+        MaterialMap3D[:,0:NDelta,:]=0
+        MaterialMap3D[:,N2-NDelta:,:]=0
+        MaterialMap3D[:,:,0:NDelta]=0
+        MaterialMap3D[:,:,N3-NDelta:]=0
 
         if DT!=None:
              if DT >dt:
-                print  ('Staggered:DT_INVALID The specified manual step is larger than the minimal optimal size, there is a risk of unstable calculation ' + str(DT) + ' ' +str(dt))
+                import warnings
+                warnings.warn('Staggered:DT_INVALID The specified manual step is larger than the minimal optimal size, there is a risk of unstable calculation ' + str(DT) + ' ' +str(dt))
 
              else:
                 print ('The specified manual step  is smaller than the minimal optimal size, calculations may take longer than required\n', DT,dt)
@@ -238,10 +238,6 @@ class PropagationModel:
         #%% the sensors are easy, just pass the indexes that need to be observed
         IndexSensors=np.nonzero(np.transpose(SensorMap).flatten()>0)[0]+1 #KEEP the +1, since in the low level function the index is substracted
 
-        SensorOutput={}
-
-        SensorOutput['time']=TimeVector
-
         SnapshotsPos=[]
         SnapShots=[]
         if IntervalSnapshots>0:
@@ -253,29 +249,29 @@ class PropagationModel:
                     tPlot+=+1
         InputParam={}
 
-#define MASK_ALLV				0x0000000001
-#define MASK_Vx   			0x0000000002
-#define MASK_Vy   			0x0000000004
-#define MASK_Vz   			0x0000000008
-#define MASK_Sigmaxx    0x0000000010
-#define MASK_Sigmayy    0x0000000020
-#define MASK_Sigmazz    0x0000000040
-#define MASK_Sigmaxy    0x0000000080
-#define MASK_Sigmaxz    0x0000000100
-#define MASK_Sigmayz    0x0000000200
         #We decode what maps to collect for RMS-Peak
         SelMapsRMSPeak=int(0)
-        curIndex=0
+        SelMapsSensors=int(0)
+        curIndexRMS=0
+        curIndexSensors=0
         IndexRMSMaps={}
+        IndexSensorMaps={}
         curMask=int(0x0001)
         #Do not modify the order of this search without matching the low level functions!
         for pMap in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz']:
             if pMap in  SelMapsRMSPeakList:
                 SelMapsRMSPeak=SelMapsRMSPeak | curMask
-                IndexRMSMaps[pMap]=curIndex
-                curIndex+=1
+                IndexRMSMaps[pMap]=curIndexRMS
+                curIndexRMS+=1
             else:
                 IndexRMSMaps[pMap]=-1
+
+            if pMap in  SelMapsSensorsList:
+                SelMapsSensors=SelMapsSensors | curMask
+                IndexSensorMaps[pMap]=curIndexSensors
+                curIndexSensors+=1
+            else:
+                IndexSensorMaps[pMap]=-1
             curMask=curMask<<1
 
 
@@ -326,6 +322,8 @@ class PropagationModel:
         InputParam['PMLThickness']=np.uint32(NDelta)
         InputParam['SelRMSorPeak']=np.uint32(SelRMSorPeak)
         InputParam['SelMapsRMSPeak']=np.uint32(SelMapsRMSPeak)
+        InputParam['SensorSteps']=np.uint32(SensorSteps)
+        InputParam['SelMapsSensors']=np.uint32(SelMapsSensors)
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
 
@@ -359,10 +357,15 @@ class PropagationModel:
             SnapShots[n]['V']=np.squeeze(Snapshots_orig[:,:,n])
 
         #SensorOutput_orig=np.sqrt(SensorOutput_orig); #Sensors captured the sum of squares of Vx, Vy and Vz
-        for n in range(len(IndexSensors)):
-            SensorOutput['Vx']=SensorOutput_orig[:,:,0]
-            SensorOutput['Vy']=SensorOutput_orig[:,:,1]
-            SensorOutput['Vz']=SensorOutput_orig[:,:,2]
+
+        RetValueSensors={}
+        RetValueSensors['time']=TimeVector[0:len(TimeVector):SensorSteps]
+        for key,index in IndexSensorMaps.items():
+            if index>=0:
+                RetValueSensors[key]=SensorOutput_orig[:,0:len(RetValueSensors['time']),index]
+        if 'ALLV' in RetValueSensors:
+            #for sensor ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
+            RetValueSensors['ALLV'] =np.sqrt(RetValueSensors['ALLV'] )
 
         if (IntervalSnapshots>0):
             RetSnap=SnapShots
@@ -372,6 +375,7 @@ class PropagationModel:
         #now time to organize this a dictionary
         RetValueRMS={}
         RetValuePeak={}
+
         if SelRMSorPeak==1 or SelRMSorPeak==3:
             for key,index in IndexRMSMaps.items():
                 if index>=0:
@@ -392,22 +396,25 @@ class PropagationModel:
 
         if  IntervalSnapshots>0:
             if len(RetValueRMS)>0 and len(RetValuePeak)>0:
-                return SensorOutput,V,RetValueRMS,RetValuePeak,InputParam,RetSnap
+                return RetValueSensors,V,RetValueRMS,RetValuePeak,InputParam,RetSnap
             elif len(RetValueRMS)>0:
-                return SensorOutput,V,RetValueRMS,InputParam,RetSnap
+                return RetValueSensors,V,RetValueRMS,InputParam,RetSnap
             elif len(RetValuePeak)>0:
-                return SensorOutput,V,RetValuePeak,InputParam,RetSnap
+                return RetValueSensors,V,RetValuePeak,InputParam,RetSnap
             else:
                 raise SystemError("How we got a condition where no RMS or Peak value was selected")
         else:
             if len(RetValueRMS)>0 and len(RetValuePeak)>0:
-                return SensorOutput,V,RetValueRMS,RetValuePeak,InputParam
+                return RetValueSensors,V,RetValueRMS,RetValuePeak,InputParam
             elif len(RetValueRMS)>0:
-                return SensorOutput,V,RetValueRMS,InputParam
+                return RetValueSensors,V,RetValueRMS,InputParam
             elif len(RetValuePeak)>0:
-                return SensorOutput,V,RetValuePeak,InputParam
+                return RetValueSensors,V,RetValuePeak,InputParam
             else:
                 raise SystemError("How we got a condition where no RMS or Peak value was selected")
+
+
+
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
         if COMPUTING_BACKEND in [1,2]:
             if COMPUTING_BACKEND==1:
@@ -560,8 +567,8 @@ class PropagationModel:
 
             #%% dt using the approach from Sun is slightly smaller, but it truly does the job, before, it was getting quickly unstable results,
             #%% making smaller dt manually helped, but now we have a better tuned approach
-            dt=AlphaCFL*np.min([np.min(HLongCond),np.min(HShearCond)])
-            print ([np.min(HLongCond),np.min(HShearCond)])
+            dt=AlphaCFL*np.min(np.hstack((HLongCond.flatten(),HShearCond.flatten())))
+            print (np.min(np.hstack((HLongCond.flatten(),HShearCond.flatten()))))
 
         else:
             dt=AlphaCFL*h*6.0/7.0/np.sqrt(3.0)/VMaxLong #%after: Bohlen, Thomas. "Parallel 3-D viscoelastic finite difference seismic modelling." Computers & Geosciences 28.8 (2002): 887-899.

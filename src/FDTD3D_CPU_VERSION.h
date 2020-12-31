@@ -224,10 +224,13 @@
             }
 
 		//Finally, the sensors
-		#pragma omp parallel for private(CurZone)
-		for(int sj=0; sj<( int)INHOST(NumberSensors); sj++)
+		if ((nStep % INHOST(SensorSteps))==0)
 		{
-				#include"SensorsParticleKernel.h"
+				#pragma omp parallel for private(CurZone)
+				for(int sj=0; sj<( int)INHOST(NumberSensors); sj++)
+				{
+						#include"SensorsKernel.h"
+				}
 		}
 
 	}
