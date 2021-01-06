@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.11)
 
 set( CMAKE_VERBOSE_MAKEFILE ON )
 
-project(FDTDStaggered3D_with_relaxation LANGUAGES C)
+project(SPVirieuxFDTD LANGUAGES C)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
