@@ -206,7 +206,6 @@ __constant__ unsigned int LengthSource;
 __constant__ unsigned int NumberSensors;
 __constant__ unsigned int TimeSteps;
 
-// __constant__ unsigned int USE_SPP;
 __constant__ unsigned int SizePML;
 __constant__ unsigned int SizePMLxp1;
 __constant__ unsigned int SizePMLyp1;

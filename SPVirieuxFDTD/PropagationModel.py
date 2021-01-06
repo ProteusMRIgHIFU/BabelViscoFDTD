@@ -50,9 +50,8 @@ class PropagationModel:
                                          IntervalSnapshots=-1,
                                          COMPUTING_BACKEND=1,
                                          USE_SINGLE=True,
-                                         USE_SPP = False,
-                                         SPP_ZONES=2,
-                                         SPP_VolumeFractionFile='',
+                                         SPP_ZONES=1,
+                                         SPP_VolumeFraction=None,
                                          DT=None,
                                          QfactorCorrection=True,
                                          CheckOnlyParams=False,
@@ -174,6 +173,14 @@ class PropagationModel:
             raise ValueError('Invalid dt conditions!!! dt =' + str(dt))
         if CheckOnlyParams:
             return bValidPoisonRatio, dt
+
+        if SPP_ZONES>1 and SPP_VolumeFraction is None:
+            raise ValueError('SPP_VolumeFraction must contain a (N1,N2,N3) matrix with the fraction of solid material')
+        if SPP_ZONES>1:
+            if np.all(SzMap[0:3]==SPP_VolumeFraction.shape)  is None:
+                raise ValueError('SPP_VolumeFraction must contain a matrix with the fraction of solid material of same dimensions as material map')
+        if SPP_ZONES>1 and (np.any(SPP_VolumeFraction<0) or np.any(SPP_VolumeFraction)>1.0):
+            raise ValueError('SPP_VolumeFraction must contain values between 0.0 and 1.0 ')
 
         OneOverTauSigma=1.0/TauSigma
 
@@ -327,26 +334,22 @@ class PropagationModel:
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
 
-
-        if USE_SPP:
-            InputParam['USE_SPP']=np.uint32(SPP_ZONES)
+        SolidFraction=None
+        if SPP_ZONES>1:
             print('We will use SPP')
-            print('read volume fraction from file', SPP_VolumeFractionFile)
-            fVol=ReadFromH5py(SPP_VolumeFractionFile)
-            SkullFraction=fVol['VolumeFraction']
-            SkullRing=fVol['SkullRing']
-            print('Calculating SPP matrices')
-            MatMap_zone,AllIndexesSparse,AllIndexesLarge,EdgeIndexesSparse,EdgeIndexesLarge,\
-                    InternalIndexesSparse, InternalIndexesLarge, InternalIndDic,MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SkullFraction,SkullRing,bDisplay=False,SPP_ZONES=SPP_ZONES);
-
+            SolidFraction=np.zeros((N1+1,N2+1,N3+1))
+            SolidFraction[:N1,:N2,:N3]=SPP_VolumeFraction
+            SolidFraction[MaterialMap3D==0]=0.0 # at this point, we already cleared out the PML regions
         else:
-            InputParam['USE_SPP']=np.uint32(1)
+            InputParam['SPP_ZONES']=np.uint32(1)
             #this will just create dummy matrices that are required to be passed to the low level function
-            MatMap_zone,AllIndexesSparse,AllIndexesLarge,EdgeIndexesSparse,EdgeIndexesLarge,\
-                    InternalIndexesSparse, InternalIndexesLarge, InternalIndDic,MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],None,None,bDisplay=False,USE_SPP=False);
+        MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SolidFraction);
 
+        InputParam['SPP_ZONES']=np.uint32(SPP_ZONES)
+        MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SolidFraction,SPP_ZONES=SPP_ZONES);
         InputParam['OrigMaterialMap']=MaterialMap3D
         InputParam['MaterialMap']=MultiZoneMaterialMap
+        InputParam['SolidFraction']=SolidFraction
 
 
         print ('Matrix size= %i x %i x %i , spatial resolution = %g, time steps = %i, temporal step = %g, total sonication length %g ' %(N1,N2,N3,h,TimeVector.size,dt,DurationSimulation))
@@ -698,23 +701,19 @@ def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
     return AnalysisQFactor,Tau,TauSigma_l
 
 
-def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SPP_ZONES=5,OrderExtra=2,USE_SPP=True,bDisplay=False):
+def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,OrderExtra=2):
         #if USE_SPP is False, we just create dummy arrays, as these are need to be passed to the low level function for completeness
         ZoneCount=SPP_ZONES
-        if USE_SPP:
+        if ZoneCount>1:
             SkullRegion=SourceMaterialMap!=0
-
-
             MaterialMap=SourceMaterialMap.copy()
 
             NewMaterialMap=SourceMaterialMap.copy()
             s=SourceMaterialMap.shape
             MultiZoneMaterialMap=np.zeros((s[0],s[1],s[2],ZoneCount),dtype=np.uint32)
 
-            ExpandaMaterial=((SkullRegion)^(SkullFraction>0))
-            print (np.sum(ExpandaMaterial))
-            ExpandaMaterial=((ExpandaMaterial)&(SkullFraction>0))
-            print (np.sum(ExpandaMaterial))
+            ExpandaMaterial=((SkullRegion)^(SolidFraction>0))
+            ExpandaMaterial=((ExpandaMaterial)&(SolidFraction>0))
             ii,jj,kk=np.where(ExpandaMaterial)
 
             mgrid = np.lib.index_tricks.nd_grid()
@@ -741,9 +740,9 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SPP_ZON
             SkullRegion=NewMaterialMap!=0
 
             SuperpositionMap = np.zeros(SourceMaterialMap.shape,dtype=np.uint8)
-            SkullRingFraction=((SkullFraction>0)&(SkullFraction<1.0))
+            SkullRingFraction=((SolidFraction>0)&(SolidFraction<1.0))
             ExpandedRing=ndimage.binary_dilation(SkullRingFraction,iterations=SPP_ZONES)
-            ExpandedRing[SkullFraction==1.0]=True
+            ExpandedRing[SolidFraction==1.0]=True
             SuperpositionMap[ExpandedRing]=1
 
             ExtraLayers=ndimage.binary_dilation(ExpandedRing,iterations=OrderExtra)
@@ -752,394 +751,25 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SkullFraction,SkullRing,SPP_ZON
 
 
             SelSuperpoistion=SuperpositionMap>0
-            AllIndexesSparse=np.arange(0,np.sum(SelSuperpoistion)).astype(np.uint32)
             AllIndexesLarge=np.where(SelSuperpoistion)
             AllIndexesLargeFlat=np.where(SelSuperpoistion.flatten())[0]
             AllIndexesLarge=np.vstack((AllIndexesLarge[0].astype(np.uint32),AllIndexesLarge[1].astype(np.uint32),AllIndexesLarge[2].astype(np.uint32))).T
 
-            AllMap=SuperpositionMap[SelSuperpoistion].flatten()
-            SuperpositionIndexMap=np.zeros(SuperpositionMap.shape,dtype=np.int32)
-            SuperpositionIndexMap[SelSuperpoistion]=AllIndexesSparse
-            SuperpositionIndexMap[SelSuperpoistion==False]=-1
-
-            SelEdge=SuperpositionMap==2
-            EdgeIndexesSparse=np.where(AllMap==2)[0].astype(np.uint32)
-            EdgeIndexesLarge=np.where(SelEdge)
-            EdgeIndexesLarge=np.vstack((EdgeIndexesLarge[0].astype(np.uint32),EdgeIndexesLarge[1].astype(np.uint32),EdgeIndexesLarge[2].astype(np.uint32))).T
-
-            SelInternal=SuperpositionMap==1
-            InternalIndexesLarge=np.where(SelInternal)
-            InternalIndexesLarge=np.vstack((InternalIndexesLarge[0].astype(np.uint32),InternalIndexesLarge[1].astype(np.uint32),InternalIndexesLarge[2].astype(np.uint32))).T
-            InternalIndexesSparse=np.where(AllMap==1)[0].astype(np.uint32)
-            InternalIndDic={}
-            for inn in [-2,-1,1,2]:
-                sn='InternalIndexesSparse_'
-                if inn <0:
-                    inl='minus'
-                else:
-                    inl='plus'
-                for sublab in ['i','j','k']:
-                    kname=sn+inl+str(abs(inn))+sublab
-                    InternalIndDic[kname]=InternalIndexesSparse*0
-
-            InternalIndDic['InternalIndexesSparse_plusij']=InternalIndexesSparse*0
-            InternalIndDic['InternalIndexesSparse_plusik']=InternalIndexesSparse*0
-            InternalIndDic['InternalIndexesSparse_plusjk']=InternalIndexesSparse*0
-
-            ii,jj,kk=np.where(SelInternal)
-            nc=0
-            for i,j,k in zip(ii,jj,kk):
-                assert(SuperpositionIndexMap[i,j,k]==InternalIndexesSparse[nc])
-                for inn in range(-2,3):
-                    assert(SuperpositionIndexMap[i+inn,j,k]!=-1)
-                    assert(SuperpositionIndexMap[i,j+inn,k]!=-1)
-                    assert(SuperpositionIndexMap[i,j,k+inn]!=-1)
-                    if inn==1:
-                        assert(SuperpositionIndexMap[i+inn,j+inn,k]!=-1)
-                        assert(SuperpositionIndexMap[i+inn,j,k+inn]!=-1)
-                        assert(SuperpositionIndexMap[i,j+inn,k+inn]!=-1)
-
-                for inn in [-2,-1,1,2]:
-                    sn='InternalIndexesSparse_'
-                    if inn <0:
-                        inl='minus'
-                    else:
-                        inl='plus'
-                    for sublab in ['i','j','k']:
-                        kname=sn+inl+str(abs(inn))+sublab
-                        if sublab=='i':
-                            index=SuperpositionIndexMap[i+inn,j,k]
-                        elif sublab=='j':
-                            index=SuperpositionIndexMap[i,j+inn,k]
-                        else:
-                            index=SuperpositionIndexMap[i,j,k+inn]
-                        InternalIndDic[kname][nc]=index
-
-                InternalIndDic['InternalIndexesSparse_plusij'][nc]=SuperpositionIndexMap[i+1,j+1,k]
-                InternalIndDic['InternalIndexesSparse_plusik'][nc]=SuperpositionIndexMap[i+1,j,k+1]
-                InternalIndDic['InternalIndexesSparse_plusjk'][nc]=SuperpositionIndexMap[i,j+1,k+1]
-
-                nc+=1
             MatMap_zone=  np.zeros((ZoneCount,AllIndexesLargeFlat.size),dtype=MaterialMap.dtype)
             SubMat=NewMaterialMap.flatten()[AllIndexesLargeFlat]
-            SelFraction=SkullFraction.flatten()[AllIndexesLargeFlat]
+            SelFraction=SolidFraction.flatten()[AllIndexesLargeFlat]
 
             for zone in range(ZoneCount):
                 frac=(zone+1)/ZoneCount
                 MatMap_zone[zone,SelFraction>=frac]=SubMat[SelFraction>=frac]
                 assert(np.sum(SelFraction>=frac)==np.sum(MatMap_zone[zone,:]>0))
                 ZoneMaterialMap=NewMaterialMap*0
-                ZoneMaterialMap[SkullFraction>=frac]=NewMaterialMap[SkullFraction>=frac]
+                ZoneMaterialMap[SolidFraction>=frac]=NewMaterialMap[SolidFraction>=frac]
 
                 MultiZoneMaterialMap[:,:,:,zone]=ZoneMaterialMap
-
-
-            if bDisplay:
-                plt.figure(figsize=(16,8))
-                plt.subplot(1,2,1)
-                #plt.imshow(SkullRegion[:,:,56],cmap=plt.cm.gray)
-                mask = np.ma.masked_where(np.logical_or(SkullRegion,SkullRing)==0, SkullFraction)
-                plt.imshow(mask[:,56,:],cmap=plt.cm.inferno)
-                plt.colorbar()
-                plt.subplot(1,2,2)
-
-
-                plt.imshow(((SkullRegion)^(SkullFraction>0))[:,56,:],cmap=plt.cm.jet)
-
-
-                plt.figure(figsize=(18,6))
-                plt.subplot(1,3,1)
-                mask = np.ma.masked_where(MaterialMap==0, MaterialMap)
-                plt.imshow(mask[:,60,:],cmap=plt.cm.inferno)
-                plt.xlim(40,60)
-                plt.ylim(80,60)
-                plt.colorbar()
-                plt.subplot(1,3,2)
-
-                mask = np.ma.masked_where(NewMaterialMap==0, NewMaterialMap)
-                plt.imshow(mask[:,60,:],cmap=plt.cm.inferno)
-                plt.xlim(40,60)
-                plt.ylim(80,60)
-                plt.colorbar()
-
-                plt.subplot(1,3,3)
-                mask = np.ma.masked_where(SkullFraction==0.0, SkullFraction)
-                plt.imshow(mask[:,60,:],cmap=plt.cm.inferno)
-                plt.xlim(40,60)
-                plt.ylim(80,60)
-                plt.colorbar()
-
-                plt.figure(figsize=(16,8))
-                plt.subplot(1,2,1)
-                plt.imshow(SuperpositionMap[:,:,56])
-                plt.colorbar()
-                plt.subplot(1,2,2)
-                plt.imshow(ExtraLayers[:,:,56])
 
         else:
             s=SourceMaterialMap.shape
             MultiZoneMaterialMap=np.zeros((s[0],s[1],s[2],1),dtype=np.uint32)
             MultiZoneMaterialMap[:,:,:,0]=SourceMaterialMap
-
-            MatMap_zone=np.zeros((1,1),dtype=np.uint32)
-            AllIndexesSparse=np.zeros((1),dtype=np.uint32)
-            AllIndexesLarge=np.zeros((1,3),dtype=np.uint32)
-            EdgeIndexesSparse=np.zeros((1),dtype=np.uint32)
-            EdgeIndexesLarge=np.zeros((1,3),dtype=np.uint32)
-            InternalIndexesSparse=np.zeros((1),dtype=np.uint32)
-            InternalIndexesLarge=np.zeros((1,3),dtype=np.uint32)
-            InternalIndDic={}
-            for inn in [-2,-1,1,2]:
-                    sn='InternalIndexesSparse_'
-                    if inn <0:
-                        inl='minus'
-                    else:
-                        inl='plus'
-                    for sublab in ['i','j','k']:
-                        kname=sn+inl+str(abs(inn))+sublab
-                        InternalIndDic[kname]=np.zeros((1),dtype=np.uint32)
-
-            InternalIndDic['InternalIndexesSparse_plusij']=np.zeros((1),dtype=np.uint32)
-            InternalIndDic['InternalIndexesSparse_plusik']=np.zeros((1),dtype=np.uint32)
-            InternalIndDic['InternalIndexesSparse_plusjk']=np.zeros((1),dtype=np.uint32)
-
-
-        return MatMap_zone,AllIndexesSparse,AllIndexesLarge,EdgeIndexesSparse,EdgeIndexesLarge,\
-                InternalIndexesSparse, InternalIndexesLarge, InternalIndDic,MultiZoneMaterialMap
-
-
-
-#######################
-#%%%%%%%%%%%%%%%%%%%% OLD EXPERIMENTAL STUFF, kept just for potential future use
-ENABLE_EXPERIMENTAL = False
-if ENABLE_EXPERIMENTAL:
-    def CleanUpIsolatedBoneVoxelsOverLine(MaterialMap):
-    #this will clean up lonely bone voxels (lost in the middle of water or having only one face in contact to other bone voxel)
-        NewMaterialMap=MaterialMap.copy()
-        BoneAround=np.zeros(NewMaterialMap.shape)
-        TotalAccum=0
-
-        nTarget=2
-        while(True):
-            IsBone=NewMaterialMap!=0
-            BoneAround[:]=0
-
-            for n in range(1,nTarget+1):
-                BoneAround[n:,:,:][NewMaterialMap[:-n,:,:]!=0]+=1
-                BoneAround[:-n,:,:][NewMaterialMap[n:,:,:]!=0]+=1
-            ToRemove=(BoneAround<nTarget)&(IsBone)
-            NewMaterialMap[ToRemove]=0 #lonely voxel
-            #print "Total lonely voxels eliminated following I = ", (ToRemove).sum()
-            accum=ToRemove.sum()
-
-            IsBone=NewMaterialMap!=0
-            BoneAround[:]=0
-            for n in range(1,nTarget+1):
-                BoneAround[:,n:,:][NewMaterialMap[:,:-n,:]!=0]+=1
-                BoneAround[:,:-n,:][NewMaterialMap[:,n:,:]!=0]+=1
-            ToRemove=(BoneAround<nTarget)&(IsBone)
-            NewMaterialMap[ToRemove]=0 #lonely voxel
-            #print "Total lonely voxels eliminated following J = ", (ToRemove).sum()
-            accum+=ToRemove.sum()
-
-            IsBone=NewMaterialMap!=0
-            BoneAround[:]=0
-            IsBone=NewMaterialMap!=0
-            BoneAround[:]=0
-            for n in range(1,nTarget+1):
-                BoneAround[:,:,n:][NewMaterialMap[:,:,:-n]!=0]+=1
-                BoneAround[:,:,:-n][NewMaterialMap[:,:,n:]!=0]+=1
-            ToRemove=(BoneAround<nTarget)&(IsBone)
-            NewMaterialMap[ToRemove]=0 #lonely voxel
-            #print "Total lonely voxels eliminated following K = ", (ToRemove).sum()
-            accum+=ToRemove.sum()
-
-            TotalAccum+=accum
-
-            if accum==0:
-                break
-
-        #print "Total lonely voxels eliminated = ", TotalAccum,  ' from an original total of ', (MaterialMap!=0).sum()
-        N1h=NewMaterialMap.shape[0]/2
-        plt.figure()
-        plt.subplot(1,3,1)
-        plt.imshow( MaterialMap[N1h,:,:]);
-        plt.subplot(1,3,2)
-        plt.imshow( NewMaterialMap[N1h,:,:]);
-        plt.subplot(1,3,3)
-        plt.imshow( (NewMaterialMap[N1h,:,:]!=0)^(MaterialMap[N1h,:,:]!=0));
-
-        N1h=NewMaterialMap.shape[2]/2
-        plt.figure()
-        plt.subplot(1,3,1)
-        plt.imshow( MaterialMap[:,:,N1h]);
-        plt.subplot(1,3,2)
-        plt.imshow( NewMaterialMap[:,:,N1h]);
-        plt.subplot(1,3,3)
-        plt.imshow( (NewMaterialMap[:,:,N1h]!=0)^(MaterialMap[:,:,N1h]!=0));
-
-        plt.show()
-        return NewMaterialMap
-
-
-    def CleanUpSingleBoneVoxels(MaterialMap):
-    #this will clean up lonely bone voxels (lost in the middle of water or having only one face in contact to other bone voxel)
-        NewMaterialMap=MaterialMap.copy()
-
-        accum=0
-        while(True):
-            BoneAround=np.zeros(NewMaterialMap.shape)
-
-            IsBone=NewMaterialMap!=0;
-
-            BoneAround[1:,:,:][NewMaterialMap[:-1,:,:]!=0]+=1
-            BoneAround[:-1,:,:][NewMaterialMap[1:,:,:]!=0]+=1
-
-            BoneAround[:,1:,:][NewMaterialMap[:,:-1,:]!=0]+=1
-            BoneAround[:,:-1,:][NewMaterialMap[:,1:,:]!=0]+=1
-
-            BoneAround[:,:,1:][NewMaterialMap[:,:,:-1]!=0]+=1
-            BoneAround[:,:,:-1][NewMaterialMap[:,:,1:]!=0]+=1
-
-            NewMaterialMap[(BoneAround==0)&(IsBone)]=0 #lonely voxel
-            NewMaterialMap[(BoneAround==1)&(IsBone)]=0 #voxel with only one pal... sorry man
-
-            thisRound=((BoneAround==0)&(IsBone)).sum()+((BoneAround==1)&(IsBone)).sum()
-
-            accum+=thisRound
-
-            #print "Total lonely voxels eliminated = ", thisRound,  ' from an original total of ', (MaterialMap!=0).sum(), 'with remaining ', (NewMaterialMap!=0).sum()
-
-            if thisRound==0:
-                break
-
-        #print "Total lonely voxels eliminated = ", accum,  ' from an original total of ', (MaterialMap!=0).sum()
-
-        N1h=NewMaterialMap.shape[0]/2
-        plt.figure()
-        plt.subplot(1,3,1)
-        plt.imshow( MaterialMap[N1h,:,:]);
-        plt.subplot(1,3,2)
-        plt.imshow( NewMaterialMap[N1h,:,:]);
-        plt.subplot(1,3,3)
-        plt.imshow( (NewMaterialMap[N1h,:,:]!=0)^(MaterialMap[N1h,:,:]!=0));
-
-        N1h=NewMaterialMap.shape[2]/2
-        plt.figure()
-        plt.subplot(1,3,1)
-        plt.imshow( MaterialMap[:,:,N1h]);
-        plt.subplot(1,3,2)
-        plt.imshow( NewMaterialMap[:,:,N1h]);
-        plt.subplot(1,3,3)
-        plt.imshow( (NewMaterialMap[:,:,N1h]!=0)^(MaterialMap[:,:,N1h]!=0));
-
-        plt.show()
-
-        return NewMaterialMap
-
-    def ObtainSkullSurfaceAndRing(MaterialMap,bDisplay=False):
-        from mayavi import mlab
-        from tvtk.api import tvtk
-
-        SkullRegion=MaterialMap!=0
-        SkullRing=np.logical_xor(ndimage.morphology.binary_dilation(SkullRegion),ndimage.morphology.binary_erosion(SkullRegion))
-
-        data=SkullRegion.copy()
-        data=ndimage.morphology.binary_dilation(data,iterations=4)*1.0
-        for n in range(6):
-            data=ndimage.gaussian_filter(data,0.2)
-
-        src = mlab.pipeline.scalar_field(data)
-        src.spacing = [1, 1, 1]
-        src.update_image_data = True
-        src.origin=[1.1,1,1]
-
-
-        srcOrig = mlab.pipeline.scalar_field((SkullRing)*1.0)
-        srcOrig.spacing = [1, 1, 1]
-        srcOrig.update_image_data = True
-
-
-        median_filter = tvtk.ImageMedian3D()
-        try:
-            median_filter.set_kernel_size(2, 2, 2)
-        except AttributeError:
-            median_filter.kernel_size = [2, 2, 2]
-
-        median = mlab.pipeline.user_defined(src, filter=median_filter)
-
-        diffuse_filter = tvtk.ImageAnisotropicDiffusion3D(
-                                            diffusion_factor=0.5,
-                                            diffusion_threshold=1,
-                                            number_of_iterations=1)
-
-        diffuse = mlab.pipeline.user_defined(median, filter=diffuse_filter)
-
-        contour = mlab.pipeline.contour(median, )
-
-        contour.filter.contours = [1, ]
-
-        dec = mlab.pipeline.decimate_pro(contour)
-        dec.filter.feature_angle = 90.
-        dec.filter.target_reduction = 0.6
-
-        smooth_ = tvtk.SmoothPolyDataFilter(
-                            number_of_iterations=100,
-                            relaxation_factor=0.1,
-                            feature_angle=90,
-                            feature_edge_smoothing=False,
-                            boundary_smoothing=False,
-                            convergence=0.,
-                        )
-        smooth = mlab.pipeline.user_defined(dec, filter=smooth_)
-
-        # Get the largest connected region
-        connect_ = tvtk.PolyDataConnectivityFilter(extraction_mode=4)
-        connect = mlab.pipeline.user_defined(smooth, filter=connect_)
-
-        # Compute normals for shading the surface
-        compute_normals = mlab.pipeline.poly_data_normals(connect)
-        compute_normals.filter.feature_angle = 80
-
-        #origin of scalarfield in mayavi is (1,1,1), so we better adjust to have it at 0,0,0
-
-
-
-        if bDisplay:
-            print ("showing image")
-            fig = mlab.figure(bgcolor=(0, 0, 0), size=(400, 500))
-
-            # to speed things up
-            fig.scene.disable_render = True
-
-            surf = mlab.pipeline.surface(compute_normals,
-                                                    color=(0.3, 0.72, 0.62),opacity=0.8)
-
-            #----------------------------------------------------------------------
-            # Display a cut plane of the raw data
-            ipw = mlab.pipeline.image_plane_widget(srcOrig, colormap='bone',
-                            plane_orientation='z_axes',
-                            slice_index=55)
-
-            mlab.view(-165, 32, 350, [143, 133, 73])
-            mlab.roll(180)
-
-            fig.scene.disable_render = False
-
-            #----------------------------------------------------------------------
-            # To make the link between the Mayavi pipeline and the much more
-            # complex VTK pipeline, we display both:
-            mlab.show_pipeline(rich_view=False)
-            from tvtk.pipeline.browser import PipelineBrowser
-            browser = PipelineBrowser(fig.scene)
-            browser.show()
-            mlab.show()
-
-        result=compute_normals.get_output_dataset()
-        normals= np.array(result.point_data.normals)
-        faces=result.polys.data.to_array().reshape((result.polys.number_of_cells,4))[:,1:4]
-        points=np.array(result.points)
-        points[:,0]-=1
-        points[:,1]-=1
-        points[:,2]-=1
-        return SkullRing, points, faces,normals,result,compute_normals
+        return MultiZoneMaterialMap

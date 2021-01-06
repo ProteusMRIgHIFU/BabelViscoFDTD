@@ -26,9 +26,11 @@ If you find this software useful for your research, please consider adding a cit
 
 The software implementation supports multiple front-ends (Matlab and Python), OS environments (Windows, Linux, MacOS) and CPU/GPU execution. While the implementation supports CPU-based execution, a modern NVIDIA-based GPU or AMD in MacOS is highly recommended.
 
-Please note that Python and Linux/Windows are the preferred frontend and OSs. MacOS support has degraded significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118\times$118\times$211 and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s.
+Please note that Python and Linux are the preferred frontend and OS. Some of the advanced tutorial notebooks need libraries that are primarily available on Linux.
 
-Future improvements to the library will include support to Metal.
+MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118\times$118\times$211 and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s.
+
+Future improvements to the library will include support to Metal, as it shares a lot of similitudes with OpenCL and the underlying code of SPVirieuxFDTD should be easily adapted to  Metal.
 
 
 # Requirements
@@ -107,7 +109,7 @@ Since CUDA is not supported anymore in MacOS, just install with:
 pip install  SPVirieuxFDTD\
 ```
 #### OpenCL backend
-The OpenCL backend is a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible tastes that OpenCL supports. *It is not as bad as it sounds*, but you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. The mentioned code is at `SPVirieuxFDTD/pi_ocl`. Just open a terminal at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the examples in a MacOS system using OpenCL, just copy `pi_ocl` to the `Example Notebooks` directory.
+The OpenCL backend is a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. The mentioned code is at `SPVirieuxFDTD/pi_ocl`. Just open a terminal at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the examples in a MacOS system using OpenCL, just copy `pi_ocl` to the `Example Notebooks` directory.
 
 
 # Structure of code

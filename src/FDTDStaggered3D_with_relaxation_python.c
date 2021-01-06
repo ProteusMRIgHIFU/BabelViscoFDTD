@@ -186,15 +186,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(SelMapsSensors);
 	GET_FIELD(SensorSteps);
 
-	GET_FIELD(USE_SPP);
+	GET_FIELD(SPP_ZONES);
 
-	// unsigned int INHOST(USE_SPP), INHOST(InternalIndexCount),INHOST(EdgeIndexCount),
-	// 				INHOST(TotalIndexCount),INHOST(ZoneCount);
-
-	unsigned int INHOST(USE_SPP),INHOST(ZoneCount);
-
-	INHOST(USE_SPP) = *GET_DATA_UINT32_PR(USE_SPP);
-
+	unsigned int INHOST(ZoneCount);
 
 	//These macros validate that the datatype of each object is the one expected
    VALIDATE_FIELD_MEX_TYPE(InvDXDTplus);
@@ -260,7 +254,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA_UINT32(MaterialMap);
 
 
-	INHOST(ZoneCount)=INHOST(USE_SPP);
+	INHOST(ZoneCount)=*GET_DATA_UINT32_PR(SPP_ZONES);
 
 
 	TimeStepsSource=(unsigned int) GET_N(SourceFunctions);
