@@ -1,4 +1,4 @@
-SPVirieuxFDTD
+SPPVirieuxFDTD
 =============
 Samuel Pichardo, Ph.D  
 Assistant Professor  
@@ -10,7 +10,7 @@ www.neurofus.ca
 
 **Software library for FDTD of viscoelastic equation using an staggered grid arrangement and including the superposition method, with  CPU- or GPU-based backends (OpenMP, CUDA and OpenCL)**
 
-This tool solves in time domain the viscoelastic equation for wave propagation using an staggered grid solution. While the underlying equations and methods were  developed primarily for seismic simulation, the SPVirieuxFDTD library was developed for biomedical applications to study the ultrasound transmission through bone material, with skull bone as primary target for study.
+This tool solves in time domain the viscoelastic equation for wave propagation using an staggered grid solution. While the underlying equations and methods were  developed primarily for seismic simulation, the SPPVirieuxFDTD library was developed for biomedical applications to study the ultrasound transmission through bone material, with skull bone as primary target for study.
 
 The name of the library comes from **S**uper**P**osition, **Virieux** (who is the author from the 60s who implemented for the first time the staggered grid solution for the viscoelastic equation) and **FDTD** for Finite-Difference Time-Difference.
 
@@ -30,7 +30,7 @@ Please note that Python and Linux are the preferred frontend and OS. Some of the
 
 MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118\times$118\times$211 and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s.
 
-Future improvements to the library will include support to Metal, as it shares a lot of similitudes with OpenCL and the underlying code of SPVirieuxFDTD should be easily adapted to  Metal.
+Future improvements to the library will include support to Metal, as it shares a lot of similitudes with OpenCL and the underlying code of SPPVirieuxFDTD should be easily adapted to  Metal.
 
 
 # Requirements
@@ -85,40 +85,40 @@ Any recent version of MacOS and XCode should be enough. Please note that the CPU
 ## Installation
 If CUDA and supporting compiler are correctly installed, then it is straightforward to install using `pip install <directory>` or `pip3 install <directory>` depending on your installation. You need to specify the location where the CUDA samples are installed as those are required for the compilation.
 
-Below a few examples for both Linux and Windows; the command must be run in the directory where SPVirieuxFDTD was cloned (i.e. /home/<user>/Github)
+Below a few examples for both Linux and Windows; the command must be run in the directory where SPPVirieuxFDTD was cloned (i.e. /home/<user>/Github)
 
 Not every backend will be installed depending on your OS. For example, both Windows and Linux will install the CPU (OpenMP enabled) and CUDA backends, while MacOS will install the CPU and OpenCL backends.
 
 ### Linux
 ```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install  SPVirieuxFDTD/
+CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install  SPPVirieuxFDTD/
 ```
 or
 ```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install --user SPVirieuxFDTD/
+CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install --user SPPVirieuxFDTD/
 ```
 if you do not have write access to the global Python installation
 ### Windows
 ```
-set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\common\inc" && pip install  SPVirieuxFDTD\
+set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\common\inc" && pip install  SPPVirieuxFDTD\
 ```
 
 ### MacOS
 Since CUDA is not supported anymore in MacOS, just install with:
 ```
-pip install  SPVirieuxFDTD\
+pip install  SPPVirieuxFDTD\
 ```
 #### OpenCL backend
-The OpenCL backend is a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. The mentioned code is at `SPVirieuxFDTD/pi_ocl`. Just open a terminal at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the examples in a MacOS system using OpenCL, just copy `pi_ocl` to the `Example Notebooks` directory.
+The OpenCL backend is a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. The mentioned code is at `SPPVirieuxFDTD/pi_ocl`. Just open a terminal at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the examples in a MacOS system using OpenCL, just copy `pi_ocl` to the `Example Notebooks` directory.
 
 
 # Structure of code
 The FDTD solution is accessed as a Python external function. The primary method to execute a simulation is via the class
-`SPVirieuxFDTD.PropagationModel` and its main function `StaggeredFDTD_3D_with_relaxation`
+`SPPVirieuxFDTD.PropagationModel` and its main function `StaggeredFDTD_3D_with_relaxation`
 
 After installation, the class can be instatiated as:
 ```
-from SPVirieuxFDTD import PropagationModel
+from SPPVirieuxFDTD import PropagationModel
 
 Model=PropagationModel()
 ```
@@ -129,7 +129,7 @@ The underlying extension code (start at `SPVirieuxFDTD_python.c`) uses extensive
 
 Consult `setup.py` and `CompileMatlab.m` to review how all the potential modalities are generated.
 
-Please note that the Matlab implementation is still missing an updated high-level equivalence to `SPVirieuxFDTD\PropagationModel.py`. Given most of my personal computing platform moved years ago to Python, the Matlab frontend is a low-priority by the time being. However, the compilation for Matlab frontend is still operational.
+Please note that the Matlab implementation is still missing an updated high-level equivalence to `SPPVirieuxFDTD\PropagationModel.py`. Given most of my personal computing platform moved years ago to Python, the Matlab frontend is a low-priority by the time being. However, the compilation for Matlab frontend is still operational.
 
 # How to use
 After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.

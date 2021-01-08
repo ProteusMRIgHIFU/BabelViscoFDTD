@@ -174,8 +174,8 @@ if platform.system() in ['Darwin']:
 
 PrepareOpenCLKernel()
 
-setup(name='SPVirieuxFDTD',
-      packages=['SPVirieuxFDTD'],
+setup(name='SPPVirieuxFDTD',
+      packages=['SPPVirieuxFDTD'],
       version=version,
       description='GPU/CPU 3D FDTD solution of viscoelastic equation',
       author='Samuel Pichardo',

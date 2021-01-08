@@ -90,6 +90,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 {
 	unsigned int			   INHOST(N1),INHOST(N2),INHOST(N3),INHOST(LengthSource),INHOST(TypeSource),
 								INHOST(TimeSteps),NumberSnapshots,INHOST(NumberSources),TimeStepsSource,
+								INHOST(SILENT),
 								INHOST(NumberSensors),INHOST(PML_Thickness), INHOST(SelRMSorPeak),
 								INHOST(SelMapsRMSPeak),
 								INHOST(SelMapsSensors),
@@ -128,7 +129,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	// check input parameters
 	//---------------------------------------------------------------//
 
-	PRINTF("Running with new interface conditions\n");
 	#ifdef MATLAB_MEX
 	  /* check for proper number of arguments */
     if (nrhs!=1)
@@ -150,6 +150,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 		return NULL;
 	}
 	#endif
+	GET_FIELD(SILENT);
+	INHOST(SILENT)=*GET_DATA_UINT32_PR(SILENT);
+	PRINTF("Running with new interface conditions\n");
 
 	//We use Macros to get pointers to the Matlab/Python objects in the input structure/dictionary
     //#pragma message(VAR_NAME_VALUE(GET_FIELD(InvDXDTplus)))
@@ -209,6 +212,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	 VALIDATE_FIELD_UINT32(N1);
 	 VALIDATE_FIELD_UINT32(N2);
 	 VALIDATE_FIELD_UINT32(N3);
+	 VALIDATE_FIELD_UINT32(SILENT);
 	 VALIDATE_FIELD_UINT32(TimeSteps);
 	 VALIDATE_FIELD_UINT32(LengthSource);
 	 VALIDATE_FIELD_UINT32(SnapshotsPos);
@@ -267,6 +271,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	INHOST(N1)=*GET_DATA_UINT32_PR(N1);
 	INHOST(N2)=*GET_DATA_UINT32_PR(N2);
 	INHOST(N3)=*GET_DATA_UINT32_PR(N3);
+
 	INHOST(DT) =  *GET_DATA_PR(DT);	 //Temporal step
 	INHOST(LengthSource)= *GET_DATA_UINT32_PR(LengthSource);
 

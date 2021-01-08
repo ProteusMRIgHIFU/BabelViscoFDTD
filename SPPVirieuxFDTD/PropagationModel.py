@@ -60,7 +60,8 @@ class PropagationModel:
                                          SelMapsRMSPeakList=['ALLV'],
                                          SelMapsSensorsList=['Vx','Vy','Vz'],
                                          SensorSteps=2,
-                                         DefaultGPUDeviceName='TITAN'):
+                                         DefaultGPUDeviceName='TITAN',
+                                         SILENT=0):
         '''
         Samuel Pichardo, Ph.D.
         2020
@@ -322,6 +323,7 @@ class PropagationModel:
         InputParam['N1']=np.uint32(N1)
         InputParam['N2']=np.uint32(N2)
         InputParam['N3']=np.uint32(N3)
+        InputParam['SILENT']=np.uint32(SILENT)
         InputParam['TypeSource']=np.uint32(TypeSource)
         InputParam['TimeSteps']=np.uint32(TimeVector.size)
         InputParam['SourceMap']=np.uint32(SourceMap)
@@ -337,14 +339,14 @@ class PropagationModel:
         SolidFraction=None
         if SPP_ZONES>1:
             print('We will use SPP')
+        else:
+            InputParam['SPP_ZONES']=np.uint32(1)
+
+        if SPP_VolumeFraction is not None:
             SolidFraction=np.zeros((N1+1,N2+1,N3+1))
             SolidFraction[:N1,:N2,:N3]=SPP_VolumeFraction
             SolidFraction[MaterialMap3D==0]=0.0 # at this point, we already cleared out the PML regions
-        else:
-            InputParam['SPP_ZONES']=np.uint32(1)
             #this will just create dummy matrices that are required to be passed to the low level function
-        MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SolidFraction);
-
         InputParam['SPP_ZONES']=np.uint32(SPP_ZONES)
         MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SolidFraction,SPP_ZONES=SPP_ZONES);
         InputParam['OrigMaterialMap']=MaterialMap3D
@@ -702,17 +704,19 @@ def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
 
 
 def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,OrderExtra=2):
-        #if USE_SPP is False, we just create dummy arrays, as these are need to be passed to the low level function for completeness
+        #This function will assign the id of material in the fraction elements that are the closest to the water solid interfaces
+        #if SPP_ZONES==1 is False, we just create dummy arrays, as these are need to be passed to the low level function for completeness
+
         ZoneCount=SPP_ZONES
-        if ZoneCount>1:
-            SkullRegion=SourceMaterialMap!=0
+        if ZoneCount>1 or SolidFraction is not None:
+            SolidRegion=SourceMaterialMap!=0
             MaterialMap=SourceMaterialMap.copy()
 
             NewMaterialMap=SourceMaterialMap.copy()
             s=SourceMaterialMap.shape
             MultiZoneMaterialMap=np.zeros((s[0],s[1],s[2],ZoneCount),dtype=np.uint32)
 
-            ExpandaMaterial=((SkullRegion)^(SolidFraction>0))
+            ExpandaMaterial=((SolidRegion)^(SolidFraction>0))
             ExpandaMaterial=((ExpandaMaterial)&(SolidFraction>0))
             ii,jj,kk=np.where(ExpandaMaterial)
 
@@ -737,7 +741,7 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
                 SubMat=SubMat[sel]
                 NewMaterialMap[i,j,k]=SubMat[mIn]
 
-            SkullRegion=NewMaterialMap!=0
+            SolidRegion=NewMaterialMap!=0
 
             SuperpositionMap = np.zeros(SourceMaterialMap.shape,dtype=np.uint8)
             SkullRingFraction=((SolidFraction>0)&(SolidFraction<1.0))

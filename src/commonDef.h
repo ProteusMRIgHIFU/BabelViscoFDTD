@@ -7,8 +7,6 @@
 
 //typedef enum {none, front, back} interface_t;
 
-//#define SILENT
-
 //#define CHECK_FOR_NANs
 
 #ifdef SINGLE_PREC
@@ -87,11 +85,12 @@ typedef double mexType;
 	#define GET_P(_VarName) mxGetDimensions(_VarName ##_mx)[3]
 
 	#define GET_NUMBER_ELEMS(_VarName) mxGetNumberOfElements(_VarName ##_mx)
-	#ifdef SILENT
-        #define PRINTF(_Msg,...) {};
-    #else
-        #define PRINTF(_Msg,...) mexPrintf(_Msg,##__VA_ARGS__);
-    #endif
+
+  #define PRINTF(_Msg,...)\
+	{ if (INHOST(SILENT)==0)\
+		 mexPrintf(_Msg,##__VA_ARGS__);\
+	 }
+
 	#define BaseArray	mxArray
   #define CREATE_ARRAY(_varName) BaseArray * _varName ##_mx = mxCreateNumericArray(ndim,dims,classOut,mxREAL);\
 			if ( _varName ##_mx ==NULL)\
@@ -145,11 +144,10 @@ typedef double mexType;
 	#define GET_O(_VarName) _VarName ##_mx->dimensions[2]
 	#define GET_P(_VarName) _VarName ##_mx->dimensions[3]
 	#define GET_NUMBER_ELEMS(_VarName) PyArray_SIZE(_VarName ##_mx)
-	#ifdef SILENT
-        #define PRINTF(_Msg,...) {};
-    #else
-        #define PRINTF(_Msg,...) PySys_WriteStdout(_Msg,##__VA_ARGS__);
-    #endif
+	#define PRINTF(_Msg,...)\
+	{ if (INHOST(SILENT)==0)\
+		 PySys_WriteStdout(_Msg,##__VA_ARGS__);\
+	 }
 	#define BaseArray PyArrayObject
 	#define CREATE_ARRAY(_varName)  __descr = PyArray_DescrFromType(_numpy_type);\
 									 BaseArray * _varName ##_mx = (PyArrayObject* )PyArray_NewFromDescr(&PyArray_Type, __descr, ndim,dims, NULL,NULL,NPY_FORTRAN,NULL);\
