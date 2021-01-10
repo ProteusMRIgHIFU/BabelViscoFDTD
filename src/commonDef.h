@@ -44,6 +44,8 @@ typedef double mexType;
 #define MACHINE_CODE "CUDA"
 #elif OPENCL
 #define MACHINE_CODE "OPENCL"
+#elif METAL
+#define MACHINE_CODE "METAL"
 #else
 #define MACHINE_CODE "Intel_X64"
 #endif
@@ -275,8 +277,8 @@ PyMODINIT_FUNC INIT_MAIN_NAME (){
 		if (_VarName ## _pr ==NULL) \
 		ERROR_STRING("Out of memory when allocating " #_VarName);
 
-#if defined(CUDA) || defined(OPENCL)
-#include "commonDefCUDA.h"
+#if defined(CUDA) || defined(OPENCL) || defined(METAL)
+#include "commonDefGPU.h"
 #endif
 
 

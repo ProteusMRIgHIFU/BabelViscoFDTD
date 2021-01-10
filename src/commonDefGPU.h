@@ -170,7 +170,8 @@ int mxcheck(int result, char const *const func, const char *const file, int cons
         ERROR_STRING(_bline);
     }
 		return 1L;
-  #else
+	#endif
+	#if defined(OPENCL)
   if (result!= CL_SUCCESS)
   {
     PRINTF( "OPENCL error at %s:%d code=%d(%s) \"%s\" \n",
@@ -179,6 +180,16 @@ int mxcheck(int result, char const *const func, const char *const file, int cons
   }
 	return 1L;
   #endif
+
+	#if defined(METAL)
+	if (result== 0)
+  {
+    PRINTF( "METAL error at %s:%d  \"%s\" \n",
+            file, line, func);
+    ERROR_STRING("Stopping execution");
+  }
+	return 1L;
+	#endif
 
 }
 
@@ -246,12 +257,15 @@ __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];
 __constant__ mexType gpuInvDXDTplushppr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminushppr[MAX_SIZE_PML];
 
-#else
+#endif
+//---------------------------------------------
+#if defined(OPENCL) || defined(METAL)
 //OPENCL
-#define MAXP_BUFFER_OPENCL 200000
-char BUFFER_FOR_OPENCL_CODE[MAXP_BUFFER_OPENCL];
+#define MAXP_BUFFER_GPU_CODE 200000
+char BUFFER_FOR_GPU_CODE[MAXP_BUFFER_GPU_CODE];
 int __InitBuffer =0;
 #endif
+//--------------------------
 
 
 #define k_blockDimX    8
@@ -267,7 +281,7 @@ int __InitBuffer =0;
 
 #define InitSymbol(_NameVar,_datatype,_gtype) mxcheckGPUErrors(cudaMemcpyToSymbol(_NameVar,&INHOST(_NameVar),sizeof(_datatype)));
 
-#define ownCudaCalloc(_NameVar,_dataType,_size) _dataType * gpu_ ## _NameVar ## _pr; \
+#define ownGpuCalloc(_NameVar,_dataType,_size) _dataType * gpu_ ## _NameVar ## _pr; \
 									PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",_size*INHOST(ZoneCount),INHOST(ZoneCount));\
 									mxcheckGPUErrors(cudaMalloc((void **)&gpu_ ## _NameVar ##_pr,_size*sizeof(_dataType)*INHOST(ZoneCount))); \
 									NumberAlloc++;\
@@ -296,7 +310,7 @@ int __InitBuffer =0;
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 										 mxcheckGPUErrors(cudaMemcpy( _NameVar ## _pr, gpu_ ## _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyDeviceToHost));
 
-#define ownCudaFree(_NameVar) 	PRINTF("Releasing GPU memory for " #_NameVar "\n"); \
+#define ownGPUFree(_NameVar) 	PRINTF("Releasing GPU memory for " #_NameVar "\n"); \
 								 mxcheckGPUErrors(cudaFree(gpu_ ## _NameVar ##_pr)); 	\
 								 NumberAlloc--;
 
@@ -344,7 +358,6 @@ int __InitBuffer =0;
       *Sigma_xx_pr,
       *Sigma_yy_pr,
       *Sigma_zz_pr,
-      *Snapshots_pr,
       *SourceFunctions_pr,
       * LambdaMiuMatOverH_pr,
       * LambdaMatOverH_pr,
@@ -361,7 +374,9 @@ int __InitBuffer =0;
 			* Oz_pr;
   };
 
-#else
+#endif
+//-------------------
+#ifdef OPENCL
 //OPENCL
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 
@@ -372,30 +387,30 @@ int __InitBuffer =0;
 						snprintf(_bline,512,"__constant unsigned int " #_NameVar "=%i;\n",(int) INHOST(_NameVar));\
 				else\
 						snprintf(_bline,512,"__constant %s "#_NameVar "=%.9g;\n",MEX_STR,(mexType) INHOST(_NameVar));\
-			   strlcat(BUFFER_FOR_OPENCL_CODE,_bline, MAXP_BUFFER_OPENCL);\
+			   strlcat(BUFFER_FOR_GPU_CODE,_bline, MAXP_BUFFER_GPU_CODE);\
 			 };
 
 #define InitSymbolArray(_NameVar,_gtype,__Limit)\
 			{\
 				char _bline[512];\
 				snprintf(_bline,512,"__constant %s gpu" #_NameVar "pr[%i] ={\n",MEX_STR,__Limit);\
-				strncat(BUFFER_FOR_OPENCL_CODE,_bline,MAXP_BUFFER_OPENCL);\
+				strncat(BUFFER_FOR_GPU_CODE,_bline,MAXP_BUFFER_GPU_CODE);\
 				for (unsigned int nn=0;nn<__Limit;nn++)\
 				{\
 					if (_gtype==G_INT)\
 							snprintf(_bline,512,"%i",(int)INHOST(_NameVar ## _pr)[nn]);\
 					else\
 							snprintf(_bline,512,"%.9g",(mexType)INHOST(_NameVar ## _pr)[nn]);\
-					strlcat(BUFFER_FOR_OPENCL_CODE,_bline,MAXP_BUFFER_OPENCL);\
+					strlcat(BUFFER_FOR_GPU_CODE,_bline,MAXP_BUFFER_GPU_CODE);\
 					if (nn<__Limit-1)\
-						strlcat(BUFFER_FOR_OPENCL_CODE,",\n",MAXP_BUFFER_OPENCL);\
+						strlcat(BUFFER_FOR_GPU_CODE,",\n",MAXP_BUFFER_GPU_CODE);\
 					else\
-						strlcat(BUFFER_FOR_OPENCL_CODE,"};\n",MAXP_BUFFER_OPENCL);\
+						strlcat(BUFFER_FOR_GPU_CODE,"};\n",MAXP_BUFFER_GPU_CODE);\
 				};\
 			};
 
 
-#define ownCudaCalloc(_NameVar,_dataType,_size) cl_mem  gpu_ ## _NameVar ## _pr; \
+#define ownGpuCalloc(_NameVar,_dataType,_size) cl_mem  gpu_ ## _NameVar ## _pr; \
 			PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",_size,INHOST(ZoneCount));\
       { \
     		_dataType * temp_zeros_pr = (_dataType *) calloc(_size*INHOST(ZoneCount),sizeof(_dataType)); \
@@ -429,7 +444,7 @@ int __InitBuffer =0;
 			        mxcheckGPUErrors(clEnqueueReadBuffer( commands, gpu_ ## _NameVar ## _pr, CL_TRUE, 0, SizeCopy*sizeof(_dataType),  _NameVar ## _pr, 0, NULL, NULL ));
 
 
-#define ownCudaFree(_NameVar) 	PRINTF("Releasing GPU memory for " #_NameVar "\n"); \
+#define ownGPUFree(_NameVar) 	PRINTF("Releasing GPU memory for " #_NameVar "\n"); \
         mxcheckGPUErrors(clReleaseMemObject(gpu_ ## _NameVar ##_pr));\
         NumberAlloc--;
 
@@ -515,36 +530,34 @@ int __InitBuffer =0;
 					  return 37;
 					if (strcmp(NameVar,"Sigma_zz")==0)
 						return 38;
-					if (strcmp(NameVar,"Snapshots")==0)
-			 	    return 39;
 					if (strcmp(NameVar,"SourceFunctions")==0)
-	 		 	    return 40;
+	 		 	    return 39;
 					if (strcmp(NameVar,"LambdaMiuMatOverH")==0)
-					  return 41;
+					  return 40;
 					if (strcmp(NameVar,"LambdaMatOverH")==0)
-					  return 42;
+					  return 41;
 					if (strcmp(NameVar,"MiuMatOverH")==0)
-					  return 43;
+					  return 42;
 					if (strcmp(NameVar,"TauLong")==0)
-						return 44;
+						return 43;
 					if (strcmp(NameVar,"OneOverTauSigma")==0)
-					  return 45;
+					  return 44;
 					if (strcmp(NameVar,"TauShear")==0)
-					  return 46;
+					  return 45;
 					if (strcmp(NameVar,"InvRhoMatH")==0)
-					  return 47;
+					  return 46;
 					if (strcmp(NameVar,"SqrAcc")==0)
-						return 48;
+						return 47;
 					if (strcmp(NameVar,"MaterialMap")==0)
-						return 49;
+						return 48;
 					if (strcmp(NameVar,"SourceMap")==0)
-						return 50;
+						return 49;
 					if (strcmp(NameVar,"Ox")==0)
-						return 51;
+						return 50;
 					if (strcmp(NameVar,"Oy")==0)
-						return 52;
+						return 51;
 					if (strcmp(NameVar,"Oz")==0)
-						return 53;
+						return 52;
 
 					ERROR_STRING("Unknown parameter");
 					return -1;
@@ -615,28 +628,304 @@ int output_device_info(cl_device_id device_id)
 			   return CL_SUCCESS;
 
 			}
+#endif
 
-			char* load_file(char const* path)
+#if defined(OPENCL) || defined(METAL)
+char* load_file(char const* path)
+{
+		char* buffer = 0;
+		long length;
+		FILE * f = fopen (path, "rb"); //was "rb"
+
+		if (f)
+		{
+			fseek (f, 0, SEEK_END);
+			length = ftell (f);
+			fseek (f, 0, SEEK_SET);
+			buffer = (char*)malloc ((length+1)*sizeof(char));
+			if (buffer)
 			{
-			    char* buffer = 0;
-			    long length;
-			    FILE * f = fopen (path, "rb"); //was "rb"
-
-			    if (f)
-			    {
-			      fseek (f, 0, SEEK_END);
-			      length = ftell (f);
-			      fseek (f, 0, SEEK_SET);
-			      buffer = (char*)malloc ((length+1)*sizeof(char));
-			      if (buffer)
-			      {
-			        fread (buffer, sizeof(char), length, f);
-			      }
-			      fclose (f);
-						buffer[length] = '\0';
-			    }
-			    return buffer;
+				fread (buffer, sizeof(char), length, f);
 			}
+			fclose (f);
+			buffer[length] = '\0';
+		}
+		return buffer;
+}
+#endif
+
+#ifdef METAL
+
+#define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
+//We define first the indexes for uint const values
+#define CInd_N1 0
+#define CInd_N2 1
+#define CInd_N3 2
+#define CInd_Limit_I_low_PML 3
+#define CInd_Limit_J_low_PML 4
+#define CInd_Limit_K_low_PML 5
+#define CInd_Limit_I_up_PML 6
+#define CInd_Limit_J_up_PML 7
+#define CInd_Limit_K_up_PML 8
+#define CInd_SizeCorrI 9
+#define CInd_SizeCorrJ 10
+#define CInd_SizeCorrK 11
+#define CInd_PML_Thickness 12
+#define CInd_NumberSources 13
+#define CInd_NumberSensors 14
+#define CInd_TimeSteps 15
+#define CInd_SizePML 16
+#define CInd_SizePMLxp1 17
+#define CInd_SizePMLyp1 18
+#define CInd_SizePMLzp1 19
+#define CInd_SizePMLxp1yp1zp1 20
+#define CInd_ZoneCount 21
+#define CInd_SelRMSorPeak 22
+#define CInd_SelMapsRMSPeak 23
+#define CInd_IndexRMSPeak_ALLV 24
+#define CInd_IndexRMSPeak_Vx 25
+#define CInd_IndexRMSPeak_Vy 26
+#define CInd_IndexRMSPeak_Vz 27
+#define CInd_IndexRMSPeak_Sigmaxx 28
+#define CInd_IndexRMSPeak_Sigmayy 29
+#define CInd_IndexRMSPeak_Sigmazz 30
+#define CInd_IndexRMSPeak_Sigmaxy 31
+#define CInd_IndexRMSPeak_Sigmaxz 32
+#define CInd_IndexRMSPeak_Sigmayz 33
+#define CInd_NumberSelRMSPeakMaps 34
+#define CInd_SelMapsSensors 35
+#define CInd_IndexSensor_ALLV 36
+#define CInd_IndexSensor_Vx 37
+#define CInd_IndexSensor_Vy 38
+#define CInd_IndexSensor_Vz 39
+#define CInd_IndexSensor_Sigmaxx 40
+#define CInd_IndexSensor_Sigmayy 41
+#define CInd_IndexSensor_Sigmazz 42
+#define CInd_IndexSensor_Sigmaxy 43
+#define CInd_IndexSensor_Sigmaxz 44
+#define CInd_IndexSensor_Sigmayz 45
+#define CInd_NumberSelSensorMaps 46
+#define CInd_SensorSteps 47
+#define CInd_nStep 48
+#define CInd_TypeSource 49
+#define CInd_CurrSnap 50
+#define CInd_LengthSource 51
+
+//Make LENGTH_CONST_UINT one value larger than the last index
+#define LENGTH_CONST_UINT 52
+
+//Indexes for float
+#define CInd_DT 0
+#define CInd_InvDXDTplus 1
+#define CInd_DXDTminus (1+MAX_SIZE_PML)
+#define CInd_InvDXDTplushp (1+MAX_SIZE_PML*2)
+#define CInd_DXDTminushp (1+MAX_SIZE_PML*3)
+//Make LENGTH_CONST_MEX one value larger than the last index
+#define LENGTH_CONST_MEX (1+MAX_SIZE_PML*4)
+
+#define CInd_V_x_x 0
+#define CInd_V_y_x 1
+#define CInd_V_z_x 2
+#define CInd_V_x_y 3
+#define CInd_V_y_y 4
+#define CInd_V_z_y 5
+#define CInd_V_x_z 6
+#define CInd_V_y_z 7
+#define CInd_V_z_z 8
+#define CInd_Sigma_x_xx 9
+#define CInd_Sigma_y_xx 10
+#define CInd_Sigma_z_xx 11
+#define CInd_Sigma_x_yy 12
+#define CInd_Sigma_y_yy 13
+#define CInd_Sigma_z_yy 14
+#define CInd_Sigma_x_zz 15
+#define CInd_Sigma_y_zz 16
+#define CInd_Sigma_z_zz 17
+#define CInd_Sigma_x_xy 18
+#define CInd_Sigma_y_xy 19
+#define CInd_Sigma_x_xz 20
+#define CInd_Sigma_z_xz 21
+#define CInd_Sigma_y_yz 22
+#define CInd_Sigma_z_yz 23
+#define CInd_Rxx 24
+#define CInd_Ryy 25
+#define CInd_Rzz 26
+#define CInd_Rxy 27
+#define CInd_Rxz 28
+#define CInd_Ryz 29
+
+#define CInd_LambdaMiuMatOverH  30
+#define CInd_LambdaMatOverH	 31
+#define CInd_MiuMatOverH 32
+#define CInd_TauLong 33
+#define CInd_OneOverTauSigma	34
+#define CInd_TauShear 35
+#define CInd_InvRhoMatH	 36
+#define CInd_Ox 37
+#define CInd_Oy 38
+#define CInd_Oz 39
+
+#define CInd_Vx 40
+#define CInd_Vy 41
+#define CInd_Vz 42
+#define CInd_Sigma_xx 43
+#define CInd_Sigma_yy 44
+#define CInd_Sigma_zz 45
+#define CInd_Sigma_xy 46
+#define CInd_Sigma_xz 47
+#define CInd_Sigma_yz 48
+
+#define CInd_SensorOutput 49
+#define CInd_SqrAcc 50
+
+#define LENGTH_INDEX_MEX 51
+
+#define CInd_IndexSensorMap  0
+#define CInd_SourceFunctions 1
+#define CInd_SourceMap	2
+#define CInd_MaterialMap 3
+
+#define LENGTH_INDEX_UINT 4
+
+
+#define InitSymbol(_NameVar,_datatype,_gtype)\
+{\
+	if (_gtype==G_INT)\
+	{\
+			_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_UINT.GetContents());\
+			inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
+	     _CONSTANT_BUFFER_UINT.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(_datatype)));\
+	}\
+	else\
+	{\
+	 	_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_MEX.GetContents());\
+		inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
+		 _CONSTANT_BUFFER_MEX.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(_datatype)));\
+	}\
+}
+
+#define InitSymbolArray(_NameVar,_gtype,__Limit)\
+if (_gtype==G_INT)\
+{\
+		unsigned int * inData = static_cast<unsigned int *>(_CONSTANT_BUFFER_UINT.GetContents());\
+		inData+=CInd_ ## _NameVar;\
+		for (unsigned int _n=0;_n<__Limit;_n++)\
+		{\
+			inData[_n] = (mexType)(_NameVar ## _pr)[_n];\
+		}\
+		_CONSTANT_BUFFER_UINT.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(unsigned int)*__Limit));\
+}\
+else\
+{\
+	mexType * inData = static_cast<mexType *>(_CONSTANT_BUFFER_MEX.GetContents());\
+	inData+=CInd_ ## _NameVar;\
+	for (unsigned int _n=0;_n<__Limit;_n++)\
+	{\
+		inData[_n] = (unsigned int)(_NameVar ## _pr)[_n];\
+	}\
+	_CONSTANT_BUFFER_MEX.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(mexType)*__Limit));\
+}\
+
+
+#define ownGpuCalloc(_NameVar,_dataType,_size)\
+	PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",(int)_size*INHOST(ZoneCount),(int)INHOST(ZoneCount));\
+	if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	{	\
+		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
+		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
+		_c_mex_type+=_size*INHOST(ZoneCount);\
+	} \
+	else\
+	{\
+		HOST_INDEX_UINT[CInd_ ## _NameVar][0]=_c_uint_type;\
+		HOST_INDEX_UINT[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
+	 _c_uint_type+=_size*INHOST(ZoneCount);\
+ }
+
+ #define CreateAndCopyFromMXVarOnGPU(_NameVar,_dataType) \
+ 				 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
+				 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+				 if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+			 	{	\
+			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
+			 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=SizeCopy;\
+			 		_c_mex_type+=SizeCopy;\
+			 	} \
+			 	else\
+			 	{\
+			 		HOST_INDEX_UINT[CInd_ ## _NameVar][0]=_c_uint_type;\
+			 		HOST_INDEX_UINT[CInd_ ## _NameVar][1]=SizeCopy;\
+			 	 _c_uint_type+=SizeCopy;\
+			 	}
+
+#define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
+					 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
+				              SizeCopy,\
+				             mtlpp::ResourceOptions::StorageModeManaged);\
+				   mxcheckGPUErrors(((int)gpu_ ## _NameVar ##_pr));\
+					 {\
+					      _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ##_pr.GetContents());\
+					      memcpy(_NameVar ## _pr, inData,sizeof(_dataType) * SizeCopy );\
+					      gpu_ ## _NameVar ##_pr.DidModify(ns::Range( 0, sizeof(_dataType) *SizeCopy));\
+					  }
+
+#define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
+		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	 {	\
+		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 } \
+	 else\
+	 {\
+		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
+		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 }
+
+#define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
+		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	 {	\
+		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
+		 memcpy(inData,_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 } \
+	 else\
+	 {\
+		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
+		 memcpy(&inData,_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 }
+
+ #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
+	 		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	 	 {	\
+	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+	 		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 	 } \
+	 	 else\
+	 	 {\
+	 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
+	 		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 	 }
+
+	 // METAL is c++ based and their own clasess release the memory
+
+		#define ownGPUFree(_NameVar) { }
+
+		#define InParamP(_NameVar) { }
+
+		#define CompleteCopyToGpu(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
+		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	 {	\
+		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+		 _MEX_BUFFER.DidModify(ns::Range(0, sizeof(_dataType) *SizeCopy));\
+	 } \
+	 else\
+	 {\
+		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+		 _UINT_BUFFER.DidModify(ns::Range(0, sizeof(_dataType) *SizeCopy));\
+	 }
+
 #endif
 
 #define CHOOSE_INDEX(_Type) switch(Type ## _Type)\

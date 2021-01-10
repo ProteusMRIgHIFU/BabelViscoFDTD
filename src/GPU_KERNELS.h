@@ -1,10 +1,15 @@
+#ifdef METAL
+#include"kernelparamsMetal.h"
+#endif
+
 #if defined(CUDA)
 __global__ void StressKernel(InputDataKernel *p,unsigned int nStep)
 {
 	const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
     const unsigned int k = blockIdx.z * blockDim.z + threadIdx.z;
-#else
+#endif
+#ifdef OPENCL
 __kernel void StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep)
@@ -13,6 +18,22 @@ __kernel void StressKernel(
   const unsigned int j = get_global_id(1);
   const unsigned int k = get_global_id(2);
 #endif
+#ifdef METAL
+kernel void StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	uint3 gid[[thread_position_in_grid]])
+
+{
+  const unsigned int i = gid.x;
+  const unsigned int j = gid.y;
+  const unsigned int k = gid.z;
+#endif
+
 
     if (i>N1 || j >N2  || k>N3)
 		return;
@@ -26,7 +47,8 @@ __global__ void ParticleKernel(InputDataKernel * p, unsigned int nStep,unsigned 
 	  const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
     const unsigned int k = blockIdx.z * blockDim.z + threadIdx.z;
-#else
+#endif
+#ifdef OPENCL
 __kernel void ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep,
@@ -36,6 +58,22 @@ __kernel void ParticleKernel(
 	  const unsigned int j = get_global_id(1);
 	  const unsigned int k = get_global_id(2);
 #endif
+#ifdef METAL
+kernel void ParticleKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	uint3 gid[[thread_position_in_grid]])
+
+{
+	const unsigned int i = gid.x;
+	const unsigned int j = gid.y;
+	const unsigned int k = gid.z;
+#endif
+
     if (i>N1 || j >N2  || k>N3)
 		return;
 
@@ -49,11 +87,27 @@ __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigm
 {
 	const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
   const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
-#else
+#endif
+#ifdef OPENCL
 __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__global mexType * Sigma_xx_pr,__global mexType * Sigma_yy_pr,__global mexType * Sigma_zz_pr,unsigned int CurrSnap)
 {
   const unsigned int i = get_global_id(0);
   const unsigned int j = get_global_id(1);
+#endif
+#ifdef METAL
+kernel void SnapShot(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	uint3 gid[[thread_position_in_grid]])
+
+	{
+	const unsigned int i = gid.x;
+	const unsigned int j = gid.y;
+	const unsigned int k = gid.z;
 #endif
 
     if (i>=N1 || j >=N2)
@@ -76,7 +130,8 @@ __global__ void SensorsKernel(InputDataKernel * p,
 														unsigned int nStep)
 {
 	unsigned int sj =blockIdx.x * blockDim.x + threadIdx.x;
-#else
+#endif
+#ifdef OPENCL
 __kernel void SensorsKernel(
 		#include "kernelparamsOpenCL.h"
 		, __global mexType * SensorOutput_pr,
@@ -85,6 +140,20 @@ __kernel void SensorsKernel(
 {
 	unsigned int sj =get_global_id(0);
 #endif
+#ifdef METAL
+kernel void SensorsKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	uint3 gid[[thread_position_in_grid]])
+
+{
+	const unsigned int sj = gid;
+#endif
+
 	if (sj>=	NumberSensors)
 		return;
 	#include"SensorsKernel.h"

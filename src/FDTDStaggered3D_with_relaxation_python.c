@@ -60,6 +60,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #if defined(__MACH__)
 #include <stdlib.h>
@@ -78,6 +79,19 @@
 #endif
 #endif
 
+#ifdef METAL
+ #include "mtlpp/mtlpp.hpp"
+#endif
+
+//////////////////////////////////////////GPU-SPECIFIC
+#if defined(CUDA) || defined(METAL)
+	#define INHOST(_VarName) h ## _VarName
+#else
+	#define INHOST(_VarName) _VarName
+#endif
+
+unsigned int	INHOST(SILENT);
+
 #include "commonDef.h"
 
 
@@ -90,7 +104,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 {
 	unsigned int			   INHOST(N1),INHOST(N2),INHOST(N3),INHOST(LengthSource),INHOST(TypeSource),
 								INHOST(TimeSteps),NumberSnapshots,INHOST(NumberSources),TimeStepsSource,
-								INHOST(SILENT),
 								INHOST(NumberSensors),INHOST(PML_Thickness), INHOST(SelRMSorPeak),
 								INHOST(SelMapsRMSPeak),
 								INHOST(SelMapsSensors),
@@ -368,11 +381,11 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	unsigned int INHOST(SizePMLzp1) = (INHOST(N1))*(INHOST(N2))*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLxp1yp1zp1) = (INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 
-	PRINTF("SizePML=%i\n",SizePML);
-	PRINTF("SizePMLxp1=%i\n",SizePMLxp1);
-	PRINTF("SizePMLyp1=%i\n",SizePMLyp1);
-	PRINTF("SizePMLzp1=%i\n",SizePMLzp1);
-	PRINTF("SizePMLxp1yp1zp1=%i\n",SizePMLxp1yp1zp1);
+	PRINTF("SizePML=%i\n",INHOST(SizePML));
+	PRINTF("SizePMLxp1=%i\n",INHOST(SizePMLxp1));
+	PRINTF("SizePMLyp1=%i\n",INHOST(SizePMLyp1));
+	PRINTF("SizePMLzp1=%i\n",INHOST(SizePMLzp1));
+	PRINTF("SizePMLxp1yp1zp1=%i\n",INHOST(SizePMLxp1yp1zp1));
 
 	//for SPP
 	// unsigned int SizeMatMap_zone = INHOST(TotalIndexCount)*INHOST(ZoneCount);
@@ -417,7 +430,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA(SqrAcc);
 	memset(SqrAcc_pr,0,dims[0]*dims[1]*dims[2]*dims[3]*dims[4]*sizeof(mexType));
 
-  unsigned int CurrSnap=0;
+  unsigned int INHOST(CurrSnap)=0;
 
 	ndim=3;
 	dims[0]=INHOST(N1);
@@ -446,8 +459,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	PySys_WriteStdout(" Staggered FDTD - compiled at %s - %s\n", __DATE__, __TIME__);
 #endif
 
-    PRINTF("N1, N2,N3 , ZoneCount and DT= %i,%i,%i,%g\n",INHOST(N1),INHOST(N2),INHOST(N3),INHOST(ZoneCount),INHOST(DT));
-    PRINTF("Number of sensors , timesteps for sensors and total maps= %i, %i, %i\n",INHOST(NumberSensors),	dims[1],INHOST(NumberSelSensorMaps));
+    PRINTF("N1, N2,N3 , ZoneCount and DT= %i,%i,%i,%i,%g\n",INHOST(N1),INHOST(N2),INHOST(N3),INHOST(ZoneCount),INHOST(DT));
+    PRINTF("Number of sensors , timesteps for sensors and total maps= %i, %i, %i\n",INHOST(NumberSensors),	(int)dims[1],INHOST(NumberSelSensorMaps));
 
 	time_t start_t, end_t;
 	time(&start_t);
@@ -457,7 +470,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 // 	Py_BEGIN_ALLOW_THREADS;
 // #endif
 
-#if defined(CUDA) || defined(OPENCL)
+#if defined(CUDA) || defined(OPENCL) || defined(METAL)
   #include "FDTD3D_GPU_VERSION.h"
 #else
 	//////////BEGIN CPU SPECIFC
@@ -472,14 +485,14 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
    double diff_t = difftime(end_t, start_t);
    PRINTF("Execution time = %f\n", diff_t);
 
- #if defined(CUDA) || defined(OPENCL)
+ #if defined(CUDA) || defined(OPENCL) || defined(METAL)
 
  #else
  	  fprintf(FDEBUG,"Execution time = %f\n", diff_t);
 		fflush(FDEBUG);
  #endif
 
- #if defined(CUDA) || defined(OPENCL)
+ #if defined(CUDA) || defined(OPENCL) || defined(METAL)
 
  #else
 	 fclose(FDEBUG);

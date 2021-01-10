@@ -15,7 +15,7 @@ from distutils.sysconfig import get_python_inc
 def StaggeredFDTD_3D_OPENCL(arguments):
     IncludeDir=get_python_inc()+os.sep+'FDTDStaggered3D-with-relaxation'+os.sep
     print("Copying opencl files from "+IncludeDir +" to " +os.getcwd())
-    copyfile(IncludeDir+'_opencl_kernel.c', os.getcwd()+os.sep+'_opencl_kernel.c')
+    copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'_gpu_kernel.c')
     copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'_indexing.h')
 
     if (type(arguments)!=dict):

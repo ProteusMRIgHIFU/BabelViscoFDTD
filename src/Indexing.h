@@ -36,6 +36,8 @@ typedef unsigned char interface_t;
 
 #ifdef CUDA
 #define __PRE_MAT p->
+#elif METAL
+#define __PRE_MAT k_
 #else
 #define __PRE_MAT
 #endif
@@ -48,13 +50,6 @@ typedef unsigned char interface_t;
 
 #define hELO(_Mat,_i,_j,_k)  _Mat##_pr[hInd_##_Mat(_i,_j,_k)]
 
-//////////////////////////////////////////CUDA-SPECIFIC
-//CUDA has real trouble when having global constants and local host variables with the same name, kind of idiot,
-#ifdef CUDA
-	#define INHOST(_VarName) h ## _VarName
-#else
-	#define INHOST(_VarName) _VarName
-#endif
 
 //////////////////////////////////////////////
 #define hInd_Source(a,b)((b)*INHOST(N2)+a)

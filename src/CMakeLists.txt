@@ -97,6 +97,14 @@ if(STAGGERED_OPENCL_SUPPORT)
     endif()
 endif()
 
+if(STAGGERED_METAL_SUPPORT)
+    add_definitions(-DMETAL)
+    add_compile_options(-std=c++11 -mmacosx-version-min=11.0)
+    add_link_options(-Wl,-framework,Metal -Wl,-framework,MetalKit -Wl,-framework,Cocoa -Wl,-framework,CoreFoundation -fobjc-link-runtime)
+
+endif()
+
+
 # Add Python component if requested
 if(STAGGERED_PYTHON_SUPPORT)
     set(Python_FIND_VIRTUALENV FIRST)
@@ -135,6 +143,12 @@ if(STAGGERED_PYTHON_SUPPORT)
         set(PYTHON_C_EXTENSION_SRCS
             "FDTDStaggered3D_with_relaxation_python.cu"
         )
+    elseif(STAGGERED_METAL_SUPPORT)
+      set(PYTHON_C_EXTENSION_SRCS
+          mtlpp/mtlpp.mm
+          FDTDStaggered3D_with_relaxation_python.cpp
+      )
+      set_source_files_properties(mtlpp/mtlpp.mm PROPERTIES COMPILE_FLAGS "-std=c++11 -x objective-c++ -mmacosx-version-min=11.0")
     else()
       set(PYTHON_C_EXTENSION_SRCS
           "FDTDStaggered3D_with_relaxation_python.c"

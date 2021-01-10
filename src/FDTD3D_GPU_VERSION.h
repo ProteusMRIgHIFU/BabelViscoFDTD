@@ -65,8 +65,9 @@ int NumberAlloc=0;
     mxcheckGPUErrors(cudaSetDevice(sm13DeviceList[0]));
 
     mxcheckGPUErrors(cudaDeviceSetCacheConfig (cudaFuncCachePreferL1));
+#endif
 
-#else
+#ifdef OPENCL
   cl_uint numPlatforms;
   int err;
   cl_device_id     device_id[10];     // compute device id
@@ -93,7 +94,7 @@ int NumberAlloc=0;
   // Secure a GPU
 
   unsigned int total_devices;
-  int SelDevice=0;
+  int SelDevice=-1;
 
 // Create a compute context
   for (unsigned int icpu = 0; icpu < numPlatforms; icpu++)
@@ -117,7 +118,14 @@ int NumberAlloc=0;
     {
       PRINTF("Found %s device!\n",DefaultGPUDeviceName_pr);
       SelDevice=icpu;
+      break;
     }
+  }
+
+  if (SelDevice==-1)
+  {
+    PRINTF("Device requested %s \n",DefaultGPUDeviceName_pr);
+    ERROR_STRING("Device requested was not found!\n");
   }
 
 
@@ -129,21 +137,109 @@ int NumberAlloc=0;
   commands = clCreateCommandQueue(context, device_id[SelDevice], 0, &err);
   mxcheckGPUErrors(err);
 
-  sprintf(BUFFER_FOR_OPENCL_CODE,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
+  sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
   char * indexingSource = load_file("_indexing.h");
   if (indexingSource==0)
   {
     ERROR_STRING("Unable to read _indexing.h file!!")
   }
-  strncat(BUFFER_FOR_OPENCL_CODE,indexingSource,MAXP_BUFFER_OPENCL);
-  strncat(BUFFER_FOR_OPENCL_CODE,"\n",MAXP_BUFFER_OPENCL);
+  strncat(BUFFER_FOR_GPU_CODE,indexingSource,MAXP_BUFFER_GPU_CODE);
+  strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
   free(indexingSource);
 
 #endif
 
+#ifdef METAL
+  unsigned int _c_mex_type = 0;
+  unsigned int _c_uint_type = 0;
+  unsigned int HOST_INDEX_MEX[LENGTH_INDEX_MEX][2];
+
+  unsigned int HOST_INDEX_UINT[LENGTH_INDEX_MEX][2];
+
+  ns::Array<mtlpp::Device>  AllDev= mtlpp::Device::CopyAllDevices();
+  mxcheckGPUErrors(((int)AllDev));
+
+
+  if (AllDev.GetSize()==0)
+  {
+    ERROR_STRING("Found 0 METAL platforms!\n");
+  }
+  unsigned int SelDevice=0;
+  {
+    for (int _n = 0;_n<AllDev.GetSize();_n++)
+    {
+      PRINTF("Meta device available: %i %s\n",_n,AllDev[_n].GetName().GetCStr());
+      if (NULL!=strstr(AllDev[_n].GetName().GetCStr(),DefaultGPUDeviceName_pr))
+      {
+        PRINTF("Found %s device!\n",DefaultGPUDeviceName_pr);
+        SelDevice=_n;
+        break;
+      }
+    }
+ }
+ if (SelDevice==-1)
+ {
+   PRINTF("Device requested %s \n",DefaultGPUDeviceName_pr);
+   ERROR_STRING("Device requested was not found!\n");
+ }
+
+ mtlpp::Device device= AllDev[SelDevice];
+
+ sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n",MEX_STR);
+ sprintf(BUFFER_FOR_GPU_CODE,"#include <metal_stdlib>\nusing namespace metal;\n",MEX_STR);
+ char * indexingSource = load_file("_indexing.h");
+ if (indexingSource==0)
+ {
+   ERROR_STRING("Unable to read _indexing.h file!!")
+ }
+ strncat(BUFFER_FOR_GPU_CODE,indexingSource,MAXP_BUFFER_GPU_CODE);
+ strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
+ free(indexingSource);
+
+ char * KernelSource = load_file("_gpu_kernel.c");
+ if (KernelSource==0)
+ {
+   ERROR_STRING("Unable to read _gpu_kernel.c file!!")
+ }
+ strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
+ strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
+ free(KernelSource);
+
+ mtlpp::Library library = device.NewLibrary(BUFFER_FOR_GPU_CODE, mtlpp::CompileOptions(), nullptr);
+ mxcheckGPUErrors(((int)library));
+
+ mtlpp::Function ParticleKernelFunc = library.NewFunction("ParticleKernel");
+ mxcheckGPUErrors(((int)ParticleKernelFunc));
+ mtlpp::ComputePipelineState computePipelineStateParticle = device.NewComputePipelineState(ParticleKernelFunc, nullptr);
+ mxcheckGPUErrors(((int)computePipelineStateParticle));
+
+ mtlpp::Function StressKernelFunc = library.NewFunction("StressKernel");
+ mxcheckGPUErrors(((int)StressKernelFunc));
+ mtlpp::ComputePipelineState computePipelineStateStress = device.NewComputePipelineState(StressKernelFunc, nullptr);
+ mxcheckGPUErrors(((int)computePipelineStateStress));
+
+ mtlpp::Function SnapShotFunc = library.NewFunction("SnapShot");
+ mxcheckGPUErrors(((int)SnapShotFunc));
+ mtlpp::ComputePipelineState computePipelineStateSnapShot = device.NewComputePipelineState(SnapShotFunc, nullptr);
+ mxcheckGPUErrors(((int)computePipelineStateSnapShot));
+
+ mtlpp::Function SensorsKernelFunc = library.NewFunction("SensorsKernel");
+ mxcheckGPUErrors(((int)SensorsKernelFunc));
+ mtlpp::ComputePipelineState computePipelineStateSensors = device.NewComputePipelineState(SensorsKernelFunc, nullptr);
+ mxcheckGPUErrors(((int)computePipelineStateSensors));
+
+ mtlpp::CommandQueue commandQueue = device.NewCommandQueue();
+ mxcheckGPUErrors(((int)commandQueue));
+
+ mtlpp::Buffer _CONSTANT_BUFFER_UINT = device.NewBuffer(sizeof(unsigned int) * LENGTH_CONST_UINT, mtlpp::ResourceOptions::StorageModeManaged);
+ mxcheckGPUErrors(((int)_CONSTANT_BUFFER_UINT));
+
+ mtlpp::Buffer _CONSTANT_BUFFER_MEX = device.NewBuffer(sizeof(mexType) * LENGTH_CONST_MEX, mtlpp::ResourceOptions::StorageModeManaged);
+ mxcheckGPUErrors(((int)_CONSTANT_BUFFER_MEX));
+
+#endif
+
 //initilizing constant memory variables
-
-
 InitSymbol(DT,mexType,G_FLOAT);
 InitSymbol(N1,unsigned int,G_INT);
 InitSymbol(N2,unsigned int,G_INT);
@@ -204,30 +300,33 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 	mxcheckGPUErrors(cudaMemcpyToSymbol(gpuDXDTminuspr,DXDTminus_pr,(INHOST(PML_Thickness)+1)*sizeof(mexType)));
 	mxcheckGPUErrors(cudaMemcpyToSymbol(gpuInvDXDTplushppr,InvDXDTplushp_pr,(INHOST(PML_Thickness)+1)*sizeof(mexType)));
 	mxcheckGPUErrors(cudaMemcpyToSymbol(gpuDXDTminushppr,DXDTminushp_pr,(INHOST(PML_Thickness)+1)*sizeof(mexType)));
+#endif
 
-#else //OPENCL specifics
-  InitSymbolArray(InvDXDTplus,G_FLOAT,PML_Thickness+1);
-  InitSymbolArray(DXDTminus,G_FLOAT,PML_Thickness+1);
-  InitSymbolArray(InvDXDTplushp,G_FLOAT,PML_Thickness+1);
-  InitSymbolArray(DXDTminushp,G_FLOAT,PML_Thickness+1);
+#if defined(OPENCL) || defined(METAL)
+  InitSymbolArray(InvDXDTplus,G_FLOAT,INHOST(PML_Thickness)+1);
+  InitSymbolArray(DXDTminus,G_FLOAT,INHOST(PML_Thickness)+1);
+  InitSymbolArray(InvDXDTplushp,G_FLOAT,INHOST(PML_Thickness)+1);
+  InitSymbolArray(DXDTminushp,G_FLOAT,INHOST(PML_Thickness)+1);
+#endif
 
-  char * KernelSource = load_file("_opencl_kernel.c");
+#ifdef OPENCL
+  char * KernelSource = load_file("_gpu_kernel.c");
   if (KernelSource==0)
   {
-    ERROR_STRING("Unable to read _opencl_kernel.c file!!")
+    ERROR_STRING("Unable to read _gpu_kernel.c file!!")
   }
-  strncat(BUFFER_FOR_OPENCL_CODE,KernelSource,MAXP_BUFFER_OPENCL);
-  strncat(BUFFER_FOR_OPENCL_CODE,"\n",MAXP_BUFFER_OPENCL);
+  strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
+  strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
   free(KernelSource);
-  //PRINTF("%s",BUFFER_FOR_OPENCL_CODE);
+  //PRINTF("%s",BUFFER_FOR_GPU_CODE);
 
-  // program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_OPENCL_CODE, NULL, &err);
+  // program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_GPU_CODE, NULL, &err);
   // mxcheckGPUErrors(err);
 
 
   FILE * TempKernel;
   TempKernel=fopen("kernel.cu", "w");
-  fprintf(TempKernel,"%s",BUFFER_FOR_OPENCL_CODE);
+  fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
   fclose(TempKernel);
   char scmd [80];
   sprintf(scmd,"./pi_ocl --device %i",SelDevice);
@@ -277,39 +376,39 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 
     //Only used these for the PML
 	unsigned int SizeCopy;
-	ownCudaCalloc(V_x_x,mexType,INHOST(SizePMLxp1));
-	ownCudaCalloc(V_y_x,mexType,INHOST(SizePMLxp1));
-	ownCudaCalloc(V_z_x,mexType,INHOST(SizePMLxp1));
-	ownCudaCalloc(V_x_y,mexType,INHOST(SizePMLyp1));
-	ownCudaCalloc(V_y_y,mexType,INHOST(SizePMLyp1));
-	ownCudaCalloc(V_z_y,mexType,INHOST(SizePMLyp1));
-	ownCudaCalloc(V_x_z,mexType,INHOST(SizePMLzp1));
-	ownCudaCalloc(V_y_z,mexType,INHOST(SizePMLzp1));
-	ownCudaCalloc(V_z_z,mexType,INHOST(SizePMLzp1));
-	ownCudaCalloc(Sigma_x_xx,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_y_xx,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_z_xx,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_x_yy,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_y_yy,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_z_yy,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_x_zz,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_y_zz,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_z_zz,mexType,INHOST(SizePML));
-	ownCudaCalloc(Sigma_x_xy,mexType,INHOST(SizePMLxp1yp1zp1));
-	ownCudaCalloc(Sigma_y_xy,mexType,INHOST(SizePMLxp1yp1zp1));
-	ownCudaCalloc(Sigma_x_xz,mexType,INHOST(SizePMLxp1yp1zp1));
-	ownCudaCalloc(Sigma_z_xz,mexType,INHOST(SizePMLxp1yp1zp1));
-	ownCudaCalloc(Sigma_y_yz,mexType,INHOST(SizePMLxp1yp1zp1));
-	ownCudaCalloc(Sigma_z_yz,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(V_x_x,mexType,INHOST(SizePMLxp1));
+	ownGpuCalloc(V_y_x,mexType,INHOST(SizePMLxp1));
+	ownGpuCalloc(V_z_x,mexType,INHOST(SizePMLxp1));
+	ownGpuCalloc(V_x_y,mexType,INHOST(SizePMLyp1));
+	ownGpuCalloc(V_y_y,mexType,INHOST(SizePMLyp1));
+	ownGpuCalloc(V_z_y,mexType,INHOST(SizePMLyp1));
+	ownGpuCalloc(V_x_z,mexType,INHOST(SizePMLzp1));
+	ownGpuCalloc(V_y_z,mexType,INHOST(SizePMLzp1));
+	ownGpuCalloc(V_z_z,mexType,INHOST(SizePMLzp1));
+	ownGpuCalloc(Sigma_x_xx,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_y_xx,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_z_xx,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_x_yy,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_y_yy,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_z_yy,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_x_zz,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_y_zz,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_z_zz,mexType,INHOST(SizePML));
+	ownGpuCalloc(Sigma_x_xy,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(Sigma_y_xy,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(Sigma_x_xz,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(Sigma_z_xz,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(Sigma_y_yz,mexType,INHOST(SizePMLxp1yp1zp1));
+	ownGpuCalloc(Sigma_z_yz,mexType,INHOST(SizePMLxp1yp1zp1));
 
   SizeCopy = GET_NUMBER_ELEMS(Sigma_xx_res);
-	ownCudaCalloc(Rxx,mexType,SizeCopy);
-	ownCudaCalloc(Ryy,mexType,SizeCopy);
-	ownCudaCalloc(Rzz,mexType,SizeCopy);
+	ownGpuCalloc(Rxx,mexType,SizeCopy);
+	ownGpuCalloc(Ryy,mexType,SizeCopy);
+	ownGpuCalloc(Rzz,mexType,SizeCopy);
 	SizeCopy = GET_NUMBER_ELEMS(Sigma_xy_res);
-	ownCudaCalloc(Rxy,mexType,SizeCopy);
-	ownCudaCalloc(Rxz,mexType,SizeCopy);
-	ownCudaCalloc(Ryz,mexType,SizeCopy);
+	ownGpuCalloc(Rxy,mexType,SizeCopy);
+	ownGpuCalloc(Rxz,mexType,SizeCopy);
+	ownGpuCalloc(Ryz,mexType,SizeCopy);
 
 	//These come from the user input
 	CreateAndCopyFromMXVarOnGPU(LambdaMiuMatOverH,mexType);
@@ -327,27 +426,87 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 	CreateAndCopyFromMXVarOnGPU(SourceMap		,unsigned int);
 	CreateAndCopyFromMXVarOnGPU(MaterialMap		,unsigned int);
 
-  ownCudaCalloc(Vx,mexType,GET_NUMBER_ELEMS(Vx_res));
-  ownCudaCalloc(Vy,mexType,GET_NUMBER_ELEMS(Vy_res));
-  ownCudaCalloc(Vz,mexType,GET_NUMBER_ELEMS(Vz_res));
-  ownCudaCalloc(Sigma_xx,mexType,GET_NUMBER_ELEMS(Sigma_xx_res));
-  ownCudaCalloc(Sigma_yy,mexType,GET_NUMBER_ELEMS(Sigma_yy_res));
-  ownCudaCalloc(Sigma_zz,mexType,GET_NUMBER_ELEMS(Sigma_zz_res));
-  ownCudaCalloc(Sigma_xy,mexType,GET_NUMBER_ELEMS(Sigma_xy_res));
-  ownCudaCalloc(Sigma_xz,mexType,GET_NUMBER_ELEMS(Sigma_xz_res));
-  ownCudaCalloc(Sigma_yz,mexType,GET_NUMBER_ELEMS(Sigma_yz_res));
+  ownGpuCalloc(Vx,mexType,GET_NUMBER_ELEMS(Vx_res));
+  ownGpuCalloc(Vy,mexType,GET_NUMBER_ELEMS(Vy_res));
+  ownGpuCalloc(Vz,mexType,GET_NUMBER_ELEMS(Vz_res));
+  ownGpuCalloc(Sigma_xx,mexType,GET_NUMBER_ELEMS(Sigma_xx_res));
+  ownGpuCalloc(Sigma_yy,mexType,GET_NUMBER_ELEMS(Sigma_yy_res));
+  ownGpuCalloc(Sigma_zz,mexType,GET_NUMBER_ELEMS(Sigma_zz_res));
+  ownGpuCalloc(Sigma_xy,mexType,GET_NUMBER_ELEMS(Sigma_xy_res));
+  ownGpuCalloc(Sigma_xz,mexType,GET_NUMBER_ELEMS(Sigma_xz_res));
+  ownGpuCalloc(Sigma_yz,mexType,GET_NUMBER_ELEMS(Sigma_yz_res));
 
 #ifdef CUDA
     mexType * gpu_Snapshots_pr=NULL;
     InputDataKernel pHost;
-#else
+#endif
+#ifdef OPENCL
    cl_mem gpu_Snapshots_pr;
 #endif
+#ifdef METAL
+   mtlpp::Buffer gpu_Snapshots_pr;
+#endif
+
+
 
   CreateAndCopyFromMXVarOnGPU2(Snapshots,mexType);
-
   CreateAndCopyFromMXVarOnGPU(SensorOutput,mexType);
   CreateAndCopyFromMXVarOnGPU(SqrAcc,mexType);
+
+#ifdef METAL
+  mtlpp::Buffer _MEX_BUFFER = device.NewBuffer(sizeof(mexType) *
+           (HOST_INDEX_MEX[LENGTH_INDEX_MEX-1][0]+
+            HOST_INDEX_MEX[LENGTH_INDEX_MEX-1][1]+1),
+            mtlpp::ResourceOptions::StorageModeManaged);
+  mxcheckGPUErrors(((int)_MEX_BUFFER));
+
+  mtlpp::Buffer _UINT_BUFFER = device.NewBuffer(sizeof(unsigned int) *
+           (HOST_INDEX_UINT[LENGTH_INDEX_UINT-1][0]+
+            HOST_INDEX_UINT[LENGTH_INDEX_UINT-1][1]+1),
+            mtlpp::ResourceOptions::StorageModeManaged);
+  mxcheckGPUErrors(((int)_UINT_BUFFER));
+
+  mtlpp::Buffer _INDEX_MEX = device.NewBuffer(sizeof(unsigned int) *
+            LENGTH_INDEX_MEX,
+            mtlpp::ResourceOptions::StorageModeManaged);
+  mxcheckGPUErrors(((int)_INDEX_MEX));
+
+  mtlpp::Buffer _INDEX_UINT = device.NewBuffer(sizeof(unsigned int) *
+            LENGTH_INDEX_UINT,
+            mtlpp::ResourceOptions::StorageModeManaged);
+  mxcheckGPUErrors(((int)_INDEX_UINT));
+
+  {
+      unsigned int * inData = static_cast<unsigned int*>(_INDEX_MEX.GetContents());
+      for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
+          inData[j] = HOST_INDEX_MEX[j][0];
+      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX));
+  }
+
+  {
+      unsigned int * inData = static_cast< unsigned int *>(_INDEX_UINT.GetContents());
+      for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
+          inData[j] = HOST_INDEX_UINT[j][0];
+      _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT));
+  }
+
+  CompleteCopyToGpu(LambdaMiuMatOverH,mexType);
+  CompleteCopyToGpu(LambdaMatOverH	,mexType);
+  CompleteCopyToGpu(MiuMatOverH,mexType);
+  CompleteCopyToGpu(TauLong,mexType);
+  CompleteCopyToGpu(OneOverTauSigma	,mexType);
+  CompleteCopyToGpu(TauShear,mexType);
+  CompleteCopyToGpu(InvRhoMatH		,mexType);
+  CompleteCopyToGpu(Ox		,mexType);
+  CompleteCopyToGpu(Oy		,mexType);
+  CompleteCopyToGpu(Oz		,mexType);
+  CompleteCopyToGpu(IndexSensorMap	,unsigned int);
+  CompleteCopyToGpu(SourceFunctions	,mexType);
+  CompleteCopyToGpu(SourceMap		,unsigned int);
+  CompleteCopyToGpu(MaterialMap		,unsigned int);
+
+
+#endif
 
 	//putting Pointers in structure
 	InParamP(V_x_x);
@@ -399,18 +558,14 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   InParamP(Sigma_xy);
   InParamP(Sigma_xz);
   InParamP(Sigma_yz);
-  InParamP(Snapshots);
   InParamP(SqrAcc);
   InParamP(Ox);
   InParamP(Oy);
   InParamP(Oz);
 
-
 //unsigned int MaxIndex = INHOST(InternalIndexCount)> INHOST(EdgeIndexCount) ? INHOST(InternalIndexCount):INHOST(EdgeIndexCount);
 
 #if defined(CUDA)
-
-
   //copying the structure to GPU memory
     InputDataKernel * pGPU;
 	mxcheckGPUErrors(cudaMalloc((void **)&pGPU,sizeof(InputDataKernel)));
@@ -491,7 +646,6 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   dimGridSensors.x  = (unsigned int)ceil((float)(INHOST(NumberSensors)) / dimBlockSensors.x);
   dimGridSensors.y=1;
 
-
   PRINTF(" set sensor block size to %dx%d\n", dimBlockSensors.x, dimBlockSensors.y);
   PRINTF(" set sensor grid size to %dx%d\n", dimGridSensors.x, dimGridSensors.y);
 
@@ -509,8 +663,9 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   for (unsigned n =0;n<TOTAL_streams;n++)
   mxcheckGPUErrors(cudaStreamCreate ( &streams[n])) ;
 
+#endif
 
-#else
+#ifdef OPENCL
   const  size_t global_stress_particle[3] ={N1,N2,N3};
   const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
@@ -521,73 +676,178 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
       mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
   }
 
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 54, sizeof(cl_mem), &gpu_SensorOutput_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
-
-
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 53, sizeof(cl_mem), &gpu_SensorOutput_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 54, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
 #endif
 
-
-	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
+	for (unsigned int INHOST(nStep)=0;INHOST(nStep)<INHOST(TimeSteps);INHOST(nStep)++)
 	{
-
 #if defined(CUDA)
-	      StressKernel<<<dimGridStress, dimBlockStress>>>(pGPU,nStep);
+	      StressKernel<<<dimGridStress, dimBlockStress>>>(pGPU,INHOST(nStep));
         mxcheckGPUErrors(cudaDeviceSynchronize());
-
         //~ //********************************
         //********************************
         //Then we do the particle displacements
         //********************************
-        ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[0]>>>(pGPU,nStep,INHOST(TypeSource));
+        ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[0]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
         mxcheckGPUErrors(cudaDeviceSynchronize());
-
-#else
+#endif
+#ifdef OPENCL
         int nextSnap=-1;
         if (NumberSnapshots>0)
-            nextSnap=SnapshotsPos_pr[CurrSnap]-1;
-        mxcheckGPUErrors(clSetKernelArg(StressKernel, 54, sizeof(unsigned int), &nStep));
-
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &nStep));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
+            nextSnap=SnapshotsPos_pr[INHOST(CurrSnap)]-1;
+        mxcheckGPUErrors(clSetKernelArg(StressKernel, 53, sizeof(unsigned int), &INHOST(nStep)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 53, sizeof(unsigned int), &INHOST(nStep)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
 
 #endif
+#ifdef METAL
+        InitSymbol(nStep,unsigned int,G_INT);
+        InitSymbol(TypeSource,unsigned int,G_INT);
 
+        mtlpp::CommandBuffer commandBufferStress = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)commandBufferStress));
+
+        mtlpp::ComputeCommandEncoder commandEncoderStress = commandBufferStress.ComputeCommandEncoder();
+        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderStress.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderStress.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderStress.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderStress.SetBuffer(_MEX_BUFFER, 0, 5);
+        commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
+        commandEncoderStress.DispatchThreadgroups(
+            mtlpp::Size(
+              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
+            mtlpp::Size(8, 8, 8));
+        commandEncoderStress.EndEncoding();
+
+        mtlpp::BlitCommandEncoder blitCommandEncoderStress = commandBufferStress.BlitCommandEncoder();
+        blitCommandEncoderStress.EndEncoding();
+        commandBufferStress.Commit();
+        commandBufferStress.WaitUntilCompleted();
+
+        mtlpp::CommandBuffer commandBufferParticle = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)commandBufferParticle));
+
+        mtlpp::ComputeCommandEncoder commandEncoderParticle = commandBufferParticle.ComputeCommandEncoder();
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderParticle.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderParticle.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderParticle.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderParticle.SetBuffer(_MEX_BUFFER, 0, 5);
+        commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
+        commandEncoderParticle.DispatchThreadgroups(
+            mtlpp::Size(
+              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
+            mtlpp::Size(8, 8, 8));
+        commandEncoderParticle.EndEncoding();
+
+        mtlpp::BlitCommandEncoder blitCommandEncoderParticle = commandBufferParticle.BlitCommandEncoder();
+        blitCommandEncoderParticle.EndEncoding();
+        commandBufferParticle.Commit();
+        commandBufferParticle.WaitUntilCompleted();
+
+
+#endif
 
    // Snapshots
-		if (CurrSnap <NumberSnapshots)
-			if(nStep==SnapshotsPos_pr[CurrSnap]-1)
+		if (INHOST(CurrSnap) <NumberSnapshots)
+			if(INHOST(nStep)==SnapshotsPos_pr[INHOST(CurrSnap)]-1)
 			{
   #if defined(CUDA)
-				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[6]>>>(INHOST(N3)/2,gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,CurrSnap);
+				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[6]>>>(INHOST(N3)/2,gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,INHOST(CurrSnap));
 				mxcheckGPUErrors(cudaDeviceSynchronize());
-  #else
+  #endif
+  #if defined(OPENCL)
         int selfSlice=INHOST(N3)/2;
         mxcheckGPUErrors(clSetKernelArg(SnapShot, 0, sizeof(unsigned int), &selfSlice));
-        mxcheckGPUErrors(clSetKernelArg(SnapShot, 5, sizeof(unsigned int), &CurrSnap));
+        mxcheckGPUErrors(clSetKernelArg(SnapShot, 5, sizeof(unsigned int), &INHOST(CurrSnap)));
 
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SnapShot, 2, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
   #endif
-				CurrSnap++;
+  #if defined(METAL)
+        InitSymbol(CurrSnap,unsigned int,G_INT);
+        mtlpp::CommandBuffer commandBufferSnapShot = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)commandBufferSnapShot));
+
+        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = commandBufferSnapShot.ComputeCommandEncoder();
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderSnapShot.SetBuffer(_MEX_BUFFER, 0, 5);
+        commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
+        commandEncoderSnapShot.DispatchThreadgroups(
+            mtlpp::Size(
+              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
+              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
+            mtlpp::Size(8, 8, 8));
+        commandEncoderSnapShot.EndEncoding();
+
+        mtlpp::BlitCommandEncoder blitCommandEncoderSnapShot = commandBufferSnapShot.BlitCommandEncoder();
+        blitCommandEncoderSnapShot.EndEncoding();
+        commandBufferSnapShot.Commit();
+        commandBufferSnapShot.WaitUntilCompleted();
+  #endif
+
+				INHOST(CurrSnap)++;
 			}
 		//~ //Finally, the sensors
-    if ((nStep % INHOST(SensorSteps))==0)
+    if ((INHOST(nStep) % INHOST(SensorSteps))==0)
 		{
 #if defined(CUDA)
-      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_SensorOutput_pr,gpu_IndexSensorMap_pr,nStep);
+      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_SensorOutput_pr,gpu_IndexSensorMap_pr,INHOST(nStep));
 		    mxcheckGPUErrors(cudaDeviceSynchronize());
-#else
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &nStep));
+#endif
+#if defined(OPENCL)
+      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(unsigned int), &INHOST(nStep)));
       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
       mxcheckGPUErrors(clFinish(commands));
 #endif
-    }
+#if defined(METAL)
+      mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
+      mxcheckGPUErrors(((int)commandBufferSensors));
 
+      mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+      commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
+      commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
+      commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
+      commandEncoderSensors.SetBuffer(_MEX_BUFFER, 0, 5);
+      commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
+      commandEncoderSensors.DispatchThreadgroups(
+          mtlpp::Size(
+            (unsigned int)ceil((float)(INHOST(NumberSensors)) / 32),
+            1,
+            1),
+          mtlpp::Size(32, 1, 1));
+      commandEncoderSensors.EndEncoding();
+
+      mtlpp::BlitCommandEncoder blitCommandEncoderSensors = commandBufferSensors.BlitCommandEncoder();
+      if (INHOST(nStep)==(INHOST(TimeSteps)-1))
+      {  //just in the very last step we synchronize
+        blitCommandEncoderSensors.Synchronize(_MEX_BUFFER);
+      }
+      blitCommandEncoderSensors.EndEncoding();
+      commandBufferSensors.Commit();
+      commandBufferSensors.WaitUntilCompleted();
+#endif
+
+    }
 	}
   LOCAL_CALLOC(Vx,GET_NUMBER_ELEMS(Vx_res));
   LOCAL_CALLOC(Vy,GET_NUMBER_ELEMS(Vy_res));
@@ -600,7 +860,13 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   LOCAL_CALLOC(Sigma_yz,GET_NUMBER_ELEMS(Sigma_yz_res));
 
 	//DONE, just to copy to the host the results
+  #if defined(CUDA) || defined(OPENCL)
 	CopyFromGPUToMX3(SensorOutput,mexType);
+  CopyFromGPUToMX3(SqrAcc,mexType);
+  #else
+  CopyFromGPUToMX4(SensorOutput,mexType);
+  CopyFromGPUToMX4(SqrAcc,mexType);
+  #endif
 	CopyFromGPUToMX(Vx,mexType);
   CopyFromGPUToMX(Vy,mexType);
   CopyFromGPUToMX(Vz,mexType);
@@ -609,7 +875,6 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   CopyFromGPUToMX(Sigma_xy,mexType);
   CopyFromGPUToMX(Sigma_xz,mexType);
   CopyFromGPUToMX(Sigma_yz,mexType);
-  CopyFromGPUToMX3(SqrAcc,mexType);
 
   {
     unsigned i,j,k,CurZone;
@@ -651,64 +916,62 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   free(Sigma_xz_pr);
   free(Sigma_yz_pr);
 
-
-	ownCudaFree(SensorOutput);
-	ownCudaFree(V_x_x);
-  ownCudaFree(V_y_x);
-  ownCudaFree(V_z_x);
-  ownCudaFree(V_x_y);
-  ownCudaFree(V_y_y);
-  ownCudaFree(V_z_y);
-  ownCudaFree(V_x_z);
-  ownCudaFree(V_y_z);
-  ownCudaFree(V_z_z);
-  ownCudaFree(Sigma_x_xx);
-  ownCudaFree(Sigma_y_xx);
-  ownCudaFree(Sigma_z_xx);
-  ownCudaFree(Sigma_x_yy);
-  ownCudaFree(Sigma_y_yy);
-  ownCudaFree(Sigma_z_yy);
-  ownCudaFree(Sigma_x_zz);
-  ownCudaFree(Sigma_y_zz);
-  ownCudaFree(Sigma_z_zz);
-  ownCudaFree(Sigma_x_xy);
-  ownCudaFree(Sigma_y_xy);
-  ownCudaFree(Sigma_x_xz);
-  ownCudaFree(Sigma_z_xz);
-  ownCudaFree(Sigma_y_yz);
-  ownCudaFree(Sigma_z_yz);
-  ownCudaFree(LambdaMiuMatOverH);
-	ownCudaFree(LambdaMatOverH);
-	ownCudaFree(MiuMatOverH);
-	ownCudaFree(TauLong);
-	ownCudaFree(OneOverTauSigma);
-	ownCudaFree(TauShear);
-	ownCudaFree(InvRhoMatH);
-	ownCudaFree(IndexSensorMap);
-	ownCudaFree(SourceFunctions);
-	ownCudaFree(SourceMap);
-  ownCudaFree(Ox);
-  ownCudaFree(Oy);
-  ownCudaFree(Oz);
-	ownCudaFree(MaterialMap);
-  ownCudaFree(Vx);
-  ownCudaFree(Vy);
-  ownCudaFree(Vz);
-  ownCudaFree(Sigma_xx);
-  ownCudaFree(Sigma_yy);
-  ownCudaFree(Sigma_zz);
-  ownCudaFree(Sigma_xy);
-  ownCudaFree(Sigma_xz);
-  ownCudaFree(Sigma_yz);
-  ownCudaFree(Rxx);
-  ownCudaFree(Ryy);
-  ownCudaFree(Rzz);
-  ownCudaFree(Rxy);
-  ownCudaFree(Rxz);
-  ownCudaFree(Ryz);
-  ownCudaFree(Snapshots);
-  ownCudaFree(SqrAcc);
-
+	ownGPUFree(SensorOutput);
+	ownGPUFree(V_x_x);
+  ownGPUFree(V_y_x);
+  ownGPUFree(V_z_x);
+  ownGPUFree(V_x_y);
+  ownGPUFree(V_y_y);
+  ownGPUFree(V_z_y);
+  ownGPUFree(V_x_z);
+  ownGPUFree(V_y_z);
+  ownGPUFree(V_z_z);
+  ownGPUFree(Sigma_x_xx);
+  ownGPUFree(Sigma_y_xx);
+  ownGPUFree(Sigma_z_xx);
+  ownGPUFree(Sigma_x_yy);
+  ownGPUFree(Sigma_y_yy);
+  ownGPUFree(Sigma_z_yy);
+  ownGPUFree(Sigma_x_zz);
+  ownGPUFree(Sigma_y_zz);
+  ownGPUFree(Sigma_z_zz);
+  ownGPUFree(Sigma_x_xy);
+  ownGPUFree(Sigma_y_xy);
+  ownGPUFree(Sigma_x_xz);
+  ownGPUFree(Sigma_z_xz);
+  ownGPUFree(Sigma_y_yz);
+  ownGPUFree(Sigma_z_yz);
+  ownGPUFree(LambdaMiuMatOverH);
+	ownGPUFree(LambdaMatOverH);
+	ownGPUFree(MiuMatOverH);
+	ownGPUFree(TauLong);
+	ownGPUFree(OneOverTauSigma);
+	ownGPUFree(TauShear);
+	ownGPUFree(InvRhoMatH);
+	ownGPUFree(IndexSensorMap);
+	ownGPUFree(SourceFunctions);
+	ownGPUFree(SourceMap);
+  ownGPUFree(Ox);
+  ownGPUFree(Oy);
+  ownGPUFree(Oz);
+	ownGPUFree(MaterialMap);
+  ownGPUFree(Vx);
+  ownGPUFree(Vy);
+  ownGPUFree(Vz);
+  ownGPUFree(Sigma_xx);
+  ownGPUFree(Sigma_yy);
+  ownGPUFree(Sigma_zz);
+  ownGPUFree(Sigma_xy);
+  ownGPUFree(Sigma_xz);
+  ownGPUFree(Sigma_yz);
+  ownGPUFree(Rxx);
+  ownGPUFree(Ryy);
+  ownGPUFree(Rzz);
+  ownGPUFree(Rxy);
+  ownGPUFree(Rxz);
+  ownGPUFree(Ryz);
+  ownGPUFree(Snapshots);
+  ownGPUFree(SqrAcc);
 
 #if defined(CUDA)
 	mxcheckGPUErrors(cudaMemGetInfo( &free_byte, &total_byte ));
@@ -717,7 +980,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
     used_db = total_db - free_db ;
 
     PRINTF("GPU memory remaining (free should be equal to total): used = %f, free = %f MB, total = %f MB\n",used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
-#else
+#endif
+#if defined(OPENCL)
     clReleaseProgram(program);
     clReleaseKernel(StressKernel);
     clReleaseKernel(ParticleKernel);

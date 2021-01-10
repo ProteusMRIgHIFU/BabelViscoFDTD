@@ -272,8 +272,10 @@ SPPVirieuxFDTD.egg-info/
 __pycache__/
 Tutorial Notebooks/.ipynb_checkpoints/
 Tutorial Notebooks/_indexing.h
-Tutorial Notebooks/_opencl_kernel.c
+Tutorial Notebooks/_gpu_kernel.c
 Tutorial Notebooks/KERNEL.BIN
 Tutorial Notebooks/kernel.cu
 Tutorial Notebooks/pi_ocl
 pi_ocl/deviceInfoQuery
+_gpu_kernel.c
+_indexing.h

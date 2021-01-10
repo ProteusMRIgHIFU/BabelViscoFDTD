@@ -18,7 +18,7 @@ def PrepareOpenCLKernel():
     with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
         GPU_KERNELS=f.readlines()
 
-    with open('_opencl_kernel.c','w') as f:
+    with open('_gpu_kernel.c','w') as f:
         for l in GPU_KERNELS:
             if "#include" not in l:
                 f.write(l)
@@ -78,6 +78,7 @@ class CMakeBuild(build_ext):
                 '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON') ,
                 '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
                 '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
+                '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
                 '-DSTAGGERED_PYTHON_SUPPORT=ON',
                 '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
                 '-DCUDA_SAMPLES_LOCATION=%s' %(CUDA_SAMPLES_LOCATION),
@@ -171,6 +172,7 @@ else:
 if platform.system() in ['Darwin']:
     modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
     modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
+    modules.append(CMakeExtension(c_module_name+'_METAL_single'))
 
 PrepareOpenCLKernel()
 
@@ -187,7 +189,7 @@ setup(name='SPPVirieuxFDTD',
       long_description_content_type='text/markdown',
       install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0'],
       ext_modules=modules,
-      headers=['_opencl_kernel.c','_indexing.h'],
+      headers=['_gpu_kernel.c','_indexing.h'],
       cmdclass={'build_ext': CMakeBuild,
                 'install_headers': install_headers},
       zip_safe=False,

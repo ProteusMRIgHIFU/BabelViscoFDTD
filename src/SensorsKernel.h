@@ -44,25 +44,25 @@ accumZZ=accumZZ/ZoneCount;
 accumXY=accumXY/ZoneCount;
 accumXZ=accumXZ/ZoneCount;
 accumYZ=accumYZ/ZoneCount;
-//SensorOutput_pr[index]=accumX*accumX+accumY*accumY+accumZ*accumZ;
+//ELD(SensorOutput,index)=accumX*accumX+accumY*accumY+accumZ*accumZ;
 if (IS_ALLV_SELECTED(SelMapsSensors))
-      SensorOutput_pr[index+subarrsize*IndexSensor_ALLV]=
+      ELD(SensorOutput,index+subarrsize*IndexSensor_ALLV)=
         (accumX*accumX*+accumY*accumY+accumZ*accumZ);
 if (IS_Vx_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Vx]=accumX;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Vx)=accumX;
 if (IS_Vy_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Vy]=accumY;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Vy)=accumY;
 if (IS_Vz_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Vz]=accumZ;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Vz)=accumZ;
 if (IS_Sigmaxx_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmaxx]=accumXX;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmaxx)=accumXX;
 if (IS_Sigmayy_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmayy]=accumYY;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmayy)=accumYY;
 if (IS_Sigmazz_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmazz]=accumZZ;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmazz)=accumZZ;
 if (IS_Sigmaxy_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmaxy]=accumXY;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmaxy)=accumXY;
 if (IS_Sigmaxz_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmaxz]=accumXZ;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmaxz)=accumXZ;
 if (IS_Sigmayz_SELECTED(SelMapsSensors))
-    SensorOutput_pr[index+subarrsize*IndexSensor_Sigmayz]=accumYZ;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmayz)=accumYZ;

@@ -198,8 +198,8 @@
 			        }
 			        #endif
 
-		if (CurrSnap>=0 && CurrSnap <NumberSnapshots)
-			if(nStep==SnapshotsPos_pr[CurrSnap]-1 )
+		if (INHOST(CurrSnap)>=0 && INHOST(CurrSnap) <NumberSnapshots)
+			if(nStep==SnapshotsPos_pr[INHOST(CurrSnap)]-1 )
             {
 
                 #pragma omp parallel for private(jj,ii,CurZone)
@@ -217,10 +217,10 @@
 
                         }
 
-												Snapshots_pr[IndN1N2Snap(i,j)+CurrSnap*N1*N2]=accum/INHOST(ZoneCount);
+												Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
 											}
 										}
-                CurrSnap++;
+                INHOST(CurrSnap)++;
             }
 
 		//Finally, the sensors
