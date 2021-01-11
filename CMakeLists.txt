@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.11)
 
 set( CMAKE_VERBOSE_MAKEFILE ON )
 
-project(SPPVirieuxFDTD LANGUAGES C CXX)
+project(BabelViscoFDTD LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)

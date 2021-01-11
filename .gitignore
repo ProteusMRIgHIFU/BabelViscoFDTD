@@ -267,7 +267,7 @@ _Pvt_Extensions
 *.asv
 pi_ocl/pi_ocl
 dist/
-SPPVirieuxFDTD.egg-info/
+BabelViscoFDTD.egg-info/
 *.egg
 __pycache__/
 Tutorial Notebooks/.ipynb_checkpoints/

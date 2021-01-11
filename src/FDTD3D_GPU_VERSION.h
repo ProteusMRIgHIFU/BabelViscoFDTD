@@ -214,7 +214,7 @@ int NumberAlloc=0;
  if (((int)library)==0)
  {
    FILE * TempKernel;
-   TempKernel=fopen("kernel.m", "w");
+   TempKernel=fopen("__For_Analysis_kernel.m", "w");
    fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
    fclose(TempKernel);
     PRINTF("GetLocalizedDescription = %s\n",error.GetLocalizedDescription().GetCStr());
@@ -222,6 +222,7 @@ int NumberAlloc=0;
     PRINTF("GetLocalizedRecoverySuggestion = %s\n",error.GetLocalizedRecoverySuggestion().GetCStr());
     PRINTF("GetLocalizedRecoveryOptions = %s\n",error.GetLocalizedRecoveryOptions().GetCStr());
     PRINTF("GetHelpAnchor = %s\n",error.GetHelpAnchor().GetCStr());
+    ERROR_STRING("Error in compilation, see also file __For_Analysis_kernel.m that was generated with the metal code in the current directory")
  }
  mxcheckGPUErrors(((int)library));
 
@@ -756,10 +757,10 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
         commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
         commandEncoderStress.DispatchThreadgroups(
             mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
-            mtlpp::Size(8, 8, 8));
+              (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
+              (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
+              (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
+            mtlpp::Size(4, 4, 4));
         commandEncoderStress.EndEncoding();
 
         mtlpp::BlitCommandEncoder blitCommandEncoderStress = commandBufferStress.BlitCommandEncoder();
@@ -780,10 +781,10 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
         commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
         commandEncoderParticle.DispatchThreadgroups(
             mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
-            mtlpp::Size(8, 8, 8));
+              (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
+              (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
+              (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
+            mtlpp::Size(4, 4, 4));
         commandEncoderParticle.EndEncoding();
 
         mtlpp::BlitCommandEncoder blitCommandEncoderParticle = commandBufferParticle.BlitCommandEncoder();
@@ -827,8 +828,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
             mtlpp::Size(
               (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
               (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N3)+1) / 8)),
-            mtlpp::Size(8, 8, 8));
+              1),
+            mtlpp::Size(8, 8,1));
         commandEncoderSnapShot.EndEncoding();
 
         mtlpp::BlitCommandEncoder blitCommandEncoderSnapShot = commandBufferSnapShot.BlitCommandEncoder();

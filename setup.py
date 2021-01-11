@@ -128,7 +128,7 @@ class CMakeBuild(build_ext):
                                   cwd=self.build_temp)
 
 # The following line is parsed by Sphinx
-version = '1.0.0'
+version = '0.9.0'
 
 print()
 
@@ -176,8 +176,8 @@ if platform.system() in ['Darwin']:
 
 PrepareOpenCLKernel()
 
-setup(name='SPPVirieuxFDTD',
-      packages=['SPPVirieuxFDTD'],
+setup(name='BabelViscoFDTD',
+      packages=['BabelViscoFDTD'],
       version=version,
       description='GPU/CPU 3D FDTD solution of viscoelastic equation',
       author='Samuel Pichardo',

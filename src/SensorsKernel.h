@@ -21,19 +21,37 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
     if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vz_SELECTED(SelMapsSensors))
         accumZ+=EL(Vz,i,j,k);
     index3=Ind_Sigma_xx(i,j,k);
-    // if (IS_Sigmaxx_SELECTED(SelMapsSensors))
-    //     accumXX+=ELD(Sigma_xx,index3);
-    // if (IS_Sigmayy_SELECTED(SelMapsSensors))
-    //     accumYY+=ELD(Sigma_yy,index3);
-    // if (IS_Sigmazz_SELECTED(SelMapsSensors))
-    //     accumZZ+=ELD(Sigma_zz,index3);
-    // index3=Ind_Sigma_xy(i,j,k);
-    // if (IS_Sigmaxy_SELECTED(SelMapsSensors))
-    //     accumXY+=ELD(Sigma_xy,index3);
-    // if (IS_Sigmaxz_SELECTED(SelMapsSensors))
-    //     accumXZ+=ELD(Sigma_xz,index3);
-    // if (IS_Sigmayz_SELECTED(SelMapsSensors))
-    //     accumYZ+=ELD(Sigma_yz,index3);
+  #ifdef METAL
+    //No idea why in this kernel the ELD(SigmaXX...) macros do not expand correctly
+    //So we go a bit more manual
+  if (IS_Sigmaxx_SELECTED(SelMapsSensors))
+      accumXX+=k_Sigma_xx_pr[index3];
+  if (IS_Sigmayy_SELECTED(SelMapsSensors))
+      accumYY+=k_Sigma_yy_pr[index3];
+  if (IS_Sigmazz_SELECTED(SelMapsSensors))
+      accumZZ+=k_Sigma_zz_pr[index3];
+  index3=Ind_Sigma_xy(i,j,k);
+  if (IS_Sigmaxy_SELECTED(SelMapsSensors))
+      accumXY+=k_Sigma_xy_pr[index3];
+  if (IS_Sigmaxz_SELECTED(SelMapsSensors))
+      accumXZ+=k_Sigma_xz_pr[index3];
+  if (IS_Sigmayz_SELECTED(SelMapsSensors))
+      accumYZ+=k_Sigma_yz_pr[index3];
+  #else
+    if (IS_Sigmaxx_SELECTED(SelMapsSensors))
+        accumXX+=ELD(Sigma_xx,index3);
+    if (IS_Sigmayy_SELECTED(SelMapsSensors))
+        accumYY+=ELD(Sigma_yy,index3);
+    if (IS_Sigmazz_SELECTED(SelMapsSensors))
+        accumZZ+=ELD(Sigma_zz,index3);
+    index3=Ind_Sigma_xy(i,j,k);
+    if (IS_Sigmaxy_SELECTED(SelMapsSensors))
+        accumXY+=ELD(Sigma_xy,index3);
+    if (IS_Sigmaxz_SELECTED(SelMapsSensors))
+        accumXZ+=ELD(Sigma_xz,index3);
+    if (IS_Sigmayz_SELECTED(SelMapsSensors))
+        accumYZ+=ELD(Sigma_yz,index3);
+   #endif
   }
 accumX=accumX/ZoneCount;
 accumY=accumY/ZoneCount;
