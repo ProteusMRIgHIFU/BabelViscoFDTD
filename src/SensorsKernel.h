@@ -21,19 +21,19 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
     if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vz_SELECTED(SelMapsSensors))
         accumZ+=EL(Vz,i,j,k);
     index3=Ind_Sigma_xx(i,j,k);
-    if (IS_Sigmaxx_SELECTED(SelMapsSensors))
-        accumXX+=ELD(Sigma_xx,index3);
-    if (IS_Sigmayy_SELECTED(SelMapsSensors))
-        accumYY+=ELD(Sigma_yy,index3);
-    if (IS_Sigmazz_SELECTED(SelMapsSensors))
-        accumZZ+=ELD(Sigma_zz,index3);
-    index3=Ind_Sigma_xy(i,j,k);
-    if (IS_Sigmaxy_SELECTED(SelMapsSensors))
-        accumXY+=ELD(Sigma_xy,index3);
-    if (IS_Sigmaxz_SELECTED(SelMapsSensors))
-        accumXZ+=ELD(Sigma_xz,index3);
-    if (IS_Sigmayz_SELECTED(SelMapsSensors))
-        accumYZ+=ELD(Sigma_yz,index3);
+    // if (IS_Sigmaxx_SELECTED(SelMapsSensors))
+    //     accumXX+=ELD(Sigma_xx,index3);
+    // if (IS_Sigmayy_SELECTED(SelMapsSensors))
+    //     accumYY+=ELD(Sigma_yy,index3);
+    // if (IS_Sigmazz_SELECTED(SelMapsSensors))
+    //     accumZZ+=ELD(Sigma_zz,index3);
+    // index3=Ind_Sigma_xy(i,j,k);
+    // if (IS_Sigmaxy_SELECTED(SelMapsSensors))
+    //     accumXY+=ELD(Sigma_xy,index3);
+    // if (IS_Sigmaxz_SELECTED(SelMapsSensors))
+    //     accumXZ+=ELD(Sigma_xz,index3);
+    // if (IS_Sigmayz_SELECTED(SelMapsSensors))
+    //     accumYZ+=ELD(Sigma_yz,index3);
   }
 accumX=accumX/ZoneCount;
 accumY=accumY/ZoneCount;

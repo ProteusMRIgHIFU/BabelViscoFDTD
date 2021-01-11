@@ -22,6 +22,11 @@ try:
     print ("StaggeredFDTD_3D_OPENCL loaded")
 except:
     print ("StaggeredFDTD_3D_OPENCL NOT loaded")
+try:
+    from .StaggeredFDTD_3D_With_Relaxation_METAL import StaggeredFDTD_3D_METAL
+    print ("StaggeredFDTD_3D_METAL loaded")
+except:
+    print ("StaggeredFDTD_3D_METAL NOT loaded")
 
 #############################################################################################################
 #This global dictionary specifies the order in the MaterialProperties array (Nx5) where N is the numbe of materials
@@ -421,13 +426,15 @@ class PropagationModel:
 
 
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
-        if COMPUTING_BACKEND in [1,2]:
-            if COMPUTING_BACKEND==1:
-                print( "Performing Simulation wtih GPU CUDA")
-                SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_CUDA(InputParam)
-            else:
-                print ("Performing Simulation wtih GPU OPENCL")
-                SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_OPENCL(InputParam)
+        if COMPUTING_BACKEND == 1:
+            print( "Performing Simulation wtih GPU CUDA")
+            SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_CUDA(InputParam)
+        elif COMPUTING_BACKEND == 2:
+            print ("Performing Simulation wtih GPU OPENCL")
+            SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_OPENCL(InputParam)
+        elif COMPUTING_BACKEND == 3:
+            print ("Performing Simulation wtih GPU METAL")
+            SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_METAL(InputParam)
         else:
             print ("Performing Simulation wtih CPU")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D(InputParam)

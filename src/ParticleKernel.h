@@ -239,7 +239,6 @@
   			{
 				  source--; //need to use C index
   			  value=ELD(SourceFunctions,nStep*NumberSources+source);
-
             if (TypeSource==0)
             {
                 EL(Vx,i,j,k)+=value*ELD(Ox,index);

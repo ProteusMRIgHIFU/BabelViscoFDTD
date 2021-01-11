@@ -40,11 +40,11 @@ typedef double mexType;
 #define NAME_INTERFACE "Python_Numpy"
 #endif
 
-#ifdef CUDA
+#if defined(CUDA)
 #define MACHINE_CODE "CUDA"
-#elif OPENCL
+#elif defined(OPENCL)
 #define MACHINE_CODE "OPENCL"
-#elif METAL
+#elif defined(METAL)
 #define MACHINE_CODE "METAL"
 #else
 #define MACHINE_CODE "Intel_X64"
@@ -188,6 +188,10 @@ static PyMethodDef _FDTDStaggered_3DMethods[] = {
 #define MAIN_NAME FDTDStaggered3D_with_relaxation_OPENCL_single
 #define STR_MAIN_NAME_1 "_FDTDStaggered3D_with_relaxation_OPENCL_single"
 #define INIT_MAIN_NAME PyInit__FDTDStaggered3D_with_relaxation_OPENCL_single
+#elif defined(METAL)
+#define MAIN_NAME FDTDStaggered3D_with_relaxation_METAL_single
+#define STR_MAIN_NAME_1 "_FDTDStaggered3D_with_relaxation_METAL_single"
+#define INIT_MAIN_NAME PyInit__FDTDStaggered3D_with_relaxation_METAL_single
 #else
 #define MAIN_NAME FDTDStaggered3D_with_relaxation_single
 #define STR_MAIN_NAME_1 "_FDTDStaggered3D_with_relaxation_single"

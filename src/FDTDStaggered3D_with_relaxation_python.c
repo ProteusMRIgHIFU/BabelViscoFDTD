@@ -129,7 +129,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexSensor_Sigmazz)=0,
 								INHOST(IndexSensor_Sigmaxy)=0,
 								INHOST(IndexSensor_Sigmaxz)=0,
-								INHOST(IndexSensor_Sigmayz)=0;
+								INHOST(IndexSensor_Sigmayz)=0,
+								INHOST(SelK);
     mexType INHOST(DT);
 
 
@@ -261,11 +262,11 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA(OneOverTauSigma);
 	GET_DATA(TauShear);
 	GET_DATA(InvRhoMatH);
-	GET_DATA_UINT32(IndexSensorMap);
 	GET_DATA(SourceFunctions);
 	GET_DATA(Ox);
 	GET_DATA(Oy);
 	GET_DATA(Oz);
+	GET_DATA_UINT32(IndexSensorMap);
 	GET_DATA_UINT32(SourceMap);
 	GET_DATA_UINT32(SnapshotsPos);
 	GET_DATA_UINT32(MaterialMap);
@@ -469,6 +470,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 // #ifndef MATLAB_MEX
 // 	Py_BEGIN_ALLOW_THREADS;
 // #endif
+
+INHOST(SelK)=INHOST(N3)/2;
 
 #if defined(CUDA) || defined(OPENCL) || defined(METAL)
   #include "FDTD3D_GPU_VERSION.h"

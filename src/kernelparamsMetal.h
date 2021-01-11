@@ -52,15 +52,17 @@
 #define SensorSteps p_CONSTANT_BUFFER_UINT[CInd_SensorSteps]
 #define nStep p_CONSTANT_BUFFER_UINT[CInd_nStep]
 #define CurrSnap p_CONSTANT_BUFFER_UINT[CInd_CurrSnap]
+#define TypeSource p_CONSTANT_BUFFER_UINT[CInd_TypeSource]
+#define SelK p_CONSTANT_BUFFER_UINT[CInd_SelK]
 
 #define DT p_CONSTANT_BUFFER_MEX[CInd_DT]
-#define gpuInvDXDTpluspr (p_CONSTANT_BUFFER_MEX + CInd_gpuInvDXDTpluspr)
-#define gpuDXDTminuspr (p_CONSTANT_BUFFER_MEX + CInd_gpuDXDTminuspr)
-#define gpuInvDXDTplushppr (p_CONSTANT_BUFFER_MEX + CInd_gpuInvDXDTplushppr)
-#define gpuDXDTminushppr (p_CONSTANT_BUFFER_MEX + CInd_gpuDXDTminushppr)
+#define InvDXDTplus_pr (p_CONSTANT_BUFFER_MEX + CInd_InvDXDTplus)
+#define DXDTminus_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminus)
+#define InvDXDTplushp_pr (p_CONSTANT_BUFFER_MEX + CInd_InvDXDTplushp)
+#define DXDTminushp_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminushp)
 
-#define __def_MEX_VAR(__NameVar)  __NameVar (&p_MEX_BUFFER[p_INDEX_MEX[Cind_ ##__NameVar]])
-#define __def_UINT_VAR(__NameVar) __NameVar (&p_UINT_BUFFER[p_INDEX_UINT[Cind_ ##__NameVar]])
+#define __def_MEX_VAR(__NameVar)  (&p_MEX_BUFFER[p_INDEX_MEX[CInd_ ##__NameVar]])
+#define __def_UINT_VAR(__NameVar)  (&p_UINT_BUFFER[p_INDEX_UINT[CInd_ ##__NameVar]])
 
 #define k_V_x_x_pr  __def_MEX_VAR(V_x_x)
 #define k_V_y_x_pr  __def_MEX_VAR(V_y_x)
@@ -96,7 +98,7 @@
 
 #define k_LambdaMiuMatOverH_pr  __def_MEX_VAR(LambdaMiuMatOverH)
 #define k_LambdaMatOverH_pr  __def_MEX_VAR(LambdaMatOverH)
-#define k_MiuMatOverH_pr  __def_MEX_VAR(MiuMatOverH0
+#define k_MiuMatOverH_pr  __def_MEX_VAR(MiuMatOverH)
 #define k_TauLong_pr  __def_MEX_VAR(TauLong)
 #define k_OneOverTauSigma_pr  __def_MEX_VAR(OneOverTauSigma)
 #define k_TauShear_pr  __def_MEX_VAR(TauShear)
@@ -118,8 +120,8 @@
 
 #define k_SensorOutput_pr  __def_MEX_VAR(SensorOutput)
 #define k_SqrAcc_pr  __def_MEX_VAR(SqrAcc)
+#define k_SourceFunctions_pr __def_MEX_VAR(SourceFunctions)
 
 #define k_IndexSensorMap_pr  __def_UINT_VAR(IndexSensorMap)
-#define k_SourceFunctions_pr __def_UINT_VAR(SourceFunctions)
 #define k_SourceMap_pr		 __def_UINT_VAR(SourceMap)
 #define k_MaterialMap_pr	 __def_UINT_VAR(MaterialMap)

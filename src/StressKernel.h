@@ -439,6 +439,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     CurZone=0;
     index=IndN1N2N3(i,j,k,0);
     index2=N1*N2*N3;
+
     if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
     {
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
@@ -453,6 +454,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz)+=accum_xz*accum_xz;
         if (IS_Sigmayz_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz)+=accum_yz*accum_yz;
+        
     }
     if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
         index+=index2*NumberSelRMSPeakMaps;

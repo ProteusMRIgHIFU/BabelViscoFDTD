@@ -24,10 +24,9 @@ kernel void StressKernel(
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
-	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
 	uint3 gid[[thread_position_in_grid]])
-
 {
   const unsigned int i = gid.x;
   const unsigned int j = gid.y;
@@ -64,7 +63,7 @@ kernel void ParticleKernel(
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
-	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
 	uint3 gid[[thread_position_in_grid]])
 
@@ -95,19 +94,23 @@ __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__globa
   const unsigned int j = get_global_id(1);
 #endif
 #ifdef METAL
+#define Sigma_xx_pr k_Sigma_xx_pr
+#define Sigma_yy_pr k_Sigma_yy_pr
+#define Sigma_zz_pr k_Sigma_zz_pr
+
 kernel void SnapShot(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
-	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
-	uint3 gid[[thread_position_in_grid]])
+	device mexType * Snapshots_pr [[ buffer(6) ]],
+	uint2 gid[[thread_position_in_grid]])
 
 	{
 	const unsigned int i = gid.x;
 	const unsigned int j = gid.y;
-	const unsigned int k = gid.z;
 #endif
 
     if (i>=N1 || j >=N2)
@@ -141,17 +144,19 @@ __kernel void SensorsKernel(
 	unsigned int sj =get_global_id(0);
 #endif
 #ifdef METAL
+
+#define IndexSensorMap_pr k_IndexSensorMap_pr
+
 kernel void SensorsKernel(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
-	const device unsigned int *p_UINT_BUFFERT [[ buffer(4) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
-	uint3 gid[[thread_position_in_grid]])
-
+	uint gid[[thread_position_in_grid]])
 {
-	const unsigned int sj = gid;
+	unsigned int sj = gid;
 #endif
 
 	if (sj>=	NumberSensors)

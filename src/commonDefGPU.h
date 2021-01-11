@@ -658,135 +658,6 @@ char* load_file(char const* path)
 
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 //We define first the indexes for uint const values
-#define CInd_N1 0
-#define CInd_N2 1
-#define CInd_N3 2
-#define CInd_Limit_I_low_PML 3
-#define CInd_Limit_J_low_PML 4
-#define CInd_Limit_K_low_PML 5
-#define CInd_Limit_I_up_PML 6
-#define CInd_Limit_J_up_PML 7
-#define CInd_Limit_K_up_PML 8
-#define CInd_SizeCorrI 9
-#define CInd_SizeCorrJ 10
-#define CInd_SizeCorrK 11
-#define CInd_PML_Thickness 12
-#define CInd_NumberSources 13
-#define CInd_NumberSensors 14
-#define CInd_TimeSteps 15
-#define CInd_SizePML 16
-#define CInd_SizePMLxp1 17
-#define CInd_SizePMLyp1 18
-#define CInd_SizePMLzp1 19
-#define CInd_SizePMLxp1yp1zp1 20
-#define CInd_ZoneCount 21
-#define CInd_SelRMSorPeak 22
-#define CInd_SelMapsRMSPeak 23
-#define CInd_IndexRMSPeak_ALLV 24
-#define CInd_IndexRMSPeak_Vx 25
-#define CInd_IndexRMSPeak_Vy 26
-#define CInd_IndexRMSPeak_Vz 27
-#define CInd_IndexRMSPeak_Sigmaxx 28
-#define CInd_IndexRMSPeak_Sigmayy 29
-#define CInd_IndexRMSPeak_Sigmazz 30
-#define CInd_IndexRMSPeak_Sigmaxy 31
-#define CInd_IndexRMSPeak_Sigmaxz 32
-#define CInd_IndexRMSPeak_Sigmayz 33
-#define CInd_NumberSelRMSPeakMaps 34
-#define CInd_SelMapsSensors 35
-#define CInd_IndexSensor_ALLV 36
-#define CInd_IndexSensor_Vx 37
-#define CInd_IndexSensor_Vy 38
-#define CInd_IndexSensor_Vz 39
-#define CInd_IndexSensor_Sigmaxx 40
-#define CInd_IndexSensor_Sigmayy 41
-#define CInd_IndexSensor_Sigmazz 42
-#define CInd_IndexSensor_Sigmaxy 43
-#define CInd_IndexSensor_Sigmaxz 44
-#define CInd_IndexSensor_Sigmayz 45
-#define CInd_NumberSelSensorMaps 46
-#define CInd_SensorSteps 47
-#define CInd_nStep 48
-#define CInd_TypeSource 49
-#define CInd_CurrSnap 50
-#define CInd_LengthSource 51
-
-//Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 52
-
-//Indexes for float
-#define CInd_DT 0
-#define CInd_InvDXDTplus 1
-#define CInd_DXDTminus (1+MAX_SIZE_PML)
-#define CInd_InvDXDTplushp (1+MAX_SIZE_PML*2)
-#define CInd_DXDTminushp (1+MAX_SIZE_PML*3)
-//Make LENGTH_CONST_MEX one value larger than the last index
-#define LENGTH_CONST_MEX (1+MAX_SIZE_PML*4)
-
-#define CInd_V_x_x 0
-#define CInd_V_y_x 1
-#define CInd_V_z_x 2
-#define CInd_V_x_y 3
-#define CInd_V_y_y 4
-#define CInd_V_z_y 5
-#define CInd_V_x_z 6
-#define CInd_V_y_z 7
-#define CInd_V_z_z 8
-#define CInd_Sigma_x_xx 9
-#define CInd_Sigma_y_xx 10
-#define CInd_Sigma_z_xx 11
-#define CInd_Sigma_x_yy 12
-#define CInd_Sigma_y_yy 13
-#define CInd_Sigma_z_yy 14
-#define CInd_Sigma_x_zz 15
-#define CInd_Sigma_y_zz 16
-#define CInd_Sigma_z_zz 17
-#define CInd_Sigma_x_xy 18
-#define CInd_Sigma_y_xy 19
-#define CInd_Sigma_x_xz 20
-#define CInd_Sigma_z_xz 21
-#define CInd_Sigma_y_yz 22
-#define CInd_Sigma_z_yz 23
-#define CInd_Rxx 24
-#define CInd_Ryy 25
-#define CInd_Rzz 26
-#define CInd_Rxy 27
-#define CInd_Rxz 28
-#define CInd_Ryz 29
-
-#define CInd_LambdaMiuMatOverH  30
-#define CInd_LambdaMatOverH	 31
-#define CInd_MiuMatOverH 32
-#define CInd_TauLong 33
-#define CInd_OneOverTauSigma	34
-#define CInd_TauShear 35
-#define CInd_InvRhoMatH	 36
-#define CInd_Ox 37
-#define CInd_Oy 38
-#define CInd_Oz 39
-
-#define CInd_Vx 40
-#define CInd_Vy 41
-#define CInd_Vz 42
-#define CInd_Sigma_xx 43
-#define CInd_Sigma_yy 44
-#define CInd_Sigma_zz 45
-#define CInd_Sigma_xy 46
-#define CInd_Sigma_xz 47
-#define CInd_Sigma_yz 48
-
-#define CInd_SensorOutput 49
-#define CInd_SqrAcc 50
-
-#define LENGTH_INDEX_MEX 51
-
-#define CInd_IndexSensorMap  0
-#define CInd_SourceFunctions 1
-#define CInd_SourceMap	2
-#define CInd_MaterialMap 3
-
-#define LENGTH_INDEX_UINT 4
-
 
 #define InitSymbol(_NameVar,_datatype,_gtype)\
 {\
@@ -794,13 +665,13 @@ char* load_file(char const* path)
 	{\
 			_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_UINT.GetContents());\
 			inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
-	     _CONSTANT_BUFFER_UINT.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(_datatype)));\
+			_CONSTANT_BUFFER_UINT.DidModify(ns::Range((CInd_ ## _NameVar)*sizeof(_datatype), sizeof(_datatype)));\
 	}\
 	else\
 	{\
 	 	_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_MEX.GetContents());\
 		inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
-		 _CONSTANT_BUFFER_MEX.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(_datatype)));\
+		_CONSTANT_BUFFER_MEX.DidModify(ns::Range((CInd_ ## _NameVar)*sizeof(_datatype), sizeof(_datatype)));\
 	}\
 }
 
@@ -808,28 +679,24 @@ char* load_file(char const* path)
 if (_gtype==G_INT)\
 {\
 		unsigned int * inData = static_cast<unsigned int *>(_CONSTANT_BUFFER_UINT.GetContents());\
-		inData+=CInd_ ## _NameVar;\
 		for (unsigned int _n=0;_n<__Limit;_n++)\
 		{\
-			inData[_n] = (mexType)(_NameVar ## _pr)[_n];\
+			inData[_n + CInd_ ## _NameVar] = _NameVar ## _pr[_n];\
 		}\
-		_CONSTANT_BUFFER_UINT.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(unsigned int)*__Limit));\
 }\
 else\
 {\
 	mexType * inData = static_cast<mexType *>(_CONSTANT_BUFFER_MEX.GetContents());\
-	inData+=CInd_ ## _NameVar;\
 	for (unsigned int _n=0;_n<__Limit;_n++)\
 	{\
-		inData[_n] = (unsigned int)(_NameVar ## _pr)[_n];\
+		inData[_n + CInd_ ## _NameVar] = _NameVar ## _pr[_n];\
 	}\
-	_CONSTANT_BUFFER_MEX.DidModify(ns::Range(CInd_ ## _NameVar, sizeof(mexType)*__Limit));\
 }\
 
 
 #define ownGpuCalloc(_NameVar,_dataType,_size)\
 	PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",(int)_size*INHOST(ZoneCount),(int)INHOST(ZoneCount));\
-	if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	if (NULL!=strstr(#_dataType,"mexType"))\
 	{	\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
@@ -845,7 +712,7 @@ else\
  #define CreateAndCopyFromMXVarOnGPU(_NameVar,_dataType) \
  				 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 				 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
-				 if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+				 if (NULL!=strstr(#_dataType,"mexType"))\
 			 	{	\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=SizeCopy;\
@@ -866,45 +733,46 @@ else\
 				   mxcheckGPUErrors(((int)gpu_ ## _NameVar ##_pr));\
 					 {\
 					      _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ##_pr.GetContents());\
-					      memcpy(_NameVar ## _pr, inData,sizeof(_dataType) * SizeCopy );\
+					      memcpy(inData,_NameVar ## _pr ,sizeof(_dataType) * SizeCopy);\
 					      gpu_ ## _NameVar ##_pr.DidModify(ns::Range( 0, sizeof(_dataType) *SizeCopy));\
 					  }
 
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
-		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
-		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 	 } \
 	 else\
 	 {\
 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 	 }
 
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
 		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
-		 memcpy(inData,_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
 	 } \
 	 else\
 	 {\
 		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
-		 memcpy(&inData,_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
 	 }
 
+
  #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-	 		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+	 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 	 {	\
 	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
-	 		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
-	 	 } \
+			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+			  } \
 	 	 else\
 	 	 {\
 	 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-	 		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
-	 	 }
+			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+			 }
 
 	 // METAL is c++ based and their own clasess release the memory
 
@@ -913,18 +781,16 @@ else\
 		#define InParamP(_NameVar) { }
 
 		#define CompleteCopyToGpu(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-		if (strstr(#_dataType,"float") || strstr(#_dataType,"double"))\
+		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
-		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-		 _MEX_BUFFER.DidModify(ns::Range(0, sizeof(_dataType) *SizeCopy));\
+		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
 	 } \
 	 else\
 	 {\
 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-		 _UINT_BUFFER.DidModify(ns::Range(0, sizeof(_dataType) *SizeCopy));\
-	 }
+		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
+	 	 }
 
 #endif
 
