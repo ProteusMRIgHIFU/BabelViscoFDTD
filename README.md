@@ -44,10 +44,6 @@ OpenCL for both for Windows and Linux is in principle possible. The code is Open
 MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118\times$118\times$211 and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s. In Jan 2021, Metal was added as GPU backend. Early tests indicate that Metal performs roughly just a bit slower than OpenCL (at least in the same MacBook Pro with the same Radeon Pro 560), suggesting that there may be still remains some extra improvements in the kernel execution. Overall, Metal seems requiring a bit more coding to prepare the pipelines for compute execution. A challenge is that Metal for scientific computing lacks serious examples. Nevertheless, the support for Metal is desirable for Apple silicon. Once all toolchains including native Python becomes available, it will be interesting to see how well their devices stand compared to Nvidia based systems, which are still leading in performance by a significant margin.
 
 
-
-
-
-
 # Requirements
 ## Python 3.5 and up - x64
 Use of virtual environments is highly recommended.
@@ -125,13 +121,15 @@ set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\
 ### MacOS
 Since CUDA is not supported anymore in MacOS, just install with:
 ```
-pip install  BabelViscoFDTD\
+pip install  BabelViscoFDTD/
 ```
 #### OpenCL and Metal backends
-The OpenCL and Metal backends azurePubxml a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL and Metal accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but for OpenCL you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. For Metal, this online compilation is carried over directly in the library at execution time.
+The OpenCL and Metal backends are a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL and Metal accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but for OpenCL you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. For Metal, this online compilation is carried over directly in the library at execution time.
 
 For OpenCL, the mentioned extra little program is at `BabelViscoFDTD/pi_ocl`. Just open a terminal in MacOS at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the tutorial in a MacOS system using OpenCL, just copy `pi_ocl` to the `Tuorial Notebooks` directory.
 
+# How to use
+After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
 # Structure of code
 The FDTD solution is accessed as a Python external function. The primary method to execute a simulation is via the class
@@ -153,6 +151,3 @@ Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very sim
 Consult `setup.py` and `CompileMatlab.m` to review how all the potential modalities are generated.
 
 Please note that the Matlab implementation is still missing an updated high-level equivalence to `BabelViscoFDTD\PropagationModel.py`. Given most of my personal computing platform moved years ago to Python, the Matlab frontend is a low-priority by the time being. However, the compilation for Matlab frontend is still operational.
-
-# How to use
-After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
