@@ -591,6 +591,9 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   InParamP(Sigma_xz);
   InParamP(Sigma_yz);
   InParamP(SqrAcc);
+#ifdef CUDA
+  InParamP(SensorOutput);
+#endif
   InParamP(Ox);
   InParamP(Oy);
   InParamP(Oz);
@@ -844,7 +847,7 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
     if ((INHOST(nStep) % INHOST(SensorSteps))==0)
 		{
 #if defined(CUDA)
-      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_SensorOutput_pr,gpu_IndexSensorMap_pr,INHOST(nStep));
+      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
 		    mxcheckGPUErrors(cudaDeviceSynchronize());
 #endif
 #if defined(OPENCL)

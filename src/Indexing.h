@@ -33,8 +33,10 @@ typedef unsigned char interface_t;
 #define CA (1.1250)
 #define CB (0.0416666666666666643537020320309)
 
+#if defined(METAL)
 #define CONCAT2(a, b) a ## b
 #define CONCAT(a, b) CONCAT2(a, b)
+#endif
 
 #if defined(CUDA)
 #define __PRE_MAT p->
@@ -44,8 +46,13 @@ typedef unsigned char interface_t;
 #define __PRE_MAT
 #endif
 
+#if defined(METAL)
 #define EL(_Mat,_i,_j,_k) CONCAT(__PRE_MAT,_Mat ## _pr[Ind_##_Mat(_i,_j,_k)])
 #define ELD(_Mat,_index) CONCAT(__PRE_MAT,_Mat ## _pr[_index])
+#else
+#define EL(_Mat,_i,_j,_k) __PRE_MAT _Mat##_pr[Ind_##_Mat(_i,_j,_k)]
+#define ELD(_Mat,_index) __PRE_MAT _Mat##_pr[_index]
+#endif
 
 #define ELO(_Mat,_i,_j,_k)  _Mat##_pr[Ind_##_Mat(_i,_j,_k)]
 #define ELDO(_Mat,_index)  _Mat##_pr[_index]

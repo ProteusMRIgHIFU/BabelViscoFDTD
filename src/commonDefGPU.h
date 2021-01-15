@@ -366,7 +366,8 @@ int __InitBuffer =0;
       * OneOverTauSigma_pr,
       * TauShear_pr,
       * InvRhoMatH_pr,
-      * SqrAcc_pr;
+      * SqrAcc_pr,
+			* SensorOutput_pr;
 			unsigned int * MaterialMap_pr,
       * SourceMap_pr;
 			mexType * Ox_pr,

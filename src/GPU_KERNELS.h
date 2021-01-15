@@ -128,8 +128,7 @@ kernel void SnapShot(
 
 #if defined(CUDA)
 __global__ void SensorsKernel(InputDataKernel * p,
-													  mexType * SensorOutput_pr,
-														unsigned int * IndexSensorMap_pr,
+													  unsigned int * IndexSensorMap_pr,
 														unsigned int nStep)
 {
 	unsigned int sj =blockIdx.x * blockDim.x + threadIdx.x;
