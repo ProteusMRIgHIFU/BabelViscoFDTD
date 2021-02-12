@@ -268,6 +268,7 @@ typedef unsigned char interface_t;
 #define MASK_Sigmaxy    0x0000000080
 #define MASK_Sigmaxz    0x0000000100
 #define MASK_Sigmayz    0x0000000200
+#define MASK_Pressure   0x0000000400
 
 #define IS_ALLV_SELECTED(_Value) 					(_Value &MASK_ALLV)
 #define IS_Vx_SELECTED(_Value) 						(_Value &MASK_Vx)
@@ -279,6 +280,7 @@ typedef unsigned char interface_t;
 #define IS_Sigmaxy_SELECTED(_Value) 			(_Value &MASK_Sigmaxy)
 #define IS_Sigmaxz_SELECTED(_Value) 			(_Value &MASK_Sigmaxz)
 #define IS_Sigmayz_SELECTED(_Value) 			(_Value &MASK_Sigmayz)
+#define IS_Pressure_SELECTED(_Value) 			(_Value &MASK_Pressure)
 
 #define COUNT_SELECTIONS(_VarName,_Value) \
 				{ _VarName =0;\
@@ -291,7 +293,8 @@ typedef unsigned char interface_t;
 					_VarName += IS_Sigmazz_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Sigmaxy_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Sigmaxz_SELECTED(_Value) ? 1 : 0; \
-					_VarName += IS_Sigmayz_SELECTED(_Value) ? 1 : 0; }
+					_VarName += IS_Sigmayz_SELECTED(_Value) ? 1 : 0; \
+					_VarName += IS_Pressure_SELECTED(_Value) ? 1 : 0;}
 
 #define SEL_RMS			  	0x0000000001
 #define SEL_PEAK   			0x0000000002
@@ -362,9 +365,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_CurrSnap 50
 #define CInd_LengthSource 51
 #define CInd_SelK 52
+#define CInd_IndexRMSPeak_Pressure 53
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 53
+#define LENGTH_CONST_UINT 54
 
 //Indexes for float
 #define CInd_DT 0

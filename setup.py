@@ -128,7 +128,7 @@ class CMakeBuild(build_ext):
                                   cwd=self.build_temp)
 
 # The following line is parsed by Sphinx
-version = '0.9.0'
+version = '0.9.1'
 
 print()
 

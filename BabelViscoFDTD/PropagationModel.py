@@ -271,7 +271,7 @@ class PropagationModel:
         IndexSensorMaps={}
         curMask=int(0x0001)
         #Do not modify the order of this search without matching the low level functions!
-        for pMap in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz']:
+        for pMap in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
             if pMap in  SelMapsRMSPeakList:
                 SelMapsRMSPeak=SelMapsRMSPeak | curMask
                 IndexRMSMaps[pMap]=curIndexRMS
@@ -400,6 +400,13 @@ class PropagationModel:
             for key,index in IndexRMSMaps.items():
                 if index>=0:
                     RetValuePeak[key]=RMSValue[:,:,:,index,1]
+
+        if 'Pressure' in RetValuePeak:
+            RetValuePeak['Pressure']*=(MaterialProperties[MaterialMap,1]**2)*MaterialProperties[MaterialMap,0]/SpatialStep;
+            
+        if 'Pressure' in RetValueRMS:
+            RetValueRMS['Pressure']*=(MaterialProperties[MaterialMap,1]**2)*MaterialProperties[MaterialMap,0]/SpatialStep;
+        
         if 'ALLV' in RetValuePeak:
             #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
             RetValuePeak['ALLV'] =np.sqrt(RetValuePeak['ALLV'] )

@@ -120,6 +120,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexRMSPeak_Sigmaxy)=0,
 								INHOST(IndexRMSPeak_Sigmaxz)=0,
 								INHOST(IndexRMSPeak_Sigmayz)=0,
+								INHOST(IndexRMSPeak_Pressure)=0,
 								INHOST(IndexSensor_ALLV)=0,
 								INHOST(IndexSensor_Vx)=0,
 								INHOST(IndexSensor_Vy)=0,
@@ -130,6 +131,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexSensor_Sigmaxy)=0,
 								INHOST(IndexSensor_Sigmaxz)=0,
 								INHOST(IndexSensor_Sigmayz)=0,
+								INHOST(IndexSensor_Pressure)=0,
 								INHOST(SelK);
     mexType INHOST(DT);
 
@@ -193,7 +195,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(DT);
 	GET_FIELD(MaterialMap);
 	GET_FIELD(PMLThickness);
-  GET_FIELD(TypeSource);
+    GET_FIELD(TypeSource);
 	GET_FIELD_GENERIC(DefaultGPUDeviceName);
 	GET_FIELD(Ox);
 	GET_FIELD(Oy);
@@ -208,39 +210,39 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	unsigned int INHOST(ZoneCount);
 
 	//These macros validate that the datatype of each object is the one expected
-   VALIDATE_FIELD_MEX_TYPE(InvDXDTplus);
-	 VALIDATE_FIELD_MEX_TYPE(DXDTminus);
-	 VALIDATE_FIELD_MEX_TYPE(InvDXDTplushp);
-	 VALIDATE_FIELD_MEX_TYPE(DXDTminushp);
-	 VALIDATE_FIELD_MEX_TYPE(LambdaMiuMatOverH);
-	 VALIDATE_FIELD_MEX_TYPE(LambdaMatOverH);
-	 VALIDATE_FIELD_MEX_TYPE(MiuMatOverH);
-	 VALIDATE_FIELD_MEX_TYPE(TauLong);
-	 VALIDATE_FIELD_MEX_TYPE(OneOverTauSigma);
-	 VALIDATE_FIELD_MEX_TYPE(TauShear);
-	 VALIDATE_FIELD_MEX_TYPE(InvRhoMatH);
-	 VALIDATE_FIELD_UINT32(IndexSensorMap);
-	 VALIDATE_FIELD_MEX_TYPE(DT);
-	 VALIDATE_FIELD_UINT32(MaterialMap);
-	 VALIDATE_FIELD_UINT32(PMLThickness);
-	 VALIDATE_FIELD_UINT32(N1);
-	 VALIDATE_FIELD_UINT32(N2);
-	 VALIDATE_FIELD_UINT32(N3);
-	 VALIDATE_FIELD_UINT32(SILENT);
-	 VALIDATE_FIELD_UINT32(TimeSteps);
-	 VALIDATE_FIELD_UINT32(LengthSource);
-	 VALIDATE_FIELD_UINT32(SnapshotsPos);
-	 VALIDATE_FIELD_MEX_TYPE(SourceFunctions);
-	 VALIDATE_FIELD_UINT32(SourceMap);
-   VALIDATE_FIELD_UINT32(TypeSource);
-	 VALIDATE_FIELD_STRING(DefaultGPUDeviceName);
-	 VALIDATE_FIELD_MEX_TYPE(Ox);
-	 VALIDATE_FIELD_MEX_TYPE(Oy);
-	 VALIDATE_FIELD_MEX_TYPE(Oz);
-	 VALIDATE_FIELD_UINT32(SelRMSorPeak);
-	 VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
-	 VALIDATE_FIELD_UINT32(SelMapsSensors);
-	 VALIDATE_FIELD_UINT32(SensorSteps);
+    VALIDATE_FIELD_MEX_TYPE(InvDXDTplus);
+	VALIDATE_FIELD_MEX_TYPE(DXDTminus);
+	VALIDATE_FIELD_MEX_TYPE(InvDXDTplushp);
+	VALIDATE_FIELD_MEX_TYPE(DXDTminushp);
+	VALIDATE_FIELD_MEX_TYPE(LambdaMiuMatOverH);
+	VALIDATE_FIELD_MEX_TYPE(LambdaMatOverH);
+	VALIDATE_FIELD_MEX_TYPE(MiuMatOverH);
+	VALIDATE_FIELD_MEX_TYPE(TauLong);
+	VALIDATE_FIELD_MEX_TYPE(OneOverTauSigma);
+	VALIDATE_FIELD_MEX_TYPE(TauShear);
+	VALIDATE_FIELD_MEX_TYPE(InvRhoMatH);
+	VALIDATE_FIELD_UINT32(IndexSensorMap);
+	VALIDATE_FIELD_MEX_TYPE(DT);
+	VALIDATE_FIELD_UINT32(MaterialMap);
+	VALIDATE_FIELD_UINT32(PMLThickness);
+	VALIDATE_FIELD_UINT32(N1);
+	VALIDATE_FIELD_UINT32(N2);
+	VALIDATE_FIELD_UINT32(N3);
+	VALIDATE_FIELD_UINT32(SILENT);
+	VALIDATE_FIELD_UINT32(TimeSteps);
+	VALIDATE_FIELD_UINT32(LengthSource);
+	VALIDATE_FIELD_UINT32(SnapshotsPos);
+	VALIDATE_FIELD_MEX_TYPE(SourceFunctions);
+	VALIDATE_FIELD_UINT32(SourceMap);
+   	VALIDATE_FIELD_UINT32(TypeSource);
+	VALIDATE_FIELD_STRING(DefaultGPUDeviceName);
+	VALIDATE_FIELD_MEX_TYPE(Ox);
+	VALIDATE_FIELD_MEX_TYPE(Oy);
+	VALIDATE_FIELD_MEX_TYPE(Oz);
+	VALIDATE_FIELD_UINT32(SelRMSorPeak);
+	VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
+	VALIDATE_FIELD_UINT32(SelMapsSensors);
+	VALIDATE_FIELD_UINT32(SensorSteps);
 
 
 	INHOST(TimeSteps)=*GET_DATA_UINT32_PR(TimeSteps);
@@ -289,9 +291,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	INHOST(DT) =  *GET_DATA_PR(DT);	 //Temporal step
 	INHOST(LengthSource)= *GET_DATA_UINT32_PR(LengthSource);
 
-  INHOST(TypeSource)=*GET_DATA_UINT32_PR(TypeSource);
+	INHOST(TypeSource)=*GET_DATA_UINT32_PR(TypeSource);
 
-  INHOST(SelRMSorPeak)=*GET_DATA_UINT32_PR(SelRMSorPeak);
+	INHOST(SelRMSorPeak)=*GET_DATA_UINT32_PR(SelRMSorPeak);
 	INHOST(SelMapsRMSPeak)=*GET_DATA_UINT32_PR(SelMapsRMSPeak);
 	INHOST(SelMapsSensors)=*GET_DATA_UINT32_PR(SelMapsSensors);
 	INHOST(SensorSteps)=*GET_DATA_UINT32_PR(SensorSteps);
@@ -318,7 +320,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 
 
-  COUNT_SELECTIONS(INHOST(NumberSelRMSPeakMaps),INHOST(SelMapsRMSPeak));
+    COUNT_SELECTIONS(INHOST(NumberSelRMSPeakMaps),INHOST(SelMapsRMSPeak));
 	if (INHOST(NumberSelRMSPeakMaps)==0)
 		ERROR_STRING("SelMapsRMSPeak must select at least one type of map to track");
 
@@ -337,6 +339,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	ACCOUNT_RMSPEAK(Sigmaxy);
 	ACCOUNT_RMSPEAK(Sigmaxz);
 	ACCOUNT_RMSPEAK(Sigmayz);
+	ACCOUNT_RMSPEAK(Pressure);
 
 	if (INHOST(NumberSelRMSPeakMaps)!=curMapIndex)
 	{
@@ -355,6 +358,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	ACCOUNT_SENSOR(Sigmaxy);
 	ACCOUNT_SENSOR(Sigmaxz);
 	ACCOUNT_SENSOR(Sigmayz);
+	ACCOUNT_SENSOR(Pressure);
 
 	if (INHOST(NumberSelSensorMaps)!=curMapIndex)
 	{
@@ -408,7 +412,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 #endif
 
-  CREATE_ARRAY_AND_INIT(Vx_res,INHOST(N1)+1,INHOST(N2),INHOST(N3));
+  	CREATE_ARRAY_AND_INIT(Vx_res,INHOST(N1)+1,INHOST(N2),INHOST(N3));
 	CREATE_ARRAY_AND_INIT(Vy_res,INHOST(N1),INHOST(N2)+1,INHOST(N3));
 	CREATE_ARRAY_AND_INIT(Vz_res,INHOST(N1),INHOST(N2),INHOST(N3)+1);
 	CREATE_ARRAY_AND_INIT(Sigma_xx_res,INHOST(N1),INHOST(N2),INHOST(N3));

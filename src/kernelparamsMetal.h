@@ -35,6 +35,7 @@
 #define IndexRMSPeak_Sigmaxy p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Sigmaxy]
 #define IndexRMSPeak_Sigmaxz p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Sigmaxz]
 #define IndexRMSPeak_Sigmayz p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Sigmayz]
+#define IndexRMSPeak_Pressure p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Pressure]
 #define NumberSelRMSPeakMaps p_CONSTANT_BUFFER_UINT[CInd_NumberSelRMSPeakMaps]
 
 #define SelMapsSensors p_CONSTANT_BUFFER_UINT[CInd_SelMapsSensors]

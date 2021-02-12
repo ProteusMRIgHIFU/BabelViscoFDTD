@@ -236,6 +236,7 @@ __constant__ unsigned int IndexRMSPeak_Sigmazz;
 __constant__ unsigned int IndexRMSPeak_Sigmaxy;
 __constant__ unsigned int IndexRMSPeak_Sigmaxz;
 __constant__ unsigned int IndexRMSPeak_Sigmayz;
+__constant__ unsigned int IndexRMSPeak_Pressure;
 __constant__ unsigned int NumberSelRMSPeakMaps;
 
 __constant__ unsigned int SelMapsSensors;
@@ -656,6 +657,14 @@ char* load_file(char const* path)
 #endif
 
 #ifdef METAL
+
+#define COMMON_METAL_PARAMS \
+    commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
+    commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
+    commandEncoderStress.SetBuffer(_INDEX_MEX, 0, 2);\
+    commandEncoderStress.SetBuffer(_INDEX_UINT, 0, 3);\
+    commandEncoderStress.SetBuffer(_UINT_BUFFER, 0, 4);\
+    commandEncoderStress.SetBuffer(_MEX_BUFFER, 0, 5);
 
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 //We define first the indexes for uint const values

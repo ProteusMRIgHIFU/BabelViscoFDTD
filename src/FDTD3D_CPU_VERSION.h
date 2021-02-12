@@ -91,146 +91,163 @@
 		//********************************
 		//First we do the constrains tensors
 		//********************************
-					#pragma omp parallel for private(jj,ii,CurZone)
-					for(kk=0; kk<( int)(N3+1); kk++)
+		#pragma omp parallel for private(jj,ii,CurZone)
+		for(kk=0; kk<( int)(N3+1); kk++)
+		{
+			unsigned int k= (unsigned int)kk;
+			for(jj=0; jj<( int)N2+1; jj++)
+			{
+				unsigned int j= (unsigned int)jj;
+				for(ii=0; ii<( int)N1+1; ii++)
+				{
+					unsigned int i= (unsigned int)ii;
+
+					#include "StressKernel.h"
+
+				}
+			}
+		}
+		#ifdef CHECK_FOR_NANs
+			#pragma omp parallel for private(jj,ii,CurZone)
+			for(kk=0; kk<( int)N3; kk++)
+			{
+				unsigned int k= (unsigned int)kk;
+				for(jj=0; jj<( int)N2; jj++)
+				{
+					unsigned int j= (unsigned int)jj;
+					for(ii=0; ii<( int)N1; ii++)
 					{
-						unsigned int k= (unsigned int)kk;
-						for(jj=0; jj<( int)N2+1; jj++)
+						unsigned int i= (unsigned int)ii;
+						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
 						{
-							unsigned int j= (unsigned int)jj;
-							for(ii=0; ii<( int)N1+1; ii++)
-							{
-								unsigned int i= (unsigned int)ii;
-
-			          #include "StressKernel.h"
-
-							}
-						}
-					}
-			    #ifdef CHECK_FOR_NANs
-			    #pragma omp parallel for private(jj,ii,CurZone)
-					for(kk=0; kk<( int)N3; kk++)
-					{
-						unsigned int k= (unsigned int)kk;
-						for(jj=0; jj<( int)N2; jj++)
-						{
-							unsigned int j= (unsigned int)jj;
-							for(ii=0; ii<( int)N1; ii++)
-							{
-								unsigned int i= (unsigned int)ii;
-									for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-			            {
-			              indexforNaN=Ind_Sigma_xx(i,j,k);
-			              if (isnan(ELD(Sigma_xx,indexforNaN)) ||
-			                  isnan(ELD(Sigma_yy,indexforNaN)) ||
-			                  isnan(ELD(Sigma_zz,indexforNaN)) ||
-			                  isnan(ELD(Rxx,indexforNaN)) ||
-			                  isnan(ELD(Ryy,indexforNaN)) ||
-			                  isnan(ELD(Rzz,indexforNaN)))
-			                  {
-			                  bNanDetected=1;
-												break;
-			                }
-			            }
-								}
-							}
-						}
-
-			    if (bNanDetected==1)
-			    {
-						PRINTF("***** FOUND NAN AFTER Stress Kernel at step %i\n",nStep);
-			      break;
-			    }
-			    #endif
-					//********************************
-					//Then we do the particle displacements
-					//********************************
-					#pragma omp parallel for private(jj,ii,CurZone)
-					for(kk=0; kk<( int)N3+1; kk++)
-					{
-						unsigned int k= (unsigned int)kk;
-						for(jj=0; jj<( int)N2+1; jj++)
-						{
-							unsigned int j= (unsigned int)jj;
-							for(ii=0; ii<( int)N1+1; ii++)
-							{
-								unsigned int i= (unsigned int)ii;
-				         #include "ParticleKernel.h"
-
-							}
-						}
-					}
-
-			        #ifdef CHECK_FOR_NANs
-			        #pragma omp parallel for private(jj,ii,CurZone)
-							for(kk=0; kk<( int)N3; kk++)
-							{
-								unsigned int k= (unsigned int)kk;
-								for(jj=0; jj<( int)N2; jj++)
+							indexforNaN=Ind_Sigma_xx(i,j,k);
+							if (isnan(ELD(Sigma_xx,indexforNaN)) ||
+								isnan(ELD(Sigma_yy,indexforNaN)) ||
+								isnan(ELD(Sigma_zz,indexforNaN)) ||
+								isnan(ELD(Rxx,indexforNaN)) ||
+								isnan(ELD(Ryy,indexforNaN)) ||
+								isnan(ELD(Rzz,indexforNaN)))
 								{
-									unsigned int j= (unsigned int)jj;
-									for(ii=0; ii<( int)N1; ii++)
-									{
-										unsigned int i= (unsigned int)ii;
-										for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-			                {
-			                  if (isnan(EL(Vx,i,j,k)))
-			                  {
-			                      bNanDetected=1;
-														break;
-			                  }else if (isnan(EL(Vy,i,j,k)))
-			                  {
-			                      bNanDetected=1;
-														break;
-			                  }else if (isnan(EL(Vz,i,j,k)))
-			                  {
-			                      bNanDetected=1;
-														break;
-			                  }
-			                }
-										}
-									}
-			    		}
-			        if (bNanDetected==1)
-			        {
-								PRINTF("***** FOUND NAN AFTER Particle Kernel in step %i\n",nStep);
-			          break;
-			        }
-			        #endif
+								bNanDetected=1;
+												break;
+							}
+						}
+					}
+				}
+			}
+
+			if (bNanDetected==1)
+			{
+					PRINTF("***** FOUND NAN AFTER Stress Kernel at step %i\n",nStep);
+				break;
+			}
+			#endif
+			//********************************
+			//Then we do the particle displacements
+			//********************************
+			#pragma omp parallel for private(jj,ii,CurZone)
+			for(kk=0; kk<( int)N3+1; kk++)
+			{
+				unsigned int k= (unsigned int)kk;
+				for(jj=0; jj<( int)N2+1; jj++)
+				{
+					unsigned int j= (unsigned int)jj;
+					for(ii=0; ii<( int)N1+1; ii++)
+					{
+						unsigned int i= (unsigned int)ii;
+						#include "ParticleKernel.h"
+
+					}
+				}
+			}
+
+			#ifdef CHECK_FOR_NANs
+			#pragma omp parallel for private(jj,ii,CurZone)
+			for(kk=0; kk<( int)N3; kk++)
+			{
+				unsigned int k= (unsigned int)kk;
+				for(jj=0; jj<( int)N2; jj++)
+				{
+					unsigned int j= (unsigned int)jj;
+					for(ii=0; ii<( int)N1; ii++)
+					{
+						unsigned int i= (unsigned int)ii;
+						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
+						{
+							if (isnan(EL(Vx,i,j,k)))
+							{
+								bNanDetected=1;
+													break;
+							}else if (isnan(EL(Vy,i,j,k)))
+							{
+								bNanDetected=1;
+													break;
+							}else if (isnan(EL(Vz,i,j,k)))
+							{
+								bNanDetected=1;
+													break;
+							}
+						}
+					}
+				}
+			}
+			if (bNanDetected==1)
+			{
+						PRINTF("***** FOUND NAN AFTER Particle Kernel in step %i\n",nStep);
+				break;
+			}
+		#endif
 
 		if (INHOST(CurrSnap)>=0 && INHOST(CurrSnap) <NumberSnapshots)
 			if(nStep==SnapshotsPos_pr[INHOST(CurrSnap)]-1 )
-            {
+			{
 
-                #pragma omp parallel for private(jj,ii,CurZone)
-								for(jj=0; jj<( int)N2; jj++)
-								{
-									unsigned int j= (unsigned int)jj;
-									for(ii=0; ii<( int)N1; ii++)
-									{
-										unsigned int i= (unsigned int)ii;
-											mexType accum=0.0;
-											for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
-                        {
-													unsigned int index=Ind_Sigma_xx(i,j,N3/2);
-													accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
+				#pragma omp parallel for private(jj,ii,CurZone)
+				for(jj=0; jj<( int)N2; jj++)
+				{
+					unsigned int j= (unsigned int)jj;
+					for(ii=0; ii<( int)N1; ii++)
+					{
+						unsigned int i= (unsigned int)ii;
+						mexType accum=0.0;
+						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
+						{
+							unsigned int index=Ind_Sigma_xx(i,j,N3/2);
+							accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
+						}
+						Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
+					}
+				}
+				INHOST(CurrSnap)++;
+			}
 
-                        }
+		if (IS_Pressure_SELECTED(SelMapsRMSPeak))
+			#pragma omp parallel for private(jj,ii,CurZone)
+			for(kk=0; kk<( int)(N3+1); kk++)
+			{
+				unsigned int k= (unsigned int)kk;
+				for(jj=0; jj<( int)N2+1; jj++)
+				{
+					unsigned int j= (unsigned int)jj;
+					for(ii=0; ii<( int)N1+1; ii++)
+					{
+						unsigned int i= (unsigned int)ii;
 
-												Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
-											}
-										}
-                INHOST(CurrSnap)++;
-            }
+							#include "PressureKernel.h"
+
+					}
+				}
+			}
 
 		//Finally, the sensors
 		if ((nStep % INHOST(SensorSteps))==0)
 		{
-				#pragma omp parallel for private(CurZone)
-				for(int sj=0; sj<( int)INHOST(NumberSensors); sj++)
-				{
-						#include"SensorsKernel.h"
-				}
+			int sj;
+			#pragma omp parallel for private(CurZone)
+			for(sj=0; sj<( int)INHOST(NumberSensors); sj++)
+			{
+					#include"SensorsKernel.h"
+			}
 		}
 
 	}
@@ -240,7 +257,7 @@
 	fprintf(FDEBUG,"after main loop\n");
 	fflush(FDEBUG);
 
-{
+	{
 	#pragma omp parallel for private(jj,ii,CurZone)
 	for(kk=0; kk<( int)N3; kk++)
 	{
@@ -263,7 +280,7 @@
 			}
 		}
 	}
-}
+	}
 fprintf(FDEBUG,"After finishing assigning results\n");
 fflush(FDEBUG);
 free(Vx_pr);
