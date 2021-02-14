@@ -12,6 +12,8 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
   	if (i<N1 && j<N2 && k<N3)
   	{
+	  //EL(Pressure_old,i,j,k)=EL(Pressure,i,j,k);
+
       index=Ind_MaterialMap(i,j,k);
       MaterialID=ELD(MaterialMap,index);
 

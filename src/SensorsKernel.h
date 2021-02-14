@@ -6,7 +6,7 @@ index2=IndexSensorMap_pr[sj]-1;
 
 mexType accumX=0.0,accumY=0.0,accumZ=0.0,
         accumXX=0.0, accumYY=0.0, accumZZ=0.0,
-        accumXY=0.0, accumXZ=0.0, accumYZ=0.0;
+        accumXY=0.0, accumXZ=0.0, accumYZ=0.0, accum_p=0;;
 for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
   {
     k=index2/(N1*N2);
@@ -20,6 +20,7 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
         accumY+=EL(Vy,i,j,k);
     if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vz_SELECTED(SelMapsSensors))
         accumZ+=EL(Vz,i,j,k);
+
     index3=Ind_Sigma_xx(i,j,k);
   #ifdef METAL
     //No idea why in this kernel the ELD(SigmaXX...) macros do not expand correctly
@@ -30,6 +31,8 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
       accumYY+=k_Sigma_yy_pr[index3];
   if (IS_Sigmazz_SELECTED(SelMapsSensors))
       accumZZ+=k_Sigma_zz_pr[index3];
+  if (IS_Pressure_SELECTED(SelMapsSensors))
+      accum_p+=k_Pressure_pr[index3];
   index3=Ind_Sigma_xy(i,j,k);
   if (IS_Sigmaxy_SELECTED(SelMapsSensors))
       accumXY+=k_Sigma_xy_pr[index3];
@@ -37,6 +40,7 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
       accumXZ+=k_Sigma_xz_pr[index3];
   if (IS_Sigmayz_SELECTED(SelMapsSensors))
       accumYZ+=k_Sigma_yz_pr[index3];
+  
   #else
     if (IS_Sigmaxx_SELECTED(SelMapsSensors))
         accumXX+=ELD(Sigma_xx,index3);
@@ -44,6 +48,8 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
         accumYY+=ELD(Sigma_yy,index3);
     if (IS_Sigmazz_SELECTED(SelMapsSensors))
         accumZZ+=ELD(Sigma_zz,index3);
+    if (IS_Pressure_SELECTED(SelMapsSensors))
+        accum_p+=ELD(Pressure,index3);
     index3=Ind_Sigma_xy(i,j,k);
     if (IS_Sigmaxy_SELECTED(SelMapsSensors))
         accumXY+=ELD(Sigma_xy,index3);
@@ -53,15 +59,16 @@ for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
         accumYZ+=ELD(Sigma_yz,index3);
    #endif
   }
-accumX=accumX/ZoneCount;
-accumY=accumY/ZoneCount;
-accumZ=accumZ/ZoneCount;
-accumXX=accumXX/ZoneCount;
-accumYY=accumYY/ZoneCount;
-accumZZ=accumZZ/ZoneCount;
-accumXY=accumXY/ZoneCount;
-accumXZ=accumXZ/ZoneCount;
-accumYZ=accumYZ/ZoneCount;
+accumX/=ZoneCount;
+accumY/=ZoneCount;
+accumZ/=ZoneCount;
+accumXX/=ZoneCount;
+accumYY/=ZoneCount;
+accumZZ/=ZoneCount;
+accumXY/=ZoneCount;
+accumXZ/=ZoneCount;
+accumYZ/=ZoneCount;
+accum_p/=ZoneCount;
 //ELD(SensorOutput,index)=accumX*accumX+accumY*accumY+accumZ*accumZ;
 if (IS_ALLV_SELECTED(SelMapsSensors))
       ELD(SensorOutput,index+subarrsize*IndexSensor_ALLV)=
@@ -84,3 +91,5 @@ if (IS_Sigmaxz_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmaxz)=accumXZ;
 if (IS_Sigmayz_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmayz)=accumYZ;
+if (IS_Pressure_SELECTED(SelMapsSensors))
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure)=accumYZ;

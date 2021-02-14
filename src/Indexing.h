@@ -95,6 +95,9 @@ typedef unsigned char interface_t;
 #define hInd_Sigma_yy(_i,_j,_k) (hIndN1N2N3(_i,_j,_k,INHOST(N1)*INHOST(N2)*INHOST(N3)))
 #define hInd_Sigma_zz(_i,_j,_k) (hIndN1N2N3(_i,_j,_k,INHOST(N1)*INHOST(N2)*INHOST(N3)))
 
+#define hInd_Pressure(_i,_j,_k) (hIndN1N2N3(_i,_j,_k,INHOST(N1)*INHOST(N2)*INHOST(N3)))
+#define hInd_Pressure_old(_i,_j,_k) (hIndN1N2N3(_i,_j,_k,INHOST(N1)*INHOST(N2)*INHOST(N3)))
+
 #define hInd_Sigma_xy(_i,_j,_k) (hIndN1p1N2p1N3p1(_i,_j,_k,(INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1)))
 #define hInd_Sigma_xz(_i,_j,_k) (hIndN1p1N2p1N3p1(_i,_j,_k,(INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1)))
 #define hInd_Sigma_yz(_i,_j,_k) (hIndN1p1N2p1N3p1(_i,_j,_k,(INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1)))
@@ -179,6 +182,9 @@ typedef unsigned char interface_t;
 #define Ind_Sigma_xx(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
 #define Ind_Sigma_yy(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
 #define Ind_Sigma_zz(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
+
+#define Ind_Pressure(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
+#define Ind_Pressure_old(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
 
 #define Ind_Sigma_xy(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
 #define Ind_Sigma_xz(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
@@ -366,9 +372,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_LengthSource 51
 #define CInd_SelK 52
 #define CInd_IndexRMSPeak_Pressure 53
+#define CInd_IndexSensor_Pressure 54
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 54
+#define LENGTH_CONST_UINT 55
 
 //Indexes for float
 #define CInd_DT 0
@@ -434,8 +441,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_SensorOutput 49
 #define CInd_SqrAcc 50
 #define CInd_SourceFunctions 51
+#define CInd_Pressure 52
+#define CInd_Pressure_old 53
 
-#define LENGTH_INDEX_MEX 52
+#define LENGTH_INDEX_MEX 54
 
 #define CInd_IndexSensorMap  0
 #define CInd_SourceMap	1

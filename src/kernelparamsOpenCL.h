@@ -50,4 +50,6 @@ __global unsigned int * MaterialMap_pr,
 __global unsigned int * SourceMap_pr,
 __global mexType * Ox_pr,
 __global mexType * Oy_pr,
-__global mexType * Oz_pr
+__global mexType * Oz_pr,
+__global mexType * Pressure_pr,
+__global mexType * Pressure_old_pr

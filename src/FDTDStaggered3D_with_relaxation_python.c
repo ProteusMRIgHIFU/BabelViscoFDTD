@@ -400,7 +400,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 			mwSize dims[5];
 			dims[0]=1;
 
-	    const char *fieldNames[] = {"Vx", "Vy", "Vz","Sigma_xx", "Sigma_yy" ,"Sigma_zz", "Sigma_xy","Sigma_xz","Sigma_yz"};
+	    const char *fieldNames[] = {"Vx", "Vy", "Vz","Sigma_xx", "Sigma_yy" ,"Sigma_zz", "Sigma_xy","Sigma_xz","Sigma_yz","Pressure"};
 	    mxArray * LastVMap_mx=mxCreateStructArray( 1, dims, 9, fieldNames );
 #else
 
@@ -421,6 +421,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	CREATE_ARRAY_AND_INIT(Sigma_xy_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
 	CREATE_ARRAY_AND_INIT(Sigma_xz_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
 	CREATE_ARRAY_AND_INIT(Sigma_yz_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
+	CREATE_ARRAY_AND_INIT(Pressure_res,INHOST(N1),INHOST(N2),INHOST(N3));
 
 	ndim=5;
 	dims[0]=INHOST(N1);
@@ -521,6 +522,7 @@ PRINTF("Done\n");
 	mxSetField( LastVMap_mx, 0, fieldNames[ 5 ], Sigma_zz_res_mx );
 	mxSetField( LastVMap_mx, 0, fieldNames[ 7 ], Sigma_xz_res_mx );
 	mxSetField( LastVMap_mx, 0, fieldNames[ 8 ], Sigma_yz_res_mx );
+	mxSetField( LastVMap_mx, 0, fieldNames[ 9 ], Pressure_res_mx );
 	SensorOutput_out =SensorOutput_mx;
 	LastVMap_out=LastVMap_mx;
   Snapshots_out=Snapshots_mx;
@@ -534,7 +536,7 @@ PRINTF("Done\n");
 
     PyObject *MyResult;
 
-		MyResult =  Py_BuildValue("N{sNsNsNsNsNsNsNsNsN}NN", SensorOutput_mx, "Vx",Vx_res_mx,
+		MyResult =  Py_BuildValue("N{sNsNsNsNsNsNsNsNsNsN}NN", SensorOutput_mx, "Vx",Vx_res_mx,
 																        "Vy",Vy_res_mx,
 																        "Vz",Vz_res_mx,
 																        "Sigma_xx",Sigma_xx_res_mx,
@@ -542,7 +544,9 @@ PRINTF("Done\n");
 																        "Sigma_zz",Sigma_zz_res_mx,
 																        "Sigma_xy",Sigma_xy_res_mx,
 																        "Sigma_xz",Sigma_xz_res_mx,
-																        "Sigma_yz",Sigma_yz_res_mx,SqrAcc_mx,Snapshots_mx);
+																        "Sigma_yz",Sigma_yz_res_mx,
+																		"Pressure",Pressure_res_mx,
+																		SqrAcc_mx,Snapshots_mx);
 
 
 

@@ -2,7 +2,8 @@
 	interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
     unsigned int index,index2,CurZone,source;
-	mexType AvgInvRhoI,AvgInvRhoJ,AvgInvRhoK,Dx,Diff,value,accum_x=0.0,accum_y=0.0,accum_z=0.0;
+	mexType AvgInvRhoI,AvgInvRhoJ,AvgInvRhoK,Dx,Diff,value,accum_x=0.0,accum_y=0.0,accum_z=0.0,
+			prev, accum_p=0.0;
 
 	for (   CurZone=0;CurZone<ZoneCount;CurZone++)
 		if (i<N1 && j<N2 && k<N3)
@@ -135,161 +136,179 @@
 			{
 				index=Ind_MaterialMap(i,j,k);
 
-		#ifdef USE_2ND_ORDER_EDGES
+				#ifdef USE_2ND_ORDER_EDGES
 						unsigned int m1=ELD(MiuMatOverH,EL(MaterialMap,i,j,k));
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i+2,j,k))==0.0,m1== 0.0)
-		            interfaceX=interfaceX|frontLinep1;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i+1,j,k))==0.0,m1 ==0.0)
-		            interfaceX=interfaceX|frontLine;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i-1,j,k))==0.0,m1 ==0.0)
-		            interfaceX=interfaceX|backLine;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j+2,k))==0.0,m1== 0.0)
-		            interfaceY=interfaceY|frontLinep1;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j+1,k))==0.0,m1 ==0.0)
-		            interfaceY=interfaceY|frontLine;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j-1,k))==0.0,m1 ==0.0)
-		            interfaceY=interfaceY|backLine;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i+2,j,k))==0.0,m1== 0.0)
+							interfaceX=interfaceX|frontLinep1;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i+1,j,k))==0.0,m1 ==0.0)
+							interfaceX=interfaceX|frontLine;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i-1,j,k))==0.0,m1 ==0.0)
+							interfaceX=interfaceX|backLine;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j+2,k))==0.0,m1== 0.0)
+							interfaceY=interfaceY|frontLinep1;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j+1,k))==0.0,m1 ==0.0)
+							interfaceY=interfaceY|frontLine;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j-1,k))==0.0,m1 ==0.0)
+							interfaceY=interfaceY|backLine;
 
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k+2))==0.0 , m1== 0.0)
-		            interfaceZ=interfaceZ|frontLinep1;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k+1))==0.0, m1 ==0.0)
-		            interfaceZ=interfaceZ|frontLine;
-		        if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k-1))==0.0, m1 ==0.0)
-		            interfaceZ=interfaceZ|backLine;
-		#endif
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k+2))==0.0 , m1== 0.0)
+							interfaceZ=interfaceZ|frontLinep1;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k+1))==0.0, m1 ==0.0)
+							interfaceZ=interfaceZ|frontLine;
+						if XOR(ELD(MiuMatOverH,EL(MaterialMap,i,j,k-1))==0.0, m1 ==0.0)
+							interfaceZ=interfaceZ|backLine;
+				#endif
 
-		    AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
-				AvgInvRhoJ=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j+1,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
-				AvgInvRhoK=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j,k+1))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
-
-
-	      if REQUIRES_2ND_ORDER_P(X)
-	          Dx=EL(Sigma_xx,i+1,j,k)-EL(Sigma_xx,i,j,k);
-	      else
-	          Dx=CA*(EL(Sigma_xx,i+1,j,k)-EL(Sigma_xx,i,j,k))-
-	             CB*(EL(Sigma_xx,i+2,j,k)-EL(Sigma_xx,i-1,j,k));
-
-	      if REQUIRES_2ND_ORDER_P(Y)
-	          Dx+=EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i,j-1,k);
-	      else
-	          Dx+=CA*(EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i,j-1,k))-
-	              CB*(EL(Sigma_xy,i,j+1,k)-EL(Sigma_xy,i,j-2,k));
-
-	      if REQUIRES_2ND_ORDER_P(Z)
-	          Dx+=EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i,j,k-1);
-	      else
-	          Dx+=CA*(EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i,j,k-1))-
-	              CB*(EL(Sigma_xz,i,j,k+1)-EL(Sigma_xz,i,j,k-2));
+				AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
+					AvgInvRhoJ=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j+1,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
+					AvgInvRhoK=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j,k+1))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
 
 
-	      EL(Vx,i,j,k)+=DT*AvgInvRhoI*Dx;
+				if REQUIRES_2ND_ORDER_P(X)
+					Dx=EL(Sigma_xx,i+1,j,k)-EL(Sigma_xx,i,j,k);
+				else
+					Dx=CA*(EL(Sigma_xx,i+1,j,k)-EL(Sigma_xx,i,j,k))-
+						CB*(EL(Sigma_xx,i+2,j,k)-EL(Sigma_xx,i-1,j,k));
+
+				if REQUIRES_2ND_ORDER_P(Y)
+					Dx+=EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i,j-1,k);
+				else
+					Dx+=CA*(EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i,j-1,k))-
+						CB*(EL(Sigma_xy,i,j+1,k)-EL(Sigma_xy,i,j-2,k));
+
+				if REQUIRES_2ND_ORDER_P(Z)
+					Dx+=EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i,j,k-1);
+				else
+					Dx+=CA*(EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i,j,k-1))-
+						CB*(EL(Sigma_xz,i,j,k+1)-EL(Sigma_xz,i,j,k-2));
+
+				prev=DT*AvgInvRhoI*Dx;
+				EL(Vx,i,j,k)=DT*AvgInvRhoI*Dx;
 				accum_x+=EL(Vx,i,j,k);
-	      //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        if REQUIRES_2ND_ORDER_P(Y)
-            Dx=EL(Sigma_yy,i,j+1,k)-EL(Sigma_yy,i,j,k);
-        else
-            Dx=CA*(EL(Sigma_yy,i,j+1,k)-EL(Sigma_yy,i,j,k) )-
-                CB*(EL(Sigma_yy,i,j+2,k)-EL(Sigma_yy,i,j-1,k));
+				if REQUIRES_2ND_ORDER_P(Y)
+					Dx=EL(Sigma_yy,i,j+1,k)-EL(Sigma_yy,i,j,k);
+				else
+					Dx=CA*(EL(Sigma_yy,i,j+1,k)-EL(Sigma_yy,i,j,k) )-
+						CB*(EL(Sigma_yy,i,j+2,k)-EL(Sigma_yy,i,j-1,k));
 
-        if REQUIRES_2ND_ORDER_P(X)
-            Dx+=EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i-1,j,k);
-        else
-            Dx+=CA*(EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i-1,j,k))-
-                CB*(EL(Sigma_xy,i+1,j,k)-EL(Sigma_xy,i-2,j,k));
+				if REQUIRES_2ND_ORDER_P(X)
+					Dx+=EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i-1,j,k);
+				else
+					Dx+=CA*(EL(Sigma_xy,i,j,k)-EL(Sigma_xy,i-1,j,k))-
+						CB*(EL(Sigma_xy,i+1,j,k)-EL(Sigma_xy,i-2,j,k));
 
-        if REQUIRES_2ND_ORDER_P(Z)
-            Dx+=EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1);
-        else
-            Dx+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1))-
-            CB*(EL(Sigma_yz,i,j,k+1)-EL(Sigma_yz,i,j,k-2));
-
-        EL(Vy,i,j,k)+=DT*AvgInvRhoJ*Dx;
+				if REQUIRES_2ND_ORDER_P(Z)
+					Dx+=EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1);
+				else
+					Dx+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1))-
+					CB*(EL(Sigma_yz,i,j,k+1)-EL(Sigma_yz,i,j,k-2));
+				
+				prev+=DT*AvgInvRhoJ*Dx;
+				EL(Vy,i,j,k)+=DT*AvgInvRhoJ*Dx;
 				accum_y+=EL(Vy,i,j,k);
-        //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-        if REQUIRES_2ND_ORDER_P(Z)
-            Dx=EL(Sigma_zz,i,j,k+1)-EL(Sigma_zz,i,j,k);
-        else
-            Dx=CA*(EL(Sigma_zz,i,j,k+1)-EL(Sigma_zz,i,j,k))-
-                CB*( EL(Sigma_zz,i,j,k+2)-EL(Sigma_zz,i,j,k-1));
+				if REQUIRES_2ND_ORDER_P(Z)
+					Dx=EL(Sigma_zz,i,j,k+1)-EL(Sigma_zz,i,j,k);
+				else
+					Dx=CA*(EL(Sigma_zz,i,j,k+1)-EL(Sigma_zz,i,j,k))-
+						CB*( EL(Sigma_zz,i,j,k+2)-EL(Sigma_zz,i,j,k-1));
 
-        if REQUIRES_2ND_ORDER_P(X)
-            Dx+=EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i-1,j,k);
-        else
-            Dx+=CA*(EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i-1,j,k))-
-            CB*(EL(Sigma_xz,i+1,j,k)-EL(Sigma_xz,i-2,j,k));
+				if REQUIRES_2ND_ORDER_P(X)
+					Dx+=EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i-1,j,k);
+				else
+					Dx+=CA*(EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i-1,j,k))-
+					CB*(EL(Sigma_xz,i+1,j,k)-EL(Sigma_xz,i-2,j,k));
 
-        if REQUIRES_2ND_ORDER_P(Y)
-            Dx+=EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j-1,k);
-        else
-            Dx+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j-1,k))-
-            CB*(EL(Sigma_yz,i,j+1,k)-EL(Sigma_yz,i,j-2,k));
+				if REQUIRES_2ND_ORDER_P(Y)
+					Dx+=EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j-1,k);
+				else
+					Dx+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j-1,k))-
+					CB*(EL(Sigma_yz,i,j+1,k)-EL(Sigma_yz,i,j-2,k));
 
-        EL(Vz,i,j,k)+=DT*AvgInvRhoK*Dx;
+				prev+=DT*AvgInvRhoK*Dx;
+				EL(Vz,i,j,k)+=DT*AvgInvRhoK*Dx;
 				accum_z+=EL(Vz,i,j,k);
-			}
+
+				// EL(Pressure,i,j,k)=(EL(Pressure_old,i-1,j,k)+EL(Pressure_old,i,j-1,k)+EL(Pressure_old,i,j,k-1) -prev/DT/ELD(InvRhoMatH,EL(MaterialMap,i,j,k)) )/3;
+				// accum_p+=EL(Pressure,i,j,k);
+		}
 
   		if (nStep < LengthSource)
   		{
-				index=IndN1N2N3(i,j,k,0);
+			index=IndN1N2N3(i,j,k,0);
   			source=ELD(SourceMap,index);
   			if (source>0)
   			{
-				  source--; //need to use C index
-  			  value=ELD(SourceFunctions,nStep*NumberSources+source);
-            if (TypeSource==0)
-            {
-                EL(Vx,i,j,k)+=value*ELD(Ox,index);
-                EL(Vy,i,j,k)+=value*ELD(Oy,index);
-                EL(Vz,i,j,k)+=value*ELD(Oz,index);
-            }
-            else
-            {
-                EL(Vx,i,j,k)=value*ELD(Ox,index);
-                EL(Vy,i,j,k)=value*ELD(Oy,index);
-                EL(Vz,i,j,k)=value*ELD(Oz,index);
-            }
+				source--; //need to use C index
+  			  	value=ELD(SourceFunctions,nStep*NumberSources+source);
+				if (TypeSource==0)
+				{
+					EL(Vx,i,j,k)+=value*ELD(Ox,index);
+					EL(Vy,i,j,k)+=value*ELD(Oy,index);
+					EL(Vz,i,j,k)+=value*ELD(Oz,index);
+				}
+				else
+				{
+					EL(Vx,i,j,k)=value*ELD(Ox,index);
+					EL(Vy,i,j,k)=value*ELD(Oy,index);
+					EL(Vz,i,j,k)=value*ELD(Oz,index);
+				}
 
   			}
   		}
 
 		}
-		if (i<N1 && j <N2 && k < N3 )
+		if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0)
 	    {
-			accum_x/=ZoneCount;
-			accum_y/=ZoneCount;
-			accum_z/=ZoneCount;
-			CurZone=0;
-			index=IndN1N2N3(i,j,k,0);
-				index2=N1*N2*N3;
-				if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
-				{
-					if (IS_ALLV_SELECTED(SelMapsRMSPeak))
-						ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
-					if (IS_Vx_SELECTED(SelMapsRMSPeak))
-						ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
-					if (IS_Vy_SELECTED(SelMapsRMSPeak))
-						ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
-					if (IS_Vz_SELECTED(SelMapsRMSPeak))
-						ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
-				}
-				if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
-						index+=index2*NumberSelRMSPeakMaps;
-				if (SelRMSorPeak & SEL_PEAK)
-				{
-					if (IS_ALLV_SELECTED(SelMapsRMSPeak))
-					{
-						value=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z; //in the Python function we will do the final sqr root`
-						ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)=value > ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV) ? value : ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV);
-					}
-					if (IS_Vx_SELECTED(SelMapsRMSPeak))
-							ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)=accum_x > ELD(SqrAcc,index+index2*IndexRMSPeak_Vx) ? accum_x : ELD(SqrAcc,index+index2*IndexRMSPeak_Vx);
-					if (IS_Vy_SELECTED(SelMapsRMSPeak))
-							ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)=accum_y > ELD(SqrAcc,index+index2*IndexRMSPeak_Vy) ? accum_y : ELD(SqrAcc,index+index2*IndexRMSPeak_Vy);
-					if (IS_Vz_SELECTED(SelMapsRMSPeak))
-							ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)=accum_z > ELD(SqrAcc,index+index2*IndexRMSPeak_Vz) ? accum_z : ELD(SqrAcc,index+index2*IndexRMSPeak_Vz);
+			if (ZoneCount>1)
+			{
+				accum_x/=ZoneCount;
+				accum_y/=ZoneCount;
+				accum_z/=ZoneCount;
+				accum_p/=ZoneCount;
 
 			}
+			CurZone=0;
+			index=IndN1N2N3(i,j,k,0);
+			index2=N1*N2*N3;
+			if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+			{
+				if (IS_ALLV_SELECTED(SelMapsRMSPeak))
+					ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
+				if (IS_Vx_SELECTED(SelMapsRMSPeak))
+					ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
+				if (IS_Vy_SELECTED(SelMapsRMSPeak))
+					ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
+				if (IS_Vz_SELECTED(SelMapsRMSPeak))
+					ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
+				
+				// if (IS_Pressure_SELECTED(SelMapsRMSPeak)) 
+				// 	ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)+=accum_p*accum_p;
+
+			}
+			if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
+					index+=index2*NumberSelRMSPeakMaps;
+			if (SelRMSorPeak & SEL_PEAK)
+			{
+				if (IS_ALLV_SELECTED(SelMapsRMSPeak))
+				{
+					value=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z; //in the Python function we will do the final sqr root`
+					ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)=value > ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV) ? value : ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV);
+				}
+				if (IS_Vx_SELECTED(SelMapsRMSPeak))
+						ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)=accum_x > ELD(SqrAcc,index+index2*IndexRMSPeak_Vx) ? accum_x : ELD(SqrAcc,index+index2*IndexRMSPeak_Vx);
+				if (IS_Vy_SELECTED(SelMapsRMSPeak))
+						ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)=accum_y > ELD(SqrAcc,index+index2*IndexRMSPeak_Vy) ? accum_y : ELD(SqrAcc,index+index2*IndexRMSPeak_Vy);
+				if (IS_Vz_SELECTED(SelMapsRMSPeak))
+						ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)=accum_z > ELD(SqrAcc,index+index2*IndexRMSPeak_Vz) ? accum_z : ELD(SqrAcc,index+index2*IndexRMSPeak_Vz);
+				// if (IS_Pressure_SELECTED(SelMapsRMSPeak)) 
+				// 	ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)=accum_p > ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure) ? accum_p :ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure);
+
+			}
+
+
 		}

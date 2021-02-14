@@ -401,11 +401,12 @@ class PropagationModel:
                 if index>=0:
                     RetValuePeak[key]=RMSValue[:,:,:,index,1]
 
-        if 'Pressure' in RetValuePeak:
-            RetValuePeak['Pressure']*=(MaterialProperties[MaterialMap,1]**2)*MaterialProperties[MaterialMap,0]/SpatialStep;
+        # if 'Pressure' in RetValuePeak:
+        #     #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz and then squared+sum, so we still need to do the sqr root and then multiply for density
+        #     RetValuePeak['Pressure']=np.sqrt(RetValuePeak['Pressure'])*MaterialProperties[MaterialMap,0]
             
-        if 'Pressure' in RetValueRMS:
-            RetValueRMS['Pressure']*=(MaterialProperties[MaterialMap,1]**2)*MaterialProperties[MaterialMap,0]/SpatialStep;
+        # if 'Pressure' in RetValueRMS:
+        #     RetValueRMS['Pressure']*=MaterialProperties[MaterialMap,0]
         
         if 'ALLV' in RetValuePeak:
             #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS

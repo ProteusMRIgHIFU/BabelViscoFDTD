@@ -118,6 +118,8 @@
 #define k_Sigma_xy_pr  __def_MEX_VAR(Sigma_xy)
 #define k_Sigma_xz_pr  __def_MEX_VAR(Sigma_xz)
 #define k_Sigma_yz_pr  __def_MEX_VAR(Sigma_yz)
+#define k_Pressure_pr  __def_MEX_VAR(Pressure)
+#define k_Pressure_old_pr  __def_MEX_VAR(Pressure)
 
 #define k_SensorOutput_pr  __def_MEX_VAR(SensorOutput)
 #define k_SqrAcc_pr  __def_MEX_VAR(SqrAcc)

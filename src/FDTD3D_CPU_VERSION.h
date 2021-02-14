@@ -9,6 +9,8 @@
   LOCAL_CALLOC(Sigma_xy,GET_NUMBER_ELEMS(Sigma_xy_res));
   LOCAL_CALLOC(Sigma_xz,GET_NUMBER_ELEMS(Sigma_xz_res));
   LOCAL_CALLOC(Sigma_yz,GET_NUMBER_ELEMS(Sigma_yz_res));
+  LOCAL_CALLOC(Pressure,GET_NUMBER_ELEMS(Pressure_res));
+  LOCAL_CALLOC(Pressure_old,GET_NUMBER_ELEMS(Pressure_res));
   //LOCAL_CALLOC(SqrAcc,GET_NUMBER_ELEMS(SqrAcc));
 
 	LOCAL_CALLOC(V_x_x,INHOST(SizePMLxp1));
@@ -277,6 +279,7 @@
 				ASSIGN_RES(Sigma_xy);
 				ASSIGN_RES(Sigma_xz);
 				ASSIGN_RES(Sigma_yz);
+				ASSIGN_RES(Pressure);
 			}
 		}
 	}
@@ -286,6 +289,8 @@ fflush(FDEBUG);
 free(Vx_pr);
 free(Vy_pr);
 free(Vz_pr);
+free(Pressure_pr);
+free(Pressure_old_pr);
 free(Sigma_xx_pr);
 free(Sigma_yy_pr);
 free(Sigma_zz_pr);

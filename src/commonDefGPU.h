@@ -250,6 +250,7 @@ __constant__ unsigned int IndexSensor_Sigmazz;
 __constant__ unsigned int IndexSensor_Sigmaxy;
 __constant__ unsigned int IndexSensor_Sigmaxz;
 __constant__ unsigned int IndexSensor_Sigmayz;
+__constant__ unsigned int IndexSensor_Pressure;
 __constant__ unsigned int NumberSelSensorMaps;
 __constant__ unsigned int SensorSteps;
 
@@ -359,6 +360,8 @@ int __InitBuffer =0;
       *Sigma_xx_pr,
       *Sigma_yy_pr,
       *Sigma_zz_pr,
+	  *Pressure_pr,
+	  *Pressure_old_pr,
       *SourceFunctions_pr,
       * LambdaMiuMatOverH_pr,
       * LambdaMatOverH_pr,
@@ -560,6 +563,10 @@ int __InitBuffer =0;
 						return 51;
 					if (strcmp(NameVar,"Oz")==0)
 						return 52;
+					if (strcmp(NameVar,"Pressure")==0)
+						return 53;
+					if (strcmp(NameVar,"Pressure_old")==0)
+						return 54;
 
 					ERROR_STRING("Unknown parameter");
 					return -1;
