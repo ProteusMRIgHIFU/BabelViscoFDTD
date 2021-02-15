@@ -41,7 +41,7 @@ kernel void StressKernel(
 }
 
 #if defined(CUDA)
-__global__ void ParticleKernel(InputDataKernel * p, 
+__global__ void ParticleKernel(InputDataKernel * p,
 			unsigned int nStep,unsigned int TypeSource)
 {
 	  const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -175,7 +175,8 @@ __global__ void PressureKernel(InputDataKernel * p)
 #endif
 #ifdef OPENCL
 __kernel void PressureKernel(
-	#include "kernelparamsOpenCL.h")
+	#include "kernelparamsOpenCL.h"
+  )
 {
 	const unsigned int i = get_global_id(0);
 	const unsigned int j = get_global_id(1);
@@ -203,4 +204,3 @@ kernel void PressureKernel(
 
 	#include "PressureKernel.h"
 }
-

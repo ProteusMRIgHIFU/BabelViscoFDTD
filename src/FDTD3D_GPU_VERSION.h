@@ -435,7 +435,7 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 	ownGpuCalloc(Sigma_z_xz,mexType,INHOST(SizePMLxp1yp1zp1));
 	ownGpuCalloc(Sigma_y_yz,mexType,INHOST(SizePMLxp1yp1zp1));
 	ownGpuCalloc(Sigma_z_yz,mexType,INHOST(SizePMLxp1yp1zp1));
-  
+
   SizeCopy = GET_NUMBER_ELEMS(Sigma_xx_res);
 	ownGpuCalloc(Rxx,mexType,SizeCopy);
 	ownGpuCalloc(Ryy,mexType,SizeCopy);
@@ -742,8 +742,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
       mxcheckGPUErrors(clSetKernelArg(SnapShot, 4, sizeof(cl_mem), &gpu_Sigma_zz_pr));
   }
 
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_SensorOutput_pr));
-  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 54, sizeof(cl_mem), &gpu_SensorOutput_pr));
+  mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
 #endif
 
 	for (unsigned int INHOST(nStep)=0;INHOST(nStep)<INHOST(TimeSteps);INHOST(nStep)++)
@@ -762,9 +762,9 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
         int nextSnap=-1;
         if (NumberSnapshots>0)
             nextSnap=SnapshotsPos_pr[INHOST(CurrSnap)]-1;
-        mxcheckGPUErrors(clSetKernelArg(StressKernel, 55, sizeof(unsigned int), &INHOST(nStep)));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(nStep)));
-        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 56, sizeof(unsigned int), &INHOST(TypeSource)));
+        mxcheckGPUErrors(clSetKernelArg(StressKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
+        mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
@@ -871,24 +871,24 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
               mxcheckGPUErrors(clFinish(commands));
       #endif
       #ifdef METAL
-              mtlpp::CommandBuffer commandBufferPressure = commandQueue.CommandBuffer();
-              mxcheckGPUErrors(((int)commandBufferPressure));
-
-              mtlpp::ComputeCommandEncoder commandEncoderPressure = commandBufferPressure.ComputeCommandEncoder();
-              COMMON_METAL_PARAMS;
-              commandEncoderPressure.SetComputePipelineState(computePipelineStatePressure);
-              commandEncoderPressure.DispatchThreadgroups(
-                  mtlpp::Size(
-                    (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
-                    (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
-                    (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
-                  mtlpp::Size(4, 4, 4));
-              commandEncoderPressure.EndEncoding();
-
-              mtlpp::BlitCommandEncoder blitCommandEncoderPressure = commandBufferPressure.BlitCommandEncoder();
-              blitCommandEncoderPressure.EndEncoding();
-              commandBufferPressure.Commit();
-              commandBufferPressure.WaitUntilCompleted();
+              // mtlpp::CommandBuffer commandBufferPressure = commandQueue.CommandBuffer();
+              // mxcheckGPUErrors(((int)commandBufferPressure));
+              //
+              // mtlpp::ComputeCommandEncoder commandEncoderPressure = commandBufferPressure.ComputeCommandEncoder();
+              // COMMON_METAL_PARAMS;
+              // commandEncoderPressure.SetComputePipelineState(computePipelineStatePressure);
+              // commandEncoderPressure.DispatchThreadgroups(
+              //     mtlpp::Size(
+              //       (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
+              //       (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
+              //       (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
+              //     mtlpp::Size(4, 4, 4));
+              // commandEncoderPressure.EndEncoding();
+              //
+              // mtlpp::BlitCommandEncoder blitCommandEncoderPressure = commandBufferPressure.BlitCommandEncoder();
+              // blitCommandEncoderPressure.EndEncoding();
+              // commandBufferPressure.Commit();
+              // commandBufferPressure.WaitUntilCompleted();
 
       #endif
     }
@@ -900,7 +900,7 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 		    mxcheckGPUErrors(cudaDeviceSynchronize());
 #endif
 #if defined(OPENCL)
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(unsigned int), &INHOST(nStep)));
+      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &INHOST(nStep)));
       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
       mxcheckGPUErrors(clFinish(commands));
 #endif

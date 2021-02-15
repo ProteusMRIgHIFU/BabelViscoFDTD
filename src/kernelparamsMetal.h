@@ -49,6 +49,7 @@
 #define IndexSensor_Sigmaxy p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Sigmaxy]
 #define IndexSensor_Sigmaxz p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Sigmaxz]
 #define IndexSensor_Sigmayz p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Sigmayz]
+#define IndexSensor_Pressure p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Pressure]
 #define NumberSelSensorMaps p_CONSTANT_BUFFER_UINT[CInd_NumberSelSensorMaps]
 #define SensorSteps p_CONSTANT_BUFFER_UINT[CInd_SensorSteps]
 #define nStep p_CONSTANT_BUFFER_UINT[CInd_nStep]

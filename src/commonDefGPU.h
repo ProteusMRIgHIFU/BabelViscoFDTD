@@ -572,6 +572,7 @@ int __InitBuffer =0;
 #define InParamP(_NameVar) {int __NParam = _IndexDataKernel(#_NameVar);\
 			mxcheckGPUErrors(clSetKernelArg(StressKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));\
 			mxcheckGPUErrors(clSetKernelArg(ParticleKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));\
+			mxcheckGPUErrors(clSetKernelArg(PressureKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));\
 			mxcheckGPUErrors(clSetKernelArg(SensorsKernel, __NParam, sizeof(cl_mem), &gpu_ ## _NameVar ## _pr));}
 
 int output_device_info(cl_device_id device_id)
