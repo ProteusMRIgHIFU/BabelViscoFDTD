@@ -76,7 +76,7 @@ int NumberAlloc=0;
     cl_program       program;       // compute program
     cl_kernel        StressKernel;       // compute kernel
     cl_kernel        ParticleKernel;       // compute kernel
-    //cl_kernel        PressureKernel;       // compute kernel
+    cl_kernel        PressureKernel;       // compute kernel
     cl_kernel        SnapShot;       // compute kernel
     cl_kernel        SensorsKernel;       // compute kernel
     cl_char device_name[1024];
@@ -244,10 +244,10 @@ int NumberAlloc=0;
     mtlpp::ComputePipelineState computePipelineStateSnapShot = device.NewComputePipelineState(SnapShotFunc, nullptr);
     mxcheckGPUErrors(((int)computePipelineStateSnapShot));
 
-    // mtlpp::Function PressureKernelFunc = library.NewFunction("PressureKernel");
-    // mxcheckGPUErrors(((int)PressureKernelFunc));
-    // mtlpp::ComputePipelineState computePipelineStatePressure = device.NewComputePipelineState(PressureKernelFunc, nullptr);
-    // mxcheckGPUErrors(((int)computePipelineStatePressure));
+    mtlpp::Function PressureKernelFunc = library.NewFunction("PressureKernel");
+    mxcheckGPUErrors(((int)PressureKernelFunc));
+    mtlpp::ComputePipelineState computePipelineStatePressure = device.NewComputePipelineState(PressureKernelFunc, nullptr);
+    mxcheckGPUErrors(((int)computePipelineStatePressure));
 
     mtlpp::Function SensorsKernelFunc = library.NewFunction("SensorsKernel");
     mxcheckGPUErrors(((int)SensorsKernelFunc));
@@ -399,8 +399,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
     ParticleKernel = clCreateKernel(program, "ParticleKernel", &err);
     mxcheckGPUErrors(err);
 
-    // PressureKernel = clCreateKernel(program, "PressureKernel", &err);
-    // mxcheckGPUErrors(err);
+    PressureKernel = clCreateKernel(program, "PressureKernel", &err);
+    mxcheckGPUErrors(err);
 
     SnapShot = clCreateKernel(program, "SnapShot", &err);
     mxcheckGPUErrors(err);
@@ -435,8 +435,7 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 	ownGpuCalloc(Sigma_z_xz,mexType,INHOST(SizePMLxp1yp1zp1));
 	ownGpuCalloc(Sigma_y_yz,mexType,INHOST(SizePMLxp1yp1zp1));
 	ownGpuCalloc(Sigma_z_yz,mexType,INHOST(SizePMLxp1yp1zp1));
-  ownGpuCalloc(Pressure_old,mexType,GET_NUMBER_ELEMS(Pressure_res));
-
+  
   SizeCopy = GET_NUMBER_ELEMS(Sigma_xx_res);
 	ownGpuCalloc(Rxx,mexType,SizeCopy);
 	ownGpuCalloc(Ryy,mexType,SizeCopy);
@@ -605,7 +604,6 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   InParamP(Sigma_yz);
   InParamP(SqrAcc);
   InParamP(Pressure);
-  InParamP(Pressure_old);
 #ifdef CUDA
   InParamP(SensorOutput);
 #endif
@@ -631,8 +629,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   int minGridSizeStress; // The minimum grid size needed to achieve the
   int blockSizeParticle;   // The launch configurator returned block size
   int minGridSizeParticle; // The minimum grid size needed to achieve the
-  // int blockSizePressure;   // The launch configurator returned block size
-  // int minGridSizePressure; // The minimum grid size needed to achieve the
+  int blockSizePressure;   // The launch configurator returned block size
+  int minGridSizePressure; // The minimum grid size needed to achieve the
   int blockSizeSnap;   // The launch configurator returned block size
   int minGridSizeSnap; // The minimum grid size needed to achieve the
   int blockSizeSensor;   // The launch configurator returned block size
@@ -644,8 +642,8 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   dim3              dimGridStress;
   dim3              dimBlockParticle;
   dim3              dimGridParticle;
-  // dim3              dimBlockPressure;
-  // dim3              dimGridPressure;
+  dim3              dimBlockPressure;
+  dim3              dimGridPressure;
   dim3              dimBlockSnap;
   dim3              dimGridSnap;
   dim3              dimBlockSensors;
@@ -681,18 +679,18 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   PRINTF(" Particle grid size to %dx%dx%d\n", dimGridParticle.x, dimGridParticle.y,dimGridParticle.z);
 
 
-  // cudaOccupancyMaxPotentialBlockSize( &minGridSizePressure, &blockSizePressure,
-  //                                 PressureKernel, 0, 0);
-  // PRINTF("minGridSize and Blocksize from API for Pressure = %i and %i\n",minGridSizePressure,blockSizePressure);
-  // dimBlockPressure.x=8;
-  // dimBlockPressure.y=8;
-  // dimBlockPressure.z=(unsigned int)floor(blockSizePressure/(dimBlockPressure.y*dimBlockPressure.x));
+  cudaOccupancyMaxPotentialBlockSize( &minGridSizePressure, &blockSizePressure,
+                                  PressureKernel, 0, 0);
+  PRINTF("minGridSize and Blocksize from API for Pressure = %i and %i\n",minGridSizePressure,blockSizePressure);
+  dimBlockPressure.x=8;
+  dimBlockPressure.y=8;
+  dimBlockPressure.z=(unsigned int)floor(blockSizePressure/(dimBlockPressure.y*dimBlockPressure.x));
 
-  // dimGridPressure.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockPressure.x);
-  // dimGridPressure.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockPressure.y);
-  // dimGridPressure.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockPressure.z);
-  // PRINTF(" Pressure block size to %dx%dx%d\n", dimBlockPressure.x, dimBlockPressure.y,dimBlockPressure.z);
-  // PRINTF(" Pressure grid size to %dx%dx%d\n", dimGridPressure.x, dimGridPressure.y,dimGridPressure.z);
+  dimGridPressure.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockPressure.x);
+  dimGridPressure.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockPressure.y);
+  dimGridPressure.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockPressure.z);
+  PRINTF(" Pressure block size to %dx%dx%d\n", dimBlockPressure.x, dimBlockPressure.y,dimBlockPressure.z);
+  PRINTF(" Pressure grid size to %dx%dx%d\n", dimGridPressure.x, dimGridPressure.y,dimGridPressure.z);
 
   cudaOccupancyMaxPotentialBlockSize( &minGridSizeSnap, &blockSizeSnap,
                                   SnapShot, 0, 0);
@@ -862,38 +860,38 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 				INHOST(CurrSnap)++;
 			}
 
-    // if (IS_Pressure_SELECTED(INHOST(SelMapsRMSPeak)))
-    // {
-    //   #if defined(CUDA)
-    //       PressureKernel<<<dimGridPressure, dimBlockPressure>>>(pGPU);
-    //       mxcheckGPUErrors(cudaDeviceSynchronize());
-    //   #endif
-    //   #ifdef OPENCL
-    //           mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, PressureKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
-    //           mxcheckGPUErrors(clFinish(commands));
-    //   #endif
-    //   #ifdef METAL
-    //           mtlpp::CommandBuffer commandBufferPressure = commandQueue.CommandBuffer();
-    //           mxcheckGPUErrors(((int)commandBufferPressure));
+    if (IS_Pressure_SELECTED(INHOST(SelMapsRMSPeak)))
+    {
+      #if defined(CUDA)
+          PressureKernel<<<dimGridPressure, dimBlockPressure>>>(pGPU);
+          mxcheckGPUErrors(cudaDeviceSynchronize());
+      #endif
+      #ifdef OPENCL
+              mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, PressureKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));
+              mxcheckGPUErrors(clFinish(commands));
+      #endif
+      #ifdef METAL
+              mtlpp::CommandBuffer commandBufferPressure = commandQueue.CommandBuffer();
+              mxcheckGPUErrors(((int)commandBufferPressure));
 
-    //           mtlpp::ComputeCommandEncoder commandEncoderPressure = commandBufferPressure.ComputeCommandEncoder();
-    //           COMMON_METAL_PARAMS;
-    //           commandEncoderPressure.SetComputePipelineState(computePipelineStatePressure);
-    //           commandEncoderPressure.DispatchThreadgroups(
-    //               mtlpp::Size(
-    //                 (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
-    //                 (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
-    //                 (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
-    //               mtlpp::Size(4, 4, 4));
-    //           commandEncoderPressure.EndEncoding();
+              mtlpp::ComputeCommandEncoder commandEncoderPressure = commandBufferPressure.ComputeCommandEncoder();
+              COMMON_METAL_PARAMS;
+              commandEncoderPressure.SetComputePipelineState(computePipelineStatePressure);
+              commandEncoderPressure.DispatchThreadgroups(
+                  mtlpp::Size(
+                    (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
+                    (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
+                    (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
+                  mtlpp::Size(4, 4, 4));
+              commandEncoderPressure.EndEncoding();
 
-    //           mtlpp::BlitCommandEncoder blitCommandEncoderPressure = commandBufferPressure.BlitCommandEncoder();
-    //           blitCommandEncoderPressure.EndEncoding();
-    //           commandBufferPressure.Commit();
-    //           commandBufferPressure.WaitUntilCompleted();
+              mtlpp::BlitCommandEncoder blitCommandEncoderPressure = commandBufferPressure.BlitCommandEncoder();
+              blitCommandEncoderPressure.EndEncoding();
+              commandBufferPressure.Commit();
+              commandBufferPressure.WaitUntilCompleted();
 
-    //   #endif
-    // }
+      #endif
+    }
 		//~ //Finally, the sensors
     if ((INHOST(nStep) % INHOST(SensorSteps))==0)
 		{
@@ -1065,7 +1063,6 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
   ownGPUFree(Ryz);
   ownGPUFree(Snapshots);
   ownGPUFree(SqrAcc);
-  ownGPUFree(Pressure_old)
 
 #if defined(CUDA)
 	mxcheckGPUErrors(cudaMemGetInfo( &free_byte, &total_byte ));
@@ -1080,7 +1077,7 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
     clReleaseKernel(StressKernel);
     clReleaseKernel(ParticleKernel);
     clReleaseKernel(SensorsKernel);
-    //clReleaseKernel(PressureKernel);
+    clReleaseKernel(PressureKernel);
     clReleaseKernel(SnapShot);
     clReleaseCommandQueue(commands);
     clReleaseContext(context);

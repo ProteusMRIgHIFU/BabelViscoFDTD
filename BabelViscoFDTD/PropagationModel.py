@@ -207,7 +207,7 @@ class PropagationModel:
         if DT!=None:
              if DT >dt:
                 import warnings
-                warnings.warn('Staggered:DT_INVALID The specified manual step is larger than the minimal optimal size, there is a risk of unstable calculation ' + str(DT) + ' ' +str(dt))
+                raise ValueError('Staggered:DT_INVALID The specified manual step is larger than the minimal optimal size, there is a risk of unstable calculation ' + str(DT) + ' ' +str(dt))
 
              else:
                 print ('The specified manual step  is smaller than the minimal optimal size, calculations may take longer than required\n', DT,dt)
@@ -401,12 +401,13 @@ class PropagationModel:
                 if index>=0:
                     RetValuePeak[key]=RMSValue[:,:,:,index,1]
 
-        # if 'Pressure' in RetValuePeak:
-        #     #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz and then squared+sum, so we still need to do the sqr root and then multiply for density
-        #     RetValuePeak['Pressure']=np.sqrt(RetValuePeak['Pressure'])*MaterialProperties[MaterialMap,0]
+        if 'Pressure' in RetValuePeak:
+           #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz 
+           # We need to scale back to rho c^2 /Spatialstep
+            RetValuePeak['Pressure']*=MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
             
-        # if 'Pressure' in RetValueRMS:
-        #     RetValueRMS['Pressure']*=MaterialProperties[MaterialMap,0]
+        if 'Pressure' in RetValueRMS:
+            RetValueRMS['Pressure']*= MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
         
         if 'ALLV' in RetValuePeak:
             #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS

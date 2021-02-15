@@ -184,7 +184,6 @@ typedef unsigned char interface_t;
 #define Ind_Sigma_zz(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
 
 #define Ind_Pressure(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
-#define Ind_Pressure_old(_i,_j,_k) (IndN1N2N3(_i,_j,_k,N1*N2*N3))
 
 #define Ind_Sigma_xy(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
 #define Ind_Sigma_xz(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
@@ -442,9 +441,8 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_SqrAcc 50
 #define CInd_SourceFunctions 51
 #define CInd_Pressure 52
-#define CInd_Pressure_old 53
 
-#define LENGTH_INDEX_MEX 54
+#define LENGTH_INDEX_MEX 53
 
 #define CInd_IndexSensorMap  0
 #define CInd_SourceMap	1

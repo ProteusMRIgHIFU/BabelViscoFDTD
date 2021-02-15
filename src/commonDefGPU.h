@@ -361,8 +361,7 @@ int __InitBuffer =0;
       *Sigma_yy_pr,
       *Sigma_zz_pr,
 	  *Pressure_pr,
-	  *Pressure_old_pr,
-      *SourceFunctions_pr,
+	  *SourceFunctions_pr,
       * LambdaMiuMatOverH_pr,
       * LambdaMatOverH_pr,
       * MiuMatOverH_pr,
@@ -565,8 +564,6 @@ int __InitBuffer =0;
 						return 52;
 					if (strcmp(NameVar,"Pressure")==0)
 						return 53;
-					if (strcmp(NameVar,"Pressure_old")==0)
-						return 54;
 
 					ERROR_STRING("Unknown parameter");
 					return -1;

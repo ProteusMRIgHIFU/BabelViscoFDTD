@@ -12,8 +12,6 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
   	if (i<N1 && j<N2 && k<N3)
   	{
-	  EL(Pressure_old,i,j,k)=EL(Pressure,i,j,k);
-
       index=Ind_MaterialMap(i,j,k);
       MaterialID=ELD(MaterialMap,index);
 
@@ -299,7 +297,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
           Dy=CA*(EL(Vy,i,j,k)-EL(Vy,i,j-1,k))-
              CB*(EL(Vy,i,j+1,k)-EL(Vy,i,j-2,k));
 
-      if REQUIRES_2ND_ORDER_M(Y)
+      if REQUIRES_2ND_ORDER_M(Z)
           Dz=EL(Vz,i,j,k)-EL(Vz,i,j,k-1);
       else
           Dz=CA*(EL(Vz,i,j,k)-EL(Vz,i,j,k-1))-

@@ -52,4 +52,3 @@ __global mexType * Ox_pr,
 __global mexType * Oy_pr,
 __global mexType * Oz_pr,
 __global mexType * Pressure_pr,
-__global mexType * Pressure_old_pr

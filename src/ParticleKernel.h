@@ -2,8 +2,8 @@
 	interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
     unsigned int index,index2,CurZone,source;
-	mexType AvgInvRhoI,AvgInvRhoJ,AvgInvRhoK,Dx,Dy,Dz,Diff,value,accum_x=0.0,accum_y=0.0,accum_z=0.0,
-			accum_p=0.0;
+	mexType AvgInvRhoI,AvgInvRhoJ,AvgInvRhoK,Dx,Dy,Dz,Diff,value,accum_x=0.0,accum_y=0.0,accum_z=0.0;
+			//accum_p=0.0;
 
 	for (   CurZone=0;CurZone<ZoneCount;CurZone++)
 		if (i<N1 && j<N2 && k<N3)
@@ -230,11 +230,6 @@
 				EL(Vz,i,j,k)+=DT*AvgInvRhoK*Dz;
 				accum_z+=EL(Vz,i,j,k);
 
-				//We use the Euler formula (Grad(p)=-\rho dv/dt) to calculate the instataneous pressure
-				EL(Pressure,i,j,k)=(EL(Pressure_old,i+1,j,k)+Dx+	
-				                    EL(Pressure_old,i,j+1,k)+Dy+
-									EL(Pressure_old,i,j,k+1)+Dz)/3 ;
-				accum_p+=EL(Pressure,i,j,k);
 		}
 
   		if (nStep < LengthSource)
@@ -269,8 +264,6 @@
 				accum_x/=ZoneCount;
 				accum_y/=ZoneCount;
 				accum_z/=ZoneCount;
-				accum_p/=ZoneCount;
-
 			}
 			CurZone=0;
 			index=IndN1N2N3(i,j,k,0);
@@ -285,9 +278,6 @@
 					ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)+=accum_y*accum_y;
 				if (IS_Vz_SELECTED(SelMapsRMSPeak))
 					ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)+=accum_z*accum_z;
-				
-				if (IS_Pressure_SELECTED(SelMapsRMSPeak)) 
-				 	ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)+=accum_p*accum_p;
 
 			}
 			if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
@@ -305,8 +295,6 @@
 						ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)=accum_y > ELD(SqrAcc,index+index2*IndexRMSPeak_Vy) ? accum_y : ELD(SqrAcc,index+index2*IndexRMSPeak_Vy);
 				if (IS_Vz_SELECTED(SelMapsRMSPeak))
 						ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)=accum_z > ELD(SqrAcc,index+index2*IndexRMSPeak_Vz) ? accum_z : ELD(SqrAcc,index+index2*IndexRMSPeak_Vz);
-				if (IS_Pressure_SELECTED(SelMapsRMSPeak)) 
-				 	ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)=accum_p > ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure) ? accum_p :ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure);
 
 			}
 
