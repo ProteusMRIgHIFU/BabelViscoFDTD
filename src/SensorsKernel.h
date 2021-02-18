@@ -92,4 +92,4 @@ if (IS_Sigmaxz_SELECTED(SelMapsSensors))
 if (IS_Sigmayz_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmayz)=accumYZ;
 if (IS_Pressure_SELECTED(SelMapsSensors))
-    ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure)=accumYZ;
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure)=accum_p;

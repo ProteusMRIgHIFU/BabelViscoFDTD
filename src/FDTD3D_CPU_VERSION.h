@@ -221,24 +221,6 @@
 				INHOST(CurrSnap)++;
 			}
 
-		if (IS_Pressure_SELECTED(SelMapsRMSPeak))
-			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<( int)(N3+1); kk++)
-			{
-				unsigned int k= (unsigned int)kk;
-				for(jj=0; jj<( int)N2+1; jj++)
-				{
-					unsigned int j= (unsigned int)jj;
-					for(ii=0; ii<( int)N1+1; ii++)
-					{
-						unsigned int i= (unsigned int)ii;
-
-							#include "PressureKernel.h"
-
-					}
-				}
-			}
-
 		//Finally, the sensors
 		if ((nStep % INHOST(SensorSteps))==0)
 		{

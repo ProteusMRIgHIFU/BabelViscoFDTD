@@ -401,13 +401,19 @@ class PropagationModel:
                 if index>=0:
                     RetValuePeak[key]=RMSValue[:,:,:,index,1]
 
+        pFactor=MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
         if 'Pressure' in RetValuePeak:
-           #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz 
-           # We need to scale back to rho c^2 /Spatialstep
-            RetValuePeak['Pressure']*=MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
+            #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz 
+            # We need to scale back to rho c^2 /Spatialstep
+            RetValuePeak['Pressure']*=pFactor
             
         if 'Pressure' in RetValueRMS:
-            RetValueRMS['Pressure']*= MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
+            RetValueRMS['Pressure']*= pFactor
+
+        if 'Pressure' in RetValueSensors:
+            ii,jj,kk=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
+            for n,i,j,k in zip(range(len(IndexSensors)),ii,jj,kk):
+                RetValueSensors['Pressure'][n,:]*=pFactor[i,j,k]
         
         if 'ALLV' in RetValuePeak:
             #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS

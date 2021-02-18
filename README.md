@@ -155,3 +155,7 @@ Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very sim
 Consult `setup.py` and `CompileMatlab.m` to review how all the potential modalities are generated.
 
 Please note that the Matlab implementation is still missing an updated high-level equivalence to `BabelViscoFDTD\PropagationModel.py`. Given most of my personal computing platform moved years ago to Python, the Matlab frontend is a low-priority by the time being. However, the compilation for Matlab frontend is still operational.
+
+# Release notes
+0.9.0  Dec 2020. First porting from private repository and big reorganization to make it more user friendly
+0.9.1  Feb 17, 2021. Pressure calculation added
