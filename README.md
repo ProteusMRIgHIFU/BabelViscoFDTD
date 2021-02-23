@@ -158,4 +158,4 @@ Please note that the Matlab implementation is still missing an updated high-leve
 
 # Release notes
 0.9.0  Dec 2020. First porting from private repository and big reorganization to make it more user friendly
-0.9.1  Feb 17, 2021. Pressure calculation added
+0.9.1  Feb 17, 2021. Pressure calculation added in low-level function.

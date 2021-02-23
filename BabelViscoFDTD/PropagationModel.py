@@ -64,7 +64,8 @@ class PropagationModel:
                                          SelRMSorPeak=1,
                                          SelMapsRMSPeakList=['ALLV'],
                                          SelMapsSensorsList=['Vx','Vy','Vz'],
-                                         SensorSteps=2,
+                                         SensorSubSampling=2,
+                                         SensorStart=0,
                                          DefaultGPUDeviceName='TITAN',
                                          SILENT=0):
         '''
@@ -218,6 +219,11 @@ class PropagationModel:
 
         if SourceFunctions.shape[0]<np.max(SourceMap.flatten()):
              raise ValueError('The maximum identifier in SourceMap  is larger than the maximum source function (maximum row) in SourceFunctions')
+        
+        NumberSensorSubSampling=np.floor(TimeVector.size/SensorSubSampling)
+        if (SensorStart <0) or (SensorStart>=NumberSensorSubSampling):
+            raise ValueError('Invalid SensorStart value, it must be larger or equal to 0, and less than the size of the sensor length %i ' %(NumberSensorSubSampling))
+
 
         LengthSource = SourceFunctions.shape[1]
 
@@ -336,7 +342,8 @@ class PropagationModel:
         InputParam['PMLThickness']=np.uint32(NDelta)
         InputParam['SelRMSorPeak']=np.uint32(SelRMSorPeak)
         InputParam['SelMapsRMSPeak']=np.uint32(SelMapsRMSPeak)
-        InputParam['SensorSteps']=np.uint32(SensorSteps)
+        InputParam['SensorSubSampling']=np.uint32(SensorSubSampling)
+        InputParam['SensorStart']=np.uint32(SensorStart)
         InputParam['SelMapsSensors']=np.uint32(SelMapsSensors)
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
@@ -369,7 +376,7 @@ class PropagationModel:
         #SensorOutput_orig=np.sqrt(SensorOutput_orig); #Sensors captured the sum of squares of Vx, Vy and Vz
 
         RetValueSensors={}
-        RetValueSensors['time']=TimeVector[0:len(TimeVector):SensorSteps]
+        RetValueSensors['time']=TimeVector[SensorStart*SensorSubSampling:len(TimeVector):SensorSubSampling]
         for key,index in IndexSensorMaps.items():
             if index>=0:
                 RetValueSensors[key]=SensorOutput_orig[:,0:len(RetValueSensors['time']),index]

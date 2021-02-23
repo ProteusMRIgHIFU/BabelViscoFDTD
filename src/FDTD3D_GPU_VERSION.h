@@ -316,7 +316,8 @@ InitSymbol(IndexSensor_Sigmaxz,unsigned int,G_INT);
 InitSymbol(IndexSensor_Sigmayz,unsigned int,G_INT);
 InitSymbol(IndexSensor_Pressure,unsigned int,G_INT);
 InitSymbol(NumberSelSensorMaps,unsigned int,G_INT);
-InitSymbol(SensorSteps,unsigned int,G_INT);
+InitSymbol(SensorSubSampling,unsigned int,G_INT);
+InitSymbol(SensorStart,unsigned int,G_INT);
 
 //~
 #ifdef CUDA //CUDA specifics
@@ -831,44 +832,44 @@ InitSymbol(SensorSteps,unsigned int,G_INT);
 			}
 
 		//~ //Finally, the sensors
-    if ((INHOST(nStep) % INHOST(SensorSteps))==0)
-		{
-#if defined(CUDA)
-      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
-		    mxcheckGPUErrors(cudaDeviceSynchronize());
-#endif
-#if defined(OPENCL)
-      mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &INHOST(nStep)));
-      mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
-      mxcheckGPUErrors(clFinish(commands));
-#endif
-#if defined(METAL)
-      mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
-      mxcheckGPUErrors(((int)commandBufferSensors));
+//     if (((INHOST(nStep) % INHOST(SensorSubSampling))==0) && ((INHOST(nStep) / INHOST(SensorSubSampling))>=SensorStart))
+// 		{
+// #if defined(CUDA)
+//       SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
+// 		    mxcheckGPUErrors(cudaDeviceSynchronize());
+// #endif
+// #if defined(OPENCL)
+//       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &INHOST(nStep)));
+//       mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, SensorsKernel, 1, NULL, global_sensors, NULL, 0, NULL, NULL));
+//       mxcheckGPUErrors(clFinish(commands));
+// #endif
+// #if defined(METAL)
+//       mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
+//       mxcheckGPUErrors(((int)commandBufferSensors));
 
-      mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
-      COMMON_METAL_PARAMS;
-      commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
-      commandEncoderSensors.DispatchThreadgroups(
-          mtlpp::Size(
-            (unsigned int)ceil((float)(INHOST(NumberSensors)) / 32),
-            1,
-            1),
-          mtlpp::Size(32, 1, 1));
-      commandEncoderSensors.EndEncoding();
+//       mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
+//       COMMON_METAL_PARAMS;
+//       commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
+//       commandEncoderSensors.DispatchThreadgroups(
+//           mtlpp::Size(
+//             (unsigned int)ceil((float)(INHOST(NumberSensors)) / 32),
+//             1,
+//             1),
+//           mtlpp::Size(32, 1, 1));
+//       commandEncoderSensors.EndEncoding();
 
-      mtlpp::BlitCommandEncoder blitCommandEncoderSensors = commandBufferSensors.BlitCommandEncoder();
-      if (INHOST(nStep)==(INHOST(TimeSteps)-1))
-      {  //just in the very last step we synchronize
-        blitCommandEncoderSensors.Synchronize(_MEX_BUFFER);
-      }
-      blitCommandEncoderSensors.EndEncoding();
-      commandBufferSensors.Commit();
-      commandBufferSensors.WaitUntilCompleted();
+//       mtlpp::BlitCommandEncoder blitCommandEncoderSensors = commandBufferSensors.BlitCommandEncoder();
+//       if (INHOST(nStep)==(INHOST(TimeSteps)-1))
+//       {  //just in the very last step we synchronize
+//         blitCommandEncoderSensors.Synchronize(_MEX_BUFFER);
+//       }
+//       blitCommandEncoderSensors.EndEncoding();
+//       commandBufferSensors.Commit();
+//       commandBufferSensors.WaitUntilCompleted();
 
-#endif
+// #endif
 
-    }
+//     }
 	}
 
 

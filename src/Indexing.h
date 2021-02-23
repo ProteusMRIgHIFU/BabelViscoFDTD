@@ -364,7 +364,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_IndexSensor_Sigmaxz 44
 #define CInd_IndexSensor_Sigmayz 45
 #define CInd_NumberSelSensorMaps 46
-#define CInd_SensorSteps 47
+#define CInd_SensorSubSampling 47
 #define CInd_nStep 48
 #define CInd_TypeSource 49
 #define CInd_CurrSnap 50
@@ -372,9 +372,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_SelK 52
 #define CInd_IndexRMSPeak_Pressure 53
 #define CInd_IndexSensor_Pressure 54
+#define CInd_StartSensor 55
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 55
+#define LENGTH_CONST_UINT 56
 
 //Indexes for float
 #define CInd_DT 0

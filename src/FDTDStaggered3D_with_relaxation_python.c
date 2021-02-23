@@ -107,7 +107,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(NumberSensors),INHOST(PML_Thickness), INHOST(SelRMSorPeak),
 								INHOST(SelMapsRMSPeak),
 								INHOST(SelMapsSensors),
-								INHOST(SensorSteps),
+								INHOST(SensorSubSampling),
+								INHOST(SensorStart),
 								INHOST(NumberSelRMSPeakMaps),
 								INHOST(NumberSelSensorMaps),
 								INHOST(IndexRMSPeak_ALLV)=0,
@@ -203,7 +204,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(SelRMSorPeak);
 	GET_FIELD(SelMapsRMSPeak);
 	GET_FIELD(SelMapsSensors);
-	GET_FIELD(SensorSteps);
+	GET_FIELD(SensorSubSampling);
+	GET_FIELD(SensorStart);
 
 	GET_FIELD(SPP_ZONES);
 
@@ -242,7 +244,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(SelRMSorPeak);
 	VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
 	VALIDATE_FIELD_UINT32(SelMapsSensors);
-	VALIDATE_FIELD_UINT32(SensorSteps);
+	VALIDATE_FIELD_UINT32(SensorSubSampling);
+	VALIDATE_FIELD_UINT32(SensorStart);
 
 
 	INHOST(TimeSteps)=*GET_DATA_UINT32_PR(TimeSteps);
@@ -296,7 +299,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	INHOST(SelRMSorPeak)=*GET_DATA_UINT32_PR(SelRMSorPeak);
 	INHOST(SelMapsRMSPeak)=*GET_DATA_UINT32_PR(SelMapsRMSPeak);
 	INHOST(SelMapsSensors)=*GET_DATA_UINT32_PR(SelMapsSensors);
-	INHOST(SensorSteps)=*GET_DATA_UINT32_PR(SensorSteps);
+	INHOST(SensorSubSampling)=*GET_DATA_UINT32_PR(SensorSubSampling);
+	INHOST(SensorStart)=*GET_DATA_UINT32_PR(SensorStart);
 
 	VALIDATE_FIELD_UINT32(SelRMSorPeak);
 	VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
@@ -453,7 +457,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 	ndim=3;
 	dims[0]=INHOST(NumberSensors);
-	dims[1]=INHOST(TimeSteps)/INHOST(SensorSteps)+1;
+	dims[1]=INHOST(TimeSteps)/INHOST(SensorSubSampling)+1-INHOST(SensorStart);
 	dims[2]=INHOST(NumberSelSensorMaps);
 	CREATE_ARRAY(SensorOutput);
 	GET_DATA(SensorOutput);

@@ -1,6 +1,6 @@
-unsigned int index=(nStep/SensorSteps)*NumberSensors+(unsigned int)sj;
+unsigned int index=(nStep/SensorSubSampling-SensorStart)*NumberSensors+(unsigned int)sj;
 unsigned int i,j,k,index2,index3,
-subarrsize=(NumberSensors*(TimeSteps/SensorSteps+1));
+subarrsize=(NumberSensors*(TimeSteps/SensorSubSampling+1-SensorStart ));
 
 index2=IndexSensorMap_pr[sj]-1;
 

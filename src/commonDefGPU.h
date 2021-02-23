@@ -252,7 +252,8 @@ __constant__ unsigned int IndexSensor_Sigmaxz;
 __constant__ unsigned int IndexSensor_Sigmayz;
 __constant__ unsigned int IndexSensor_Pressure;
 __constant__ unsigned int NumberSelSensorMaps;
-__constant__ unsigned int SensorSteps;
+__constant__ unsigned int SensorSubSampling;
+__constant__ unsigned int SensorStart;
 
 __constant__ mexType gpuInvDXDTpluspr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];
