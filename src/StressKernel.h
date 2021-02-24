@@ -438,7 +438,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 
   	}
   }
-  if (i<N1 && j <N2 && k < N3 )
+  if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 && nStep>=SensorStart*SensorSubSampling)
   {
     accum_xx/=ZoneCount;
     accum_yy/=ZoneCount;

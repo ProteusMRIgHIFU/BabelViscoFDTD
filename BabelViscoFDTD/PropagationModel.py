@@ -398,7 +398,7 @@ class PropagationModel:
                 if index>=0:
                     #%in RMSValue we have the sum of square values over time, we need a
                     #%final calculation to have the real RMS
-                    RetValueRMS[key]=np.sqrt(RMSValue[:,:,:,index,0]/len(TimeVector))
+                    RetValueRMS[key]=np.sqrt(RMSValue[:,:,:,index,0]/(len(TimeVector)-SensorStart*SensorSubSampling))
         if SelRMSorPeak==2:
             for key,index in IndexRMSMaps.items():
                 if index>=0:

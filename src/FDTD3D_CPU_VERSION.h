@@ -222,7 +222,7 @@
 			}
 
 		//Finally, the sensors
-		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=SensorStart))
+		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
 		{
 			int sj;
 			#pragma omp parallel for private(CurZone)

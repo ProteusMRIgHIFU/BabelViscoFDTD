@@ -257,7 +257,7 @@
   		}
 
 		}
-		if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0)
+		if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 && nStep>=SensorStart*SensorSubSampling)
 	    {
 			if (ZoneCount>1)
 			{
