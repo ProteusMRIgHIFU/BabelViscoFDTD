@@ -372,7 +372,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_SelK 52
 #define CInd_IndexRMSPeak_Pressure 53
 #define CInd_IndexSensor_Pressure 54
-#define CInd_StartSensor 55
+#define CInd_SensorStart 55
 
 //Make LENGTH_CONST_UINT one value larger than the last index
 #define LENGTH_CONST_UINT 56
