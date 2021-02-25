@@ -52,7 +52,7 @@
 #define IndexSensor_Pressure p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Pressure]
 #define NumberSelSensorMaps p_CONSTANT_BUFFER_UINT[CInd_NumberSelSensorMaps]
 #define SensorSubSampling p_CONSTANT_BUFFER_UINT[CInd_SensorSubSampling]
-#define SensorStart p_CONSTANT_BUFFER_UINT[CInd_StartSensor]
+#define SensorStart p_CONSTANT_BUFFER_UINT[CInd_SensorStart]
 #define nStep p_CONSTANT_BUFFER_UINT[CInd_nStep]
 #define CurrSnap p_CONSTANT_BUFFER_UINT[CInd_CurrSnap]
 #define TypeSource p_CONSTANT_BUFFER_UINT[CInd_TypeSource]
