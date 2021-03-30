@@ -96,7 +96,7 @@ def SaveToH5py(MyDict,f,compatibility=False,group=None):
         raise TypeError( "only string or h5py.file objects are accepted for 'f' object")
 
     if type(MyDict) not in [dict,OrderedDict] or type(MyDict)==list:
-        raise TypeError("Only dictionaries or lists are supported to be saved")
+        raise TypeError("Only dictionaries are supported to be saved")
     for (k, v )in iteritems(MyDict):
         ProcType(k,v,fileobj,compatibility,group)
     if bCheckIfStr(f):
@@ -154,17 +154,17 @@ def ReadFromH5py(f,group=None,typeattr=None):
         elif typeattr == "None":
              MyDict[namevar]=None
         elif typeattr == "UID":
-            MyDict[namevar]=UID(val.value)
+            MyDict[namevar]=UID(val[()])
         else:
             if cStr(val.attrs["type"])=="scalar":
-                if type(val.value)==numpy.int32 or type(val.value)==numpy.int64:
-                    MyDict[namevar]=int(val.value)
+                if type(val[()])==numpy.int32 or type(val[()])==numpy.int64:
+                    MyDict[namevar]=int(val[()])
                 else:
-                    MyDict[namevar] = val.value
+                    MyDict[namevar] = val[()]
             elif cStr(val.attrs["type"])=="<type 'str'>":
-                MyDict[namevar] = cStr(val.value)
+                MyDict[namevar] = cStr(val[()])
             else:
-                MyDict[namevar] = val.value
+                MyDict[namevar] = val[()]
     if bCheckIfStr(f):
         fileobj.close()
     return MyDict
