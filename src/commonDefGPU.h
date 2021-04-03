@@ -340,7 +340,7 @@ int __InitBuffer =0;
       *Rxy_pr,
       *Rxz_pr,
       *Ryz_pr,
-      *Sigma_x_xx_pr,
+	  *Sigma_x_xx_pr,
       *Sigma_y_xx_pr,
       *Sigma_z_xx_pr,
       *Sigma_x_yy_pr,
@@ -457,117 +457,62 @@ int __InitBuffer =0;
     #define InputDataKernel(_NameVar) _IndexDataKernel("" #_NameVar "")
      int  _IndexDataKernel(const char * NameVar)
         {
-          if (strcmp(NameVar,"V_x_x")==0)
-            return 0;
-          if (strcmp(NameVar,"V_y_x")==0)
-            return 1;
-          if (strcmp(NameVar,"V_z_x")==0)
-            return 2;
-          if (strcmp(NameVar,"V_x_y")==0)
-            return 3;
-          if (strcmp(NameVar,"V_y_y")==0)
-            return 4;
-          if (strcmp(NameVar,"V_z_y")==0)
-            return 5;
-          if (strcmp(NameVar,"V_x_z")==0)
-            return 6;
-          if (strcmp(NameVar,"V_y_z")==0)
-            return 7;
-          if (strcmp(NameVar,"V_z_z")==0)
-            return 8;
-          if (strcmp(NameVar,"Vx")==0)
-            return 9;
-          if (strcmp(NameVar,"Vy")==0)
-            return 10;
-          if (strcmp(NameVar,"Vz")==0)
-            return 11;
-          if (strcmp(NameVar,"Rxx")==0)
-            return 12;
-          if (strcmp(NameVar,"Ryy")==0)
-            return 13;
-          if (strcmp(NameVar,"Rzz")==0)
-            return 14;
-					if (strcmp(NameVar,"Rxy")==0)
-            return 15;
-          if (strcmp(NameVar,"Rxz")==0)
-            return 16;
-          if (strcmp(NameVar,"Ryz")==0)
-            return 17;
-          if (strcmp(NameVar,"Sigma_x_xx")==0)
-            return 18;
-					if (strcmp(NameVar,"Sigma_y_xx")==0)
-	          return 19;
-					if (strcmp(NameVar,"Sigma_z_xx")==0)
-	 	        return 20;
-					if (strcmp(NameVar,"Sigma_x_yy")==0)
-            return 21;
-					if (strcmp(NameVar,"Sigma_y_yy")==0)
-	          return 22;
-					if (strcmp(NameVar,"Sigma_z_yy")==0)
-	 	        return 23;
-					if (strcmp(NameVar,"Sigma_x_zz")==0)
-            return 24;
-					if (strcmp(NameVar,"Sigma_y_zz")==0)
-	          return 25;
-					if (strcmp(NameVar,"Sigma_z_zz")==0)
-	 	        return 26;
-					if (strcmp(NameVar,"Sigma_x_xy")==0)
-            return 27;
-					if (strcmp(NameVar,"Sigma_y_xy")==0)
-	          return 28;
-					if (strcmp(NameVar,"Sigma_x_xz")==0)
-	 	        return 29;
-					if (strcmp(NameVar,"Sigma_z_xz")==0)
-	 	        return 30;
-					if (strcmp(NameVar,"Sigma_y_yz")==0)
-	 	        return 31;
-					if (strcmp(NameVar,"Sigma_z_yz")==0)
-		 	      return 32;
-					if (strcmp(NameVar,"Sigma_xy")==0)
-			 	    return 33;
-					if (strcmp(NameVar,"Sigma_xz")==0)
-	 		 	    return 34;
-					if (strcmp(NameVar,"Sigma_yz")==0)
-					  return 35;
-					if (strcmp(NameVar,"Sigma_xx")==0)
-					  return 36;
-					if (strcmp(NameVar,"Sigma_yy")==0)
-					  return 37;
-					if (strcmp(NameVar,"Sigma_zz")==0)
-						return 38;
-					if (strcmp(NameVar,"SourceFunctions")==0)
-	 		 	    return 39;
-					if (strcmp(NameVar,"LambdaMiuMatOverH")==0)
-					  return 40;
-					if (strcmp(NameVar,"LambdaMatOverH")==0)
-					  return 41;
-					if (strcmp(NameVar,"MiuMatOverH")==0)
-					  return 42;
-					if (strcmp(NameVar,"TauLong")==0)
-						return 43;
-					if (strcmp(NameVar,"OneOverTauSigma")==0)
-					  return 44;
-					if (strcmp(NameVar,"TauShear")==0)
-					  return 45;
-					if (strcmp(NameVar,"InvRhoMatH")==0)
-					  return 46;
-					if (strcmp(NameVar,"SqrAcc")==0)
-						return 47;
-					if (strcmp(NameVar,"MaterialMap")==0)
-						return 48;
-					if (strcmp(NameVar,"SourceMap")==0)
-						return 49;
-					if (strcmp(NameVar,"Ox")==0)
-						return 50;
-					if (strcmp(NameVar,"Oy")==0)
-						return 51;
-					if (strcmp(NameVar,"Oz")==0)
-						return 52;
-					if (strcmp(NameVar,"Pressure")==0)
-						return 53;
-
-					ERROR_STRING("Unknown parameter");
-					return -1;
+			if (strcmp(NameVar,"V_x_x")==0) return 0;
+			if (strcmp(NameVar,"V_y_x")==0) return 1;
+			if (strcmp(NameVar,"V_z_x")==0) return 2;
+			if (strcmp(NameVar,"V_x_y")==0) return 3;
+			if (strcmp(NameVar,"V_y_y")==0) return 4;
+			if (strcmp(NameVar,"V_z_y")==0) return 5;
+			if (strcmp(NameVar,"V_x_z")==0) return 6;
+			if (strcmp(NameVar,"V_y_z")==0) return 7;
+			if (strcmp(NameVar,"V_z_z")==0) return 8;
+			if (strcmp(NameVar,"Vx")==0)    return 9;
+			if (strcmp(NameVar,"Vy")==0)	return 10;
+			if (strcmp(NameVar,"Vz")==0)	return 11;
+			if (strcmp(NameVar,"Rxx")==0)	return 12;
+			if (strcmp(NameVar,"Ryy")==0)	return 13;
+			if (strcmp(NameVar,"Rzz")==0)	return 14;
+			if (strcmp(NameVar,"Rxy")==0)	return 15;
+			if (strcmp(NameVar,"Rxz")==0)	return 16;
+			if (strcmp(NameVar,"Ryz")==0)	return 17;
+			if (strcmp(NameVar,"Sigma_x_xx")==0) return 18;
+			if (strcmp(NameVar,"Sigma_y_xx")==0)	return 19;
+			if (strcmp(NameVar,"Sigma_z_xx")==0)	return 20;
+			if (strcmp(NameVar,"Sigma_x_yy")==0)	return 21;
+			if (strcmp(NameVar,"Sigma_y_yy")==0)	return 22;
+			if (strcmp(NameVar,"Sigma_z_yy")==0)	return 23;
+			if (strcmp(NameVar,"Sigma_x_zz")==0)	return 24;
+			if (strcmp(NameVar,"Sigma_y_zz")==0)	return 25;
+			if (strcmp(NameVar,"Sigma_z_zz")==0)	return 26;
+			if (strcmp(NameVar,"Sigma_x_xy")==0)	return 27;
+			if (strcmp(NameVar,"Sigma_y_xy")==0)	return 28;
+			if (strcmp(NameVar,"Sigma_x_xz")==0)	return 29;
+			if (strcmp(NameVar,"Sigma_z_xz")==0)	return 30;
+			if (strcmp(NameVar,"Sigma_y_yz")==0)	return 31;
+			if (strcmp(NameVar,"Sigma_z_yz")==0)	return 32;
+			if (strcmp(NameVar,"Sigma_xy")==0)		return 33;
+			if (strcmp(NameVar,"Sigma_xz")==0)		return 34;
+			if (strcmp(NameVar,"Sigma_yz")==0)		return 35;
+			if (strcmp(NameVar,"Sigma_xx")==0)		return 36;
+			if (strcmp(NameVar,"Sigma_yy")==0)		return 37;
+			if (strcmp(NameVar,"Sigma_zz")==0)		return 38;
+			if (strcmp(NameVar,"SourceFunctions")==0) return 39;
+			if (strcmp(NameVar,"LambdaMiuMatOverH")==0) return 40;
+			if (strcmp(NameVar,"LambdaMatOverH")==0)	return 41;
+			if (strcmp(NameVar,"MiuMatOverH")==0)	return 42;
+			if (strcmp(NameVar,"TauLong")==0)	return 43;
+			if (strcmp(NameVar,"OneOverTauSigma")==0)	return 44;
+			if (strcmp(NameVar,"TauShear")==0)	return 45;
+			if (strcmp(NameVar,"InvRhoMatH")==0)	return 46;
+			if (strcmp(NameVar,"SqrAcc")==0)	return 47;
+			if (strcmp(NameVar,"MaterialMap")==0) return 48;
+			if (strcmp(NameVar,"SourceMap")==0)	return 49;
+			if (strcmp(NameVar,"Ox")==0) return 50;
+			if (strcmp(NameVar,"Oy")==0) return 51;
+			if (strcmp(NameVar,"Oz")==0) return 52;
+			if (strcmp(NameVar,"Pressure")==0) return 53;
+			ERROR_STRING("Unknown parameter");
+				return -1;
         };
 
 #define InParamP(_NameVar) {int __NParam = _IndexDataKernel(#_NameVar);\

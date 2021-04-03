@@ -8,7 +8,7 @@
 #ifdef USE_2ND_ORDER_EDGES
     interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
-   	unsigned int index,index2,MaterialID,CurZone;
+   	unsigned int index,index2,MaterialID,CurZone,bAttenuating=1;
 for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
   	if (i<N1 && j<N2 && k<N3)
@@ -318,36 +318,54 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   		LambdaMiu=ELD(LambdaMiuMatOverH,MaterialID)*(1.0+ELD(TauLong,MaterialID));
   		Miu=2.0*ELD(MiuMatOverH,MaterialID)*(1.0+ELD(TauShear,MaterialID));
   		OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
-  		LambdaMiuComp=DT*ELD(LambdaMiuMatOverH,MaterialID)*(ELD(TauLong,MaterialID)*OneOverTauSigma);
-  		MiuComp=DT*2.0*ELD(MiuMatOverH,MaterialID)*(ELD(TauShear,MaterialID)*OneOverTauSigma);
+		dFirstPart=LambdaMiu*(Dx+Dy+Dz);
+		
+		if (ELD(TauLong,MaterialID)!=0.0 || ELD(TauShear,MaterialID)!=0.0) // We avoid unnecessary calculations if there is no attenuation
+		{
+			
+			LambdaMiuComp=DT*ELD(LambdaMiuMatOverH,MaterialID)*(ELD(TauLong,MaterialID)*OneOverTauSigma);
+			dFirstPartForR=LambdaMiuComp*(Dx+Dy+Dz);
+			MiuComp=DT*2.0*ELD(MiuMatOverH,MaterialID)*(ELD(TauShear,MaterialID)*OneOverTauSigma);
+			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxx,index) - dFirstPartForR + MiuComp*(Dy+Dz))
+  		    	  /(1+DT*0.5*OneOverTauSigma);
 
-
-  		dFirstPart=LambdaMiu*(Dx+Dy+Dz);
-  		dFirstPartForR=LambdaMiuComp*(Dx+Dy+Dz);
-
-  		NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxx,index) - dFirstPartForR + MiuComp*(Dy+Dz))
-  		      /(1+DT*0.5*OneOverTauSigma);
-  		ELD(Sigma_xx,index)+=	DT*(dFirstPart - Miu*(Dy+Dz) + 0.5*(ELD(Rxx,index) + NextR));
+			ELD(Sigma_xx,index)+=	DT*(dFirstPart - Miu*(Dy+Dz) + 0.5*(ELD(Rxx,index) + NextR));
+			ELD(Rxx,index)=NextR;
+		}
+		else
+		{
+			bAttenuating=0;
+			ELD(Sigma_xx,index)+=	DT*(dFirstPart - Miu*(Dy+Dz));
+		}
+  		
 	    accum_xx+=ELD(Sigma_xx,index);
 
-  		ELD(Rxx,index)=NextR;
+		if (bAttenuating==1)
+		{
+  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryy,index) - dFirstPartForR + MiuComp*(Dx+Dz))
+  		    	  /(1+DT*0.5*OneOverTauSigma);
+				
+  			ELD(Sigma_yy,index)+=	DT*(dFirstPart - Miu*(Dx+Dz) + 0.5*(ELD(Ryy,index) + NextR));
+			ELD(Ryy,index)=NextR;
+		}
+		else
+			ELD(Sigma_yy,index)+=	DT*(dFirstPart - Miu*(Dx+Dz));
+      	
+		accum_yy+=ELD(Sigma_yy,index);
 
-  		NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryy,index) - dFirstPartForR + MiuComp*(Dx+Dz))
-  		      /(1+DT*0.5*OneOverTauSigma);
-  		ELD(Sigma_yy,index)+=	DT*(dFirstPart - Miu*(Dx+Dz) + 0.5*(ELD(Ryy,index) + NextR));
-      	accum_yy+=ELD(Sigma_yy,index);
+  		if (bAttenuating==1)
+		{
+			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rzz,index) - dFirstPartForR +MiuComp*(Dx+Dy))
+				/(1+DT*0.5*OneOverTauSigma);
+  			ELD(Sigma_zz,index)+=	DT*(dFirstPart - Miu*(Dx+Dy) + 0.5*(ELD(Rzz,index) + NextR));
+			ELD(Rzz,index)=NextR;
+		}
+		else
+			ELD(Sigma_zz,index)+=	DT*(dFirstPart - Miu*(Dx+Dy));
 
-  		ELD(Ryy,index)=NextR;
-
-  		NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rzz,index) - dFirstPartForR +MiuComp*(Dx+Dy))
-  		      /(1+DT*0.5*OneOverTauSigma);
-  		ELD(Sigma_zz,index)+=	DT*(dFirstPart - Miu*(Dx+Dy) + 0.5*(ELD(Rzz,index) + NextR));
       	accum_zz+=ELD(Sigma_zz,index);
 
-  		ELD(Rzz,index)=NextR;
-
   		index=Ind_Sigma_xy(i,j,k);
-
 
   		if (RigidityXY!=0.0)
   		{
@@ -365,72 +383,88 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
                       CB*(EL(Vx,i,j+2,k)-EL(Vx,i,j-1,k));
 
   			Miu=RigidityXY*(1.0+TauShearXY);
-  			MiuComp=RigidityXY*(TauShearXY*OneOverTauSigma);
 
-  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxy,index) - DT*MiuComp*Dx)
+			if (TauShearXY!=0.0)
+			{
+				MiuComp=RigidityXY*(TauShearXY*OneOverTauSigma);
+				NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxy,index) - DT*MiuComp*Dx)
   		          /(1+DT*0.5*OneOverTauSigma);
+				ELD(Sigma_xy,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxy,index) +NextR));
+				ELD(Rxy,index)=NextR;
+			}
+			else
+				ELD(Sigma_xy,index)+= DT*(Miu*Dx );
+        	
+			accum_xy+=ELD(Sigma_xy,index);
 
-  			ELD(Sigma_xy,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxy,index) +NextR));
-        	accum_xy+=ELD(Sigma_xy,index);
-
-  			ELD(Rxy,index)=NextR;
   		}
-          else
-              ELD(Rxy,index)=0.0;
+        else
+            ELD(Rxy,index)=0.0;
 
 
   		if (RigidityXZ!=0.0)
   		{
-              if (REQUIRES_2ND_ORDER_P(X))
-                  Dx=EL(Vz,i+1,j,k)-EL(Vz,i,j,k);
-              else
-                  Dx=CA*(EL(Vz,i+1,j,k)-EL(Vz,i,j,k))-
-                     CB*(EL(Vz,i+2,j,k)-EL(Vz,i-1,j,k));
+			if (REQUIRES_2ND_ORDER_P(X))
+				Dx=EL(Vz,i+1,j,k)-EL(Vz,i,j,k);
+			else
+				Dx=CA*(EL(Vz,i+1,j,k)-EL(Vz,i,j,k))-
+					CB*(EL(Vz,i+2,j,k)-EL(Vz,i-1,j,k));
 
-              if (REQUIRES_2ND_ORDER_P(Z))
-                  Dx+=EL(Vx,i,j,k+1)-EL(Vx,i,j,k);
-              else
-                  Dx+=CA*(EL(Vx,i,j,k+1)-EL(Vx,i,j,k))-
-                      CB*(EL(Vx,i,j,k+2)-EL(Vx,i,j,k-1));
+			if (REQUIRES_2ND_ORDER_P(Z))
+				Dx+=EL(Vx,i,j,k+1)-EL(Vx,i,j,k);
+			else
+				Dx+=CA*(EL(Vx,i,j,k+1)-EL(Vx,i,j,k))-
+					CB*(EL(Vx,i,j,k+2)-EL(Vx,i,j,k-1));
 
-  		  Miu=RigidityXZ*(1.0+TauShearXZ);
-  			MiuComp=RigidityXZ*(TauShearXZ*OneOverTauSigma);
+	  		Miu=RigidityXZ*(1.0+TauShearXZ);
 
-  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxz,index) - DT*MiuComp*Dx)
-  		          /(1+DT*0.5*OneOverTauSigma);
-
-  			ELD(Sigma_xz,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxz,index) +NextR));
+			if (TauShearXZ!=0.0)
+			{
+  				MiuComp=RigidityXZ*(TauShearXZ*OneOverTauSigma);
+	  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxz,index) - DT*MiuComp*Dx)
+  			          /(1+DT*0.5*OneOverTauSigma);
+				ELD(Sigma_xz,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxz,index) +NextR));
+				ELD(Rxz,index)=NextR;
+			}
+			else
+				ELD(Sigma_xz,index)+= DT*(Miu*Dx );
         	accum_xz+=ELD(Sigma_xz,index);
-
-  			ELD(Rxz,index)=NextR;
-  		 }
-           else
-             ELD(Rxz,index)=0.0;
+  			
+  		}
+        else
+            ELD(Rxz,index)=0.0;
 
   		if (RigidityYZ!=0.0 )
   		{
-              if (REQUIRES_2ND_ORDER_P(Y))
-                  Dy=EL(Vz,i,j+1,k)-EL(Vz,i,j,k);
-              else
-                  Dy=CA*(EL(Vz,i,j+1,k)-EL(Vz,i,j,k))-
-                     CB*(EL(Vz,i,j+2,k)-EL(Vz,i,j-1,k));
+			if (REQUIRES_2ND_ORDER_P(Y))
+				Dy=EL(Vz,i,j+1,k)-EL(Vz,i,j,k);
+			else
+				Dy=CA*(EL(Vz,i,j+1,k)-EL(Vz,i,j,k))-
+					CB*(EL(Vz,i,j+2,k)-EL(Vz,i,j-1,k));
 
-              if (REQUIRES_2ND_ORDER_P(Z))
-                  Dy+=EL(Vy,i,j,k+1)-EL(Vy,i,j,k);
-              else
-                  Dy+=CA*(EL(Vy,i,j,k+1)-EL(Vy,i,j,k))-
-                      CB*(EL(Vy,i,j,k+2)-EL(Vy,i,j,k-1));
+			if (REQUIRES_2ND_ORDER_P(Z))
+				Dy+=EL(Vy,i,j,k+1)-EL(Vy,i,j,k);
+			else
+				Dy+=CA*(EL(Vy,i,j,k+1)-EL(Vy,i,j,k))-
+					CB*(EL(Vy,i,j,k+2)-EL(Vy,i,j,k-1));
 
   			Miu=RigidityYZ*(1.0+TauShearYZ);
-  			MiuComp=RigidityYZ*(TauShearYZ*OneOverTauSigma);
+			
+			if (TauShearYZ!=0)
+			{
+				MiuComp=RigidityYZ*(TauShearYZ*OneOverTauSigma);
 
-  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryz,index) - DT*MiuComp*Dy)
-  		          /(1+DT*0.5*OneOverTauSigma);
+				NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryz,index) - DT*MiuComp*Dy)
+					/(1+DT*0.5*OneOverTauSigma);
 
-  			ELD(Sigma_yz,index)+= DT*(Miu*Dy + 0.5*(ELD(Ryz,index) +NextR));
+				ELD(Sigma_yz,index)+= DT*(Miu*Dy + 0.5*(ELD(Ryz,index) +NextR));
+				ELD(Ryz,index)=NextR;
+			}
+			else 
+				ELD(Sigma_yz,index)+= DT*(Miu*Dy );
         	accum_yz+=ELD(Sigma_yz,index);
 
-  			ELD(Ryz,index)=NextR;
+  			
 
   		}
           else

@@ -2,10 +2,12 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import ndimage
+import warnings
 
 import pdb
 
 from scipy.optimize import fmin_slsqp
+from scipy.interpolate import interp1d
 
 import logging
 LOGGER_NAME = 'FDTDStaggered'
@@ -619,6 +621,12 @@ def EvalQ(x0,w,Tau_sigma):
     F=w*Tau_sigma*Tau/(1.0+w**2*Tau_sigma**2*(1.0+Tau))
     return F
 
+def EvalQp(x0,w):
+    Tau=x0[0]
+    Tau_sigma=x0[1]
+    F=w*Tau_sigma*Tau/(1.0+w**2*Tau_sigma**2*(1.0+Tau))
+    return F
+
 def I0l(TauSigma,w):
     F=1.0/2/TauSigma*np.log(1+w**2*TauSigma**2)
     return F
@@ -642,7 +650,7 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
 #%% and
 #%% Bohlen, Thomas. "Parallel 3-D viscoelastic finite difference seismic modelling." Computers & Geosciences 28.8 (2002): 887-899.
 
-    LowFreq=CentralFreqHz-CentralFreqHz*0.2 #% we cover a bandwith of +/- 20% the central frequency
+    LowFreq=CentralFreqHz-CentralFreqHz*0.2 #% we cover a bandwith of +/- 30% the central frequency
     HighFreq=CentralFreqHz+CentralFreqHz*0.2
 
     LowFreq=LowFreq*2*np.pi
@@ -652,23 +660,29 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
 
     TauSigma=1.0/CentralFreq
     #%the formula is very good to give a initial guess
-    Tau=1.0/QValue*(I0l(TauSigma,HighFreq)-I0l(TauSigma,LowFreq))/(I1l(TauSigma,HighFreq)-I1l(TauSigma,LowFreq))
+    #Tau=1.0/QValue*(I0l(TauSigma,HighFreq)-I0l(TauSigma,LowFreq))/(I1l(TauSigma,HighFreq)-I1l(TauSigma,LowFreq))
+    Tau=2.0/QValue
     TauEpsilon = (Tau+1.0)*TauSigma
     #%x0=[TauSigma ,TauEpsilon ];
     x0=Tau
-    SpectrumToValidate=np.linspace(LowFreq,HighFreq,num=50).flatten() #%fifty steps should be good
+    SpectrumToValidate=np.linspace(LowFreq,HighFreq,num=100).flatten() #%fifty steps should be good
 
     QOptimal=1.0/QValue*np.ones((SpectrumToValidate.size,1))
 
 
     fh =(lambda x:np.sum((EvalQ(x,SpectrumToValidate,TauSigma)-QOptimal)**2))
+    fhp =(lambda x:np.sum((EvalQp(x,SpectrumToValidate)-QOptimal)**2))
 
 
     x,fx,iuts,imode,smode = fmin_slsqp(fh,x0,bounds=[(0,np.inf)],full_output=True,iprint=0)
 
-    #%TauSigma=x(1);
-    #%Tau=x(2);
+    xp,fxp,iutsp,imodep,smodep = fmin_slsqp(fhp,[Tau,TauSigma],bounds=[(0,1),(0,1)],full_output=True,iprint=0)
+
+    print('2.0/QValue, x0, x, xp, TauSigma',2.0/QValue,x0,x,xp,TauSigma)
+    
     Tau=x[0]
+    #Tau=xp[0]
+    #Tau=2.0/QValue
     TauEpsilon = (Tau+1)*TauSigma
     Qres=1.0/EvalQ(Tau,SpectrumToValidate,TauSigma)
 
@@ -678,12 +692,21 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
     #%% to compensate effects of linerarization, but yet,
     #%% lsqlin seems to do a good job, without having to sort out an kitchen formula... the formula is super sensitive to the range of frequencies  to be tested , which is not good at all
 
-    if CentralFreqHz==270e3:
-        QValueFormula=QValue-QValue*0.025;#% For 270 KHz, this works well...
-    elif CentralFreqHz==836e3:
-        QValueFormula=QValue-QValue*0.01;#% For 836 KHz, this works well...
+    fCal=[270e3,836e3,1402e3]
+    Adj=[0.025,0.01,0.005]
+
+    if CentralFreqHz<fCal[0] or CentralFreqHz>fCal[-1] :
+        # warnings.warn('Central frequency (kHz) %f  outside the range of tested frequencies for adjustment of attenuation [%f,%f]' %\
+        #                 (CentralFreqHz/1e3,fCal[0],fCal[-1]))
+        if CentralFreqHz<fCal[0]:
+            QValueFormula=QValue-QValue*Adj[0];
+        else:
+            QValueFormula=QValue-QValue**Adj[-1]
     else:
-        QValueFormula=QValue-QValue*0.005;#% For 1402 KHz, this works well...
+        intF = interp1d(fCal, Adj)
+        QAdj=intF(CentralFreqHz)
+        QValueFormula=QValue-QValue*QAdj
+    
 
 
     TauSigmaFormula=1.0/CentralFreq;
@@ -692,11 +715,13 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
     QresFormula=1.0/EvalQ(TauFormula,SpectrumToValidate,TauSigmaFormula);
     Error_Formula=np.sum((QresFormula-QValue)**2)/Qres.size
 
-    return Tau,TauSigma,Qres,SpectrumToValidate,Error_LSQ
+    print('TauFormula, TauSigmaFormula',TauFormula, TauSigmaFormula)
 
+    return Tau,TauSigma,Qres,SpectrumToValidate,Error_LSQ
+    
 def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
 
-    Q=Q*1.2; #%% manual adjustment....
+    #Q*=1.2; #%% manual adjustment....
     AttNonZero=AttMat!=0
     IndAttNonZero=np.nonzero(AttNonZero.flatten().T)[0]
     AnalysisQFactor={}

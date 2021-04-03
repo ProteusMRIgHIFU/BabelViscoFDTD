@@ -437,8 +437,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 	ownGpuCalloc(Rxz,mexType,SizeCopy);
 	ownGpuCalloc(Ryz,mexType,SizeCopy);
 
-
-	//These come from the user input
+//These come from the user input
 	CreateAndCopyFromMXVarOnGPU(LambdaMiuMatOverH,mexType);
 	CreateAndCopyFromMXVarOnGPU(LambdaMatOverH	,mexType);
 	CreateAndCopyFromMXVarOnGPU(MiuMatOverH,mexType);
