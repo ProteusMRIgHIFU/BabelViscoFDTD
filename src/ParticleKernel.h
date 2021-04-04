@@ -232,7 +232,7 @@
 
 		}
 
-  		if (nStep < LengthSource)
+  		if ((nStep < LengthSource) && TypeSource<2) //Source is particle displacement
   		{
 			index=IndN1N2N3(i,j,k,0);
   			source=ELD(SourceMap,index);

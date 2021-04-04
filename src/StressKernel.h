@@ -8,7 +8,7 @@
 #ifdef USE_2ND_ORDER_EDGES
     interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
-   	unsigned int index,index2,MaterialID,CurZone,bAttenuating=1;
+   	unsigned int index,index2,MaterialID,CurZone,source,bAttenuating=1;
 for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
   	if (i<N1 && j<N2 && k<N3)
@@ -464,12 +464,34 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 				ELD(Sigma_yz,index)+= DT*(Miu*Dy );
         	accum_yz+=ELD(Sigma_yz,index);
 
-  			
-
   		}
           else
               ELD(Ryz,index)=0.0;
+		
+		if ((nStep < LengthSource) && TypeSource>=2) //Source is stress
+  		{
+  			index=IndN1N2N3(i,j,k,0);
+  			source=ELD(SourceMap,index);
+  			if (source>0)
+  			{
+  			  source--; //need to use C index
+  			  value=ELD(SourceFunctions,nStep*NumberSources+source)*ELD(Ox,index); // We use Ox as mechanism to provide weighted arrays
+				index=Ind_Sigma_xx(i,j,k);
+                if ((TypeSource-2)==0)
+                {
+                    ELD(Sigma_xx,index)+=value;
+                    ELD(Sigma_yy,index)+=value;
+                    ELD(Sigma_zz,index)+=value;
+                }
+                else
+                {
+                   ELD(Sigma_xx,index)=value;
+                   ELD(Sigma_yy,index)=value;
+                   ELD(Sigma_zz,index)=value;
+                }
 
+  			}
+  		}
   	}
   }
   if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 && nStep>=SensorStart*SensorSubSampling)

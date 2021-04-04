@@ -45,12 +45,12 @@ class PropagationModel:
                                          Frequency,
                                          SourceMap,
                                          SourceFunctions,
-                                         Ox,
-                                         Oy,
-                                         Oz,
                                          SpatialStep,
                                          DurationSimulation,
                                          SensorMap,
+                                         Ox=np.array([1]),
+                                         Oy=np.array([1]),
+                                         Oz=np.array([1]),
                                          AlphaCFL=0.99,
                                          NDelta=12,
                                          ReflectionLimit=1.0000e-05,
@@ -145,10 +145,22 @@ class PropagationModel:
 
 
         SzMap=MaterialMap.shape
-        if not(np.all(SzMap[0:3]==SourceMap.shape)  and np.all(SzMap[0:3]==SensorMap.shape)
-            and np.all(SzMap[0:3]==Ox.shape) and np.all(SzMap[0:3]==Oy.shape) and
-            np.all(SzMap[0:3]==Oz.shape)):
-            raise ValueError('The size SourceMap, Ox, Oy, Oz, MaterialMap, SensorMap must be equal!!!')
+        if TypeSource<2:
+            if not(np.all(SzMap[0:3]==SourceMap.shape)  and np.all(SzMap[0:3]==SensorMap.shape)
+                and np.all(SzMap[0:3]==Ox.shape) and np.all(SzMap[0:3]==Oy.shape) and
+                np.all(SzMap[0:3]==Oz.shape)):
+                raise ValueError('The size SourceMap, Ox, Oy, Oz, MaterialMap, SensorMap must be equal!!!')
+        else:
+            if not(np.all(SzMap[0:3]==SourceMap.shape)  and np.all(SzMap[0:3]==SensorMap.shape)):
+                raise ValueError('The size SourceMap, MaterialMap, SensorMap must be equal!!!')
+            if Ox.ndim==1:
+                if not(Ox.size==1 and Oy.size==1  and Oz.size==1 and Ox[0]==1 and Oy[0]==1 and Oz[0]==1):
+                    raise ValueError('When specifying a source for stress, Oy and Oz must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
+                Ox=np.ones(MaterialMap.shape)
+            else:
+                if not( np.all(SzMap[0:3]==Ox.shape) and Oy.size==1  and Oz.size==1 and Oy[0]==1 and Oz[0]==1):
+                    raise ValueError('When specifying a source for stress, Oy and Oz must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
+
 
 
         N1=SzMap[0]

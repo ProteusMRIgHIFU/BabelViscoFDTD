@@ -719,7 +719,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 	for (unsigned int INHOST(nStep)=0;INHOST(nStep)<INHOST(TimeSteps);INHOST(nStep)++)
 	{
 #if defined(CUDA)
-	      StressKernel<<<dimGridStress, dimBlockStress>>>(pGPU,INHOST(nStep));
+	      StressKernel<<<dimGridStress, dimBlockStress>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
         mxcheckGPUErrors(cudaDeviceSynchronize());
         //~ //********************************
         //********************************
@@ -733,6 +733,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         if (NumberSnapshots>0)
             nextSnap=SnapshotsPos_pr[INHOST(CurrSnap)]-1;
         mxcheckGPUErrors(clSetKernelArg(StressKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
+        mxcheckGPUErrors(clSetKernelArg(StressKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, NULL, 0, NULL, NULL));

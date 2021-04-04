@@ -3,7 +3,7 @@
 #endif
 
 #if defined(CUDA)
-__global__ void StressKernel(InputDataKernel *p,unsigned int nStep)
+__global__ void StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
 {
 	const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -12,7 +12,7 @@ __global__ void StressKernel(InputDataKernel *p,unsigned int nStep)
 #ifdef OPENCL
 __kernel void StressKernel(
 	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep)
+	, unsigned int nStep, unsigned int TypeSource)
 {
   const unsigned int i = get_global_id(0);
   const unsigned int j = get_global_id(1);
