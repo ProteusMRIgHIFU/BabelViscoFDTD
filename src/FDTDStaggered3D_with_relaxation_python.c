@@ -276,7 +276,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA_UINT32(SnapshotsPos);
 	GET_DATA_UINT32(MaterialMap);
 
-
 	INHOST(ZoneCount)=*GET_DATA_UINT32_PR(SPP_ZONES);
 
 

@@ -124,8 +124,8 @@ typedef double mexType;
 									if (_VarName ## _mx ==NULL)\
 											ERROR_STRING("Parameter " #_VarName "is missing in the input dictionary");
 	#define ERROR_STRING(_Msg,...)  {PyErr_SetString(PyExc_ValueError, _Msg ); return 0L;}
-	#define GET_DATA_PR(_VarName) (mexType *)PyArray_DATA(_VarName ##_mx);
-	#define GET_DATA_UINT32_PR(_VarName) (unsigned int *)PyArray_DATA(_VarName ##_mx);
+	#define GET_DATA_PR(_VarName) (mexType *)PyArray_DATA(_VarName ##_mx)
+	#define GET_DATA_UINT32_PR(_VarName) (unsigned int *)PyArray_DATA(_VarName ##_mx)
 
 	#if (PY_MAJOR_VERSION ==3)
 			#define GET_DATA_STRING(_VarName)\
