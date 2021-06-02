@@ -133,7 +133,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexSensor_Sigmaxz)=0,
 								INHOST(IndexSensor_Sigmayz)=0,
 								INHOST(IndexSensor_Pressure)=0,
-								INHOST(SelK);
+								INHOST(SelK),
+								INHOST(DefaultGPUDeviceNumber);
     mexType INHOST(DT);
 
 
@@ -206,6 +207,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(SelMapsSensors);
 	GET_FIELD(SensorSubSampling);
 	GET_FIELD(SensorStart);
+	GET_FIELD(DefaultGPUDeviceNumber);
 
 	GET_FIELD(SPP_ZONES);
 
@@ -246,6 +248,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(SelMapsSensors);
 	VALIDATE_FIELD_UINT32(SensorSubSampling);
 	VALIDATE_FIELD_UINT32(SensorStart);
+	VALIDATE_FIELD_UINT32(DefaultGPUDeviceNumber);
 
 
 	INHOST(TimeSteps)=*GET_DATA_UINT32_PR(TimeSteps);
@@ -305,6 +308,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(SelMapsRMSPeak);
 
 	GET_DATA_STRING(DefaultGPUDeviceName);
+	INHOST(DefaultGPUDeviceNumber)=*GET_DATA_UINT32_PR(DefaultGPUDeviceNumber);
 
 	if (TimeStepsSource!=INHOST(LengthSource))
 		ERROR_STRING("The limit for time steps in source is different from N-dimension in SourceFunctions ");

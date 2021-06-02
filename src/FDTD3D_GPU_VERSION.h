@@ -29,6 +29,7 @@ int NumberAlloc=0;
     // Make list of devices
     sm13DeviceList = (int*) calloc(deviceCount, sizeof(int));
 
+    
     for(int deviceID = 0; deviceID < deviceCount; deviceID++)
     {
         // Check device properties
@@ -47,11 +48,10 @@ int NumberAlloc=0;
             // Check major/minor CUDA versions
             if(deviceProperties.major >=3 && strstr(deviceProperties.name, DefaultGPUDeviceName_pr) )
             {
-               PRINTF("  Selecting device [%s] for calculations \n", deviceProperties.name);
+               PRINTF("  At least one device available [%s] for calculations \n", deviceProperties.name);
                 // Add device to 3-capable list
                 sm13DeviceList[sm13DeviceCount] = deviceID;
                 sm13DeviceCount++;
-                break;
             }
         }
     }
@@ -62,7 +62,15 @@ int NumberAlloc=0;
         ERROR_STRING("There are no devices supporting CUDA or that matches selected device.\n");
     }
 
-    mxcheckGPUErrors(cudaSetDevice(sm13DeviceList[0]));
+    if (INHOST(DefaultGPUDeviceNumber)>= sm13DeviceCount)
+    {
+      PRINTF("The requested device [%i] (0-base index) is more than the number of devices available [%i] \n",INHOST(DefaultGPUDeviceNumber),sm13DeviceCount);
+      ERROR_STRING("Unable to select requested device.\n");
+    }
+
+    PRINTF("Selecting device [%s] with number [%i] for calculations\n", DefaultGPUDeviceName_pr,INHOST(DefaultGPUDeviceNumber));
+
+    mxcheckGPUErrors(cudaSetDevice(sm13DeviceList[INHOST(DefaultGPUDeviceNumber)]));
 
     mxcheckGPUErrors(cudaDeviceSetCacheConfig (cudaFuncCachePreferL1));
 #endif

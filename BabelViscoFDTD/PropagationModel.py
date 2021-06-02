@@ -69,6 +69,7 @@ class PropagationModel:
                                          SensorSubSampling=2,
                                          SensorStart=0,
                                          DefaultGPUDeviceName='TITAN',
+                                         DefaultGPUDeviceNumber=0,
                                          SILENT=0):
         '''
         Samuel Pichardo, Ph.D.
@@ -361,6 +362,7 @@ class PropagationModel:
         InputParam['SelMapsSensors']=np.uint32(SelMapsSensors)
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
+        InputParam['DefaultGPUDeviceNumber']=np.uint32(DefaultGPUDeviceNumber)
 
         SolidFraction=None
         if SPP_ZONES>1:
