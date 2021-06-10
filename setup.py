@@ -5,7 +5,7 @@ import sys
 from os import path
 from pprint import pprint
 from distutils import sysconfig
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 import numpy as np
 import glob
@@ -143,7 +143,7 @@ else:
     modules=[CMakeExtension(c_module_name+'_single'),
              CMakeExtension(c_module_name+'_double')]
 
-# if platform.system() == 'Limux':
+# if platform.system() == 'Linux':
 #     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_double',
 #             ['FDTDStaggered3D_with_relaxation_python.c'],
 #             extra_compile_args = ["-DOPENCL"],
@@ -177,7 +177,8 @@ if platform.system() in ['Darwin']:
 PrepareOpenCLKernel()
 
 setup(name='BabelViscoFDTD',
-      packages=['BabelViscoFDTD'],
+      #packages=['BabelViscoFDTD'],
+      packages=find_packages(),
       version=version,
       description='GPU/CPU 3D FDTD solution of viscoelastic equation',
       author='Samuel Pichardo',
