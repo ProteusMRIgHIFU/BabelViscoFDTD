@@ -285,7 +285,7 @@ def GenerateSurface(lstep,Diam,Foc):
     Tx['Beta2']=Beta2
     return Tx
 
-def GenerateTx(f,Foc,Diam,c,PPWSurface=4):
+def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     wavelength = c/f;
     lstep = wavelength/PPWSurface;
 
