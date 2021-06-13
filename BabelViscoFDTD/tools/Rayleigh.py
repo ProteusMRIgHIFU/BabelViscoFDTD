@@ -15,7 +15,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
 from sys import platform
 from sysconfig import get_paths
-from scipy.io import savemat
+import ctypes
+import sys 
 
 npyInc=np.get_include()
 info = get_paths()
@@ -91,6 +92,25 @@ if platform == "darwin":
     queue = None
     prg = None
     ctx = None
+
+    # Loads METAL interface
+    os.environ['__RayleighMetal'] =os.path.dirname(os.path.abspath(__file__))
+    
+    swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libRayleighMetal.dylib")
+
+    swift_fun.ForwardSimpleMetal.argtypes = [
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float)]
+
 else:
     prg = None
     import pycuda.driver as cuda
@@ -424,7 +444,38 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
                                             
     return u2
 
-def ForwardSimple(cwvnb,center,ds,u0,rf,**kargs):
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf):
+    mr1=np.array([center.shape[0]])
+    mr2=np.array([rf.shape[0]])
+    cwvnb_real=np.array([np.real(cwvnb)])
+    cwvnb_imag=np.array([np.imag(cwvnb)])
+    
+    mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+    mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+    cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    r2_ptr=rf.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    
+    u2_real_ptr = (ctypes.c_float * rf.shape[0])()
+    u2_imag_ptr = (ctypes.c_float * rf.shape[0])()
+    swift_fun.ForwardSimpleMetal(mr2_ptr,
+                                cwvnb_real_ptr,
+                                cwvnb_imag_ptr,
+                                mr1_ptr,
+                                r2_ptr,
+                                r1_ptr,
+                                a1_ptr,
+                                u1_real_ptr,
+                                u1_imag_ptr,
+                                u2_real_ptr,
+                                u2_imag_ptr)
+    return np.array(u2_real_ptr)+1j*np.array(u2_imag_ptr)
+
+def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal'):
     '''
     MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
     cwvnb is the complex speed of sound
@@ -438,10 +489,11 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,**kargs):
     '''
     global prg 
     if platform == "darwin":
-        if prg is None:
-            InitOpenCL(**kargs)
-        return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf)
+        if MacOsPlatform=='Metal':
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf)
+        else:
+            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf)
     else:
-        if prg is None:
-            InitCuda()
         return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf)
+
+    

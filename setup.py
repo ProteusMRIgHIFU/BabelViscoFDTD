@@ -5,11 +5,11 @@ import sys
 from os import path
 from pprint import pprint
 from distutils import sysconfig
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, Extension, find_packages, Command
 from setuptools.command.build_ext import build_ext
 import numpy as np
 import glob
-from shutil import copyfile
+from shutil import copyfile, copytree
 
 from distutils.command.install_headers import install_headers
 
@@ -65,6 +65,22 @@ class CMakeBuild(build_ext):
             out = subprocess.check_output(['cmake', '--version'])
         except OSError:
             raise RuntimeError('Cannot find CMake executable')
+
+        if platform.system() in ['Darwin']:
+            print('Compiling Rayleigh Metal interface')
+            copytree('src/Metal',self.build_temp )
+            command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
+            subprocess.check_call(command,cwd=self.build_temp)
+            command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
+            subprocess.check_call(command,cwd=self.build_temp)
+            command=['swift','build', '-c', 'release']
+            subprocess.check_call(command,cwd=self.build_temp)
+
+            for fn in ['libRayleighMetal.dylib']:
+                copyfile(self.build_temp+'/.build/release/'+fn,self.build_lib+'/BabelViscoFDTD/tools/'+fn)
+            for fn in ['Rayleigh.metallib']:
+                copyfile(self.build_temp+'/Sources/RayleighMetal/'+fn,self.build_lib+'/BabelViscoFDTD/tools/'+fn)
+            
 
         for ext in self.extensions:
             print('ext',ext.name)
@@ -127,6 +143,8 @@ class CMakeBuild(build_ext):
             subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
                                   cwd=self.build_temp)
 
+
+
 # The following line is parsed by Sphinx
 version = '0.9.1'
 
@@ -174,7 +192,9 @@ if platform.system() in ['Darwin']:
     modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
     modules.append(CMakeExtension(c_module_name+'_METAL_single'))
 
+
 PrepareOpenCLKernel()
+
 
 setup(name='BabelViscoFDTD',
       #packages=['BabelViscoFDTD'],
