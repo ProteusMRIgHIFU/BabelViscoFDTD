@@ -67,6 +67,8 @@ class CMakeBuild(build_ext):
             raise RuntimeError('Cannot find CMake executable')
 
         if platform.system() in ['Darwin']:
+            ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
+            ## since the compilation is very simple, we can do this manually
             print('Compiling Rayleigh Metal interface')
             copytree('src/Metal',self.build_temp )
             command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
