@@ -310,6 +310,9 @@ int __InitBuffer =0;
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ## _res)*INHOST(ZoneCount); \
 										 mxcheckGPUErrors(cudaMemcpy( _NameVar ## _pr, gpu_ ## _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyDeviceToHost));
 
+#define CopyFromGPUToMXAsync(_NameVar,_dataType,_stream) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ## _res)*INHOST(ZoneCount); \
+										 mxcheckGPUErrors(cudaMemcpyAsync( _NameVar ## _pr, gpu_ ## _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyDeviceToHost,_stream));
+
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 										 mxcheckGPUErrors(cudaMemcpy( _NameVar ## _pr, gpu_ ## _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyDeviceToHost));
 

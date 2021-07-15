@@ -702,7 +702,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   double used_db = total_db - free_db ;
 
   PRINTF("GPU memory usage: used = %f, free = %f MB, total = %f MB\n",used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
-  #define TOTAL_streams 12
+  #define TOTAL_streams 1
   cudaStream_t streams[TOTAL_streams];
   for (unsigned n =0;n<TOTAL_streams;n++)
   mxcheckGPUErrors(cudaStreamCreate ( &streams[n])) ;
@@ -724,17 +724,41 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
 #endif
 
-	for (unsigned int INHOST(nStep)=0;INHOST(nStep)<INHOST(TimeSteps);INHOST(nStep)++)
+  LOCAL_CALLOC(Vx,GET_NUMBER_ELEMS(Vx_res));
+  LOCAL_CALLOC(Vy,GET_NUMBER_ELEMS(Vy_res));
+  LOCAL_CALLOC(Vz,GET_NUMBER_ELEMS(Vz_res));
+  LOCAL_CALLOC(Sigma_xx,GET_NUMBER_ELEMS(Sigma_xx_res));
+  LOCAL_CALLOC(Sigma_yy,GET_NUMBER_ELEMS(Sigma_yy_res));
+  LOCAL_CALLOC(Sigma_zz,GET_NUMBER_ELEMS(Sigma_zz_res));
+  LOCAL_CALLOC(Sigma_xy,GET_NUMBER_ELEMS(Sigma_xy_res));
+  LOCAL_CALLOC(Sigma_xz,GET_NUMBER_ELEMS(Sigma_xz_res));
+  LOCAL_CALLOC(Sigma_yz,GET_NUMBER_ELEMS(Sigma_yz_res));
+  LOCAL_CALLOC(Pressure,GET_NUMBER_ELEMS(Pressure_res));
+
+  unsigned int INHOST(nStep)=0;
+  while(INHOST(nStep)<INHOST(TimeSteps))
 	{
 #if defined(CUDA)
-	      StressKernel<<<dimGridStress, dimBlockStress>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
-        mxcheckGPUErrors(cudaDeviceSynchronize());
-        //~ //********************************
-        //********************************
-        //Then we do the particle displacements
-        //********************************
-        ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[0]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
-        mxcheckGPUErrors(cudaDeviceSynchronize());
+        unsigned int nCurStream=0;
+        unsigned int maxStream=TOTAL_streams;
+        if ((INHOST(TimeSteps)-INHOST(nStep))<maxStream)
+            maxStream=INHOST(TimeSteps)-INHOST(nStep);
+        while((INHOST(nStep)<INHOST(TimeSteps))&&(nCurStream<TOTAL_streams))
+        {
+
+            StressKernel<<<dimGridStress, dimBlockStress,0,streams[nCurStream]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
+            // We let for future reference in case we want to offload the sensor task via memory transfer
+            // if (((INHOST(nStep) % INHOST(SensorSubSampling))==0) && ((INHOST(nStep) / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
+		        // {
+            //   //We copy pressure to start accumulating over time
+            //   CopyFromGPUToMXAsync(Pressure,mexType,streams[nCurStream]);
+            // }
+            //~ //********************************
+            //********************************
+            //Then we do the particle displacements
+            //********************************
+            ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[nCurStream]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
+        
 #endif
 #ifdef OPENCL
         int nextSnap=-1;
@@ -802,8 +826,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 			if(INHOST(nStep)==SnapshotsPos_pr[INHOST(CurrSnap)]-1)
 			{
   #if defined(CUDA)
-				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[6]>>>(INHOST(SelK),gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,INHOST(CurrSnap));
-				mxcheckGPUErrors(cudaDeviceSynchronize());
+				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[nCurStream]>>>(INHOST(SelK),gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,INHOST(CurrSnap));
+				
   #endif
   #if defined(OPENCL)
         int selfSlice=INHOST(SelK);
@@ -843,8 +867,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     if (((INHOST(nStep) % INHOST(SensorSubSampling))==0) && ((INHOST(nStep) / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
 		{
 #if defined(CUDA)
-      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[7]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
-		    mxcheckGPUErrors(cudaDeviceSynchronize());
+      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[nCurStream]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
 #endif
 #if defined(OPENCL)
       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &INHOST(nStep)));
@@ -874,23 +897,19 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       blitCommandEncoderSensors.EndEncoding();
       commandBufferSensors.Commit();
       commandBufferSensors.WaitUntilCompleted();
-
 #endif
-
     }
+    INHOST(nStep)++;
+    nCurStream++;
+  #if defined(CUDA)
+    } //this one closes the bracket for the streams
+    for(unsigned int nSyncStream=0;nSyncStream<nCurStream;nSyncStream++)
+        cudaStreamSynchronize(streams[nSyncStream]);
+   #endif
 	}
 
 
-  LOCAL_CALLOC(Vx,GET_NUMBER_ELEMS(Vx_res));
-  LOCAL_CALLOC(Vy,GET_NUMBER_ELEMS(Vy_res));
-  LOCAL_CALLOC(Vz,GET_NUMBER_ELEMS(Vz_res));
-  LOCAL_CALLOC(Sigma_xx,GET_NUMBER_ELEMS(Sigma_xx_res));
-  LOCAL_CALLOC(Sigma_yy,GET_NUMBER_ELEMS(Sigma_yy_res));
-  LOCAL_CALLOC(Sigma_zz,GET_NUMBER_ELEMS(Sigma_zz_res));
-  LOCAL_CALLOC(Sigma_xy,GET_NUMBER_ELEMS(Sigma_xy_res));
-  LOCAL_CALLOC(Sigma_xz,GET_NUMBER_ELEMS(Sigma_xz_res));
-  LOCAL_CALLOC(Sigma_yz,GET_NUMBER_ELEMS(Sigma_yz_res));
-  LOCAL_CALLOC(Pressure,GET_NUMBER_ELEMS(Pressure_res));
+
 
 	//DONE, just to copy to the host the results
   #if defined(CUDA) || defined(OPENCL)
