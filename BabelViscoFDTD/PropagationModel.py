@@ -465,16 +465,16 @@ class PropagationModel:
 
     def ExecuteSimulation(self,InputParam,COMPUTING_BACKEND):
         if COMPUTING_BACKEND == 1:
-            print( "Performing Simulation wtih GPU CUDA")
+            print( "Performing Simulation with GPU CUDA")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_CUDA(InputParam)
         elif COMPUTING_BACKEND == 2:
-            print ("Performing Simulation wtih GPU OPENCL")
+            print ("Performing Simulation with GPU OPENCL")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_OPENCL(InputParam)
         elif COMPUTING_BACKEND == 3:
-            print ("Performing Simulation wtih GPU METAL")
+            print ("Performing Simulation with GPU METAL")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_METAL(InputParam)
         else:
-            print ("Performing Simulation wtih CPU")
+            print ("Performing Simulation with CPU")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D(InputParam)
         return SensorOutput_orig,V,RMSValue,Snapshots_orig
 
