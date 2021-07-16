@@ -812,7 +812,7 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
             SolidRegion=NewMaterialMap!=0
 
             SuperpositionMap = np.zeros(SourceMaterialMap.shape,dtype=np.uint8)
-            SkullRingFraction=((SolidFraction>0)&(SolidFraction<1.0))
+            SkullRingFraction=((SolidFraction>0)&(SolidFraction<=1.0))
             ExpandedRing=ndimage.binary_dilation(SkullRingFraction,iterations=SPP_ZONES)
             ExpandedRing[SolidFraction==1.0]=True
             SuperpositionMap[ExpandedRing]=1
@@ -832,9 +832,9 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
             SelFraction=SolidFraction.flatten()[AllIndexesLargeFlat]
 
             for zone in range(ZoneCount):
-                frac=(zone+1)/ZoneCount
-                MatMap_zone[zone,SelFraction>=frac]=SubMat[SelFraction>=frac]
-                assert(np.sum(SelFraction>=frac)==np.sum(MatMap_zone[zone,:]>0))
+                frac=(zone)/ZoneCount
+                MatMap_zone[zone,SelFraction>frac]=SubMat[SelFraction>frac]
+                assert(np.sum(SelFraction>frac)==np.sum(MatMap_zone[zone,:]>0))
                 ZoneMaterialMap=NewMaterialMap*0
                 ZoneMaterialMap[SolidFraction>=frac]=NewMaterialMap[SolidFraction>=frac]
 
