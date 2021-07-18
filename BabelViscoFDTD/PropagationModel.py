@@ -435,8 +435,8 @@ class PropagationModel:
 
         if 'Pressure' in RetValueSensors:
             ii,jj,kk=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
-            for n,i,j,k in zip(range(len(IndexSensors)),ii,jj,kk):
-                RetValueSensors['Pressure'][n,:]*=pFactor[i,j,k]
+            RetValueSensors['Pressure']*=np.repeat(pFactor[ii,jj,kk].reshape([RetValueSensors['Pressure'].shape[0],1]),
+                                                  RetValueSensors['Pressure'].shape[1],axis=1)
         
         if 'ALLV' in RetValuePeak:
             #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
@@ -836,7 +836,7 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
                 MatMap_zone[zone,SelFraction>frac]=SubMat[SelFraction>frac]
                 assert(np.sum(SelFraction>frac)==np.sum(MatMap_zone[zone,:]>0))
                 ZoneMaterialMap=NewMaterialMap*0
-                ZoneMaterialMap[SolidFraction>=frac]=NewMaterialMap[SolidFraction>=frac]
+                ZoneMaterialMap[SolidFraction>frac]=NewMaterialMap[SolidFraction>frac]
 
                 MultiZoneMaterialMap[:,:,:,zone]=ZoneMaterialMap
 

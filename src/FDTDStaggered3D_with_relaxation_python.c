@@ -460,8 +460,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 	ndim=3;
 	dims[0]=INHOST(NumberSensors);
-	dims[1]=INHOST(TimeSteps)/INHOST(SensorSubSampling)+1-INHOST(SensorStart);
+	dims[1]=INHOST(TimeSteps)/INHOST(SensorSubSampling)-INHOST(SensorStart);
 	dims[2]=INHOST(NumberSelSensorMaps);
+	PRINTF("For sensor, dims %li %li %li, total %li \n",dims[0],dims[1],dims[2],dims[0]*dims[1]*dims[2])
 	CREATE_ARRAY(SensorOutput);
 	GET_DATA(SensorOutput);
 	memset(SensorOutput_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
@@ -473,7 +474,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 #endif
 
     PRINTF("N1, N2,N3 , ZoneCount and DT= %i,%i,%i,%i,%g\n",INHOST(N1),INHOST(N2),INHOST(N3),INHOST(ZoneCount),INHOST(DT));
-    PRINTF("Number of sensors , timesteps for sensors and total maps= %i, %i, %i\n",INHOST(NumberSensors),	(int)dims[1],INHOST(NumberSelSensorMaps));
+    PRINTF("Number of sensors , timesteps for sensors and total maps= %li, %i, %i\n",INHOST(NumberSensors),	(int)dims[1],INHOST(NumberSelSensorMaps));
 
 	time_t start_t, end_t;
 	time(&start_t);
