@@ -20,6 +20,7 @@ Generic BackEnd to save hdf5 files using h5py, it seems more efficient than Pyta
 '''
 import numpy
 import h5py
+import hdf5plugin 
 from pydicom.uid import UID
 from collections import OrderedDict
 
@@ -61,10 +62,12 @@ def ProcType(k,v,f,compatibility,group):
     elif type(v) == numpy.ndarray :
         ##we can apply compression rules for larger arrays
         if v.nbytes >2**10: # if array takes more 1024 bytes
-            if compatibility:
+            if compatibility=="lzf":
                 ds=group.create_dataset(k, data=v,compression="lzf") #this is very simple but accessible anywhere compressor, including matlab
-            else:
+            elif compatibility=="gzip":
                 ds=group.create_dataset(k, data=v,compression="gzip",compression_opts=9) #this gives the best compression
+            elif compatibility=="blosc":
+                ds=group.create_dataset(k, data=v, **hdf5plugin.Blosc(clevel=9)) #this gives the best compression
         else:
             ds=group.create_dataset(k, data=v)
         ds.attrs["type"]="ndarray"
@@ -87,7 +90,7 @@ def ProcType(k,v,f,compatibility,group):
         raise TypeError( "Datatype not handled:" + nametype)
 
 
-def SaveToH5py(MyDict,f,compatibility=False,group=None):
+def SaveToH5py(MyDict,f,compatibility="blosc",group=None):
     if bCheckIfStr(f):
         fileobj=h5py.File(f, "w")
     elif type(f)==h5py._hl.files.File:
