@@ -1,4 +1,7 @@
-from __future__ import print_function, absolute_import
+from BabelViscoFDTD.H5pySimple import ReadFromH5py, SaveToH5py
+import os
+from glob import glob
+
 from future.utils import iteritems
 import sys
 if sys.version_info > (3, 2):
@@ -24,7 +27,7 @@ import hdf5plugin
 from pydicom.uid import UID
 from collections import OrderedDict
 
-def ProcType(k,v,f,compatibility,group):
+def ProcType(k,v,f,compatibility,complevel,group):
     nametype=type(v).__name__
     if group is None:
         group=f['/']
@@ -63,11 +66,11 @@ def ProcType(k,v,f,compatibility,group):
         ##we can apply compression rules for larger arrays
         if v.nbytes >2**10: # if array takes more 1024 bytes
             if compatibility=="lzf":
-                ds=group.create_dataset(k, data=v,compression="lzf") #this is very simple but accessible anywhere compressor, including matlab
+                ds=group.create_dataset(k, data=v,compression="lzf",chunks=True,shuffle=True) #this is very simple but accessible compressor
             elif compatibility=="gzip":
-                ds=group.create_dataset(k, data=v,compression="gzip",compression_opts=9) #this gives the best compression
+                ds=group.create_dataset(k, data=v,compression="gzip",compression_opts=complevel,chunks=True,shuffle=True) #this gives a good compression and it is Matlab compatible
             elif compatibility=="blosc":
-                ds=group.create_dataset(k, data=v, **hdf5plugin.Blosc(clevel=9)) #this gives the best compression
+                ds=group.create_dataset(k, data=v, **hdf5plugin.Blosc(clevel=complevel),chunks=True) #this gives a good compression and it is blasting fast
         else:
             ds=group.create_dataset(k, data=v)
         ds.attrs["type"]="ndarray"
@@ -90,7 +93,7 @@ def ProcType(k,v,f,compatibility,group):
         raise TypeError( "Datatype not handled:" + nametype)
 
 
-def SaveToH5py(MyDict,f,compatibility="blosc",group=None):
+def SaveToH5py(MyDict,f,compatibility="blosc",complevel=9,group=None):
     if bCheckIfStr(f):
         fileobj=h5py.File(f, "w")
     elif type(f)==h5py._hl.files.File:
@@ -101,7 +104,7 @@ def SaveToH5py(MyDict,f,compatibility="blosc",group=None):
     if type(MyDict) not in [dict,OrderedDict] or type(MyDict)==list:
         raise TypeError("Only dictionaries are supported to be saved")
     for (k, v )in iteritems(MyDict):
-        ProcType(k,v,fileobj,compatibility,group)
+        ProcType(k,v,fileobj,compatibility,complevel,group)
     if bCheckIfStr(f):
         fileobj.close() #if we receive a string, that means that we open and close the file
 
