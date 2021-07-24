@@ -1,4 +1,3 @@
-from BabelViscoFDTD.H5pySimple import ReadFromH5py, SaveToH5py
 import os
 from glob import glob
 

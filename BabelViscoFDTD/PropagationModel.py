@@ -771,9 +771,11 @@ def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
     return AnalysisQFactor,Tau,TauSigma_l
 
 
-def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,OrderExtra=2):
+def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,OrderExtra=2,bRemoveIsolatedRegions=True):
         #This function will assign the id of material in the fraction elements that are the closest to the water solid interfaces
         #if SPP_ZONES==1 is False, we just create dummy arrays, as these are need to be passed to the low level function for completeness
+        #bRemoveIsolatedRegions controls if disconected regions will need to be removed as this can occur if SolidFraction was
+        #calculated with no perfectly interfaces crossing the voxels (or small issues with whatever CSG method to caclulate intersection)
 
         ZoneCount=SPP_ZONES
         if ZoneCount>1 or SolidFraction is not None:
@@ -839,6 +841,21 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
                 ZoneMaterialMap[SolidFraction>frac]=NewMaterialMap[SolidFraction>frac]
 
                 MultiZoneMaterialMap[:,:,:,zone]=ZoneMaterialMap
+
+                if bRemoveIsolatedRegions:
+                    lab,num_features =ndimage.label(MultiZoneMaterialMap[:,:,:,zone])
+                    if num_features>1: #only if we have more than 1 big block
+                        LabSize=[]
+                        for k in range(1,num_features+1):
+                            LabSize.append([(lab==k).sum(),k])
+                        LabSize.sort() #we sort by size, the largest skull region is at the end
+                        LabSize=np.array(LabSize)
+                        Reg=MultiZoneMaterialMap[:,:,:,zone]
+                        Reg[lab!=LabSize[-1,1]]=0 #we made background all small regions
+                        print('Removing %f %% of isolated voxels' % (LabSize[:-1,0].sum()/LabSize[-1,0]*100) )
+                        MultiZoneMaterialMap[:,:,:,zone]=Reg
+                    else:
+                        print('No isolated voxels were found')
 
         else:
             s=SourceMaterialMap.shape
