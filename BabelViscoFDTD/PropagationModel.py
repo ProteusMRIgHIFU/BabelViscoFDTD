@@ -373,10 +373,15 @@ class PropagationModel:
         if SPP_VolumeFraction is not None:
             SolidFraction=np.zeros((N1+1,N2+1,N3+1))
             SolidFraction[:N1,:N2,:N3]=SPP_VolumeFraction
-            SolidFraction[MaterialMap3D==0]=0.0 # at this point, we already cleared out the PML regions
-            #this will just create dummy matrices that are required to be passed to the low level function
+            SolidFraction[0:NDelta,:,:]=0.
+            SolidFraction[N1-NDelta:,:,:]=0.
+            SolidFraction[:,0:NDelta,:]=0.
+            SolidFraction[:,N2-NDelta:,:]=0.
+            SolidFraction[:,:,0:NDelta]=0.
+            SolidFraction[:,:,N3-NDelta:]=0.
+            
         InputParam['SPP_ZONES']=np.uint32(SPP_ZONES)
-        MultiZoneMaterialMap= PrepareSuperpositionArrays(InputParam['MaterialMap'],SolidFraction,SPP_ZONES=SPP_ZONES);
+        MultiZoneMaterialMap= PrepareSuperpositionArrays(MaterialMap3D,SolidFraction,SPP_ZONES=SPP_ZONES);
         InputParam['OrigMaterialMap']=MaterialMap3D
         InputParam['MaterialMap']=MultiZoneMaterialMap
         InputParam['SolidFraction']=SolidFraction
