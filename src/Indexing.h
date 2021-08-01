@@ -2,6 +2,7 @@
 #define INDEXING_DEF
 
 typedef unsigned char interface_t;
+typedef unsigned long long tIndex ;
 #define inside 0x00
 #define frontLine 0x01
 #define frontLinep1 0x02

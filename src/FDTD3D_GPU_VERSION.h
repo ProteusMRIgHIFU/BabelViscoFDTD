@@ -410,7 +410,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
     //Only used these for the PML
-	unsigned int SizeCopy;
+	unsigned long long SizeCopy;
 	ownGpuCalloc(V_x_x,mexType,INHOST(SizePMLxp1));
 	ownGpuCalloc(V_y_x,mexType,INHOST(SizePMLxp1));
 	ownGpuCalloc(V_z_x,mexType,INHOST(SizePMLxp1));

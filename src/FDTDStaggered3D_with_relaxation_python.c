@@ -139,10 +139,10 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 
 
-#ifdef WIN32
-	typedef unsigned long DWORD;
-	DWORD		dummyID;
-#endif
+// #ifdef WIN32
+// 	typedef unsigned long DWORD;
+// 	DWORD		dummyID;
+// #endif
 	//---------------------------------------------------------------//
 	// check input parameters
 	//---------------------------------------------------------------//
