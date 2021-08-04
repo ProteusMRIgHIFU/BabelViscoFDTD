@@ -457,10 +457,10 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA(Snapshots);
 	memset(Snapshots_pr,0,dims[0]*dims[1]*dims[2]*sizeof(mexType));
 
-
+    
 	ndim=3;
 	dims[0]=INHOST(NumberSensors);
-	dims[1]=INHOST(TimeSteps)/INHOST(SensorSubSampling)-INHOST(SensorStart);
+	dims[1]=INHOST(TimeSteps)/INHOST(SensorSubSampling)+1-INHOST(SensorStart);
 	dims[2]=INHOST(NumberSelSensorMaps);
 	PRINTF("For sensor, dims %li %li %li, total %li \n",dims[0],dims[1],dims[2],dims[0]*dims[1]*dims[2])
 	CREATE_ARRAY(SensorOutput);
