@@ -45,7 +45,7 @@ def ProcType(k,v,f,compatibility,complevel,group):
         newgroup=group.create_group(stk)
         newgroup.attrs["type"]="dict" if type(v) is dict else "OrderedDict"
         newgroup.attrs["type_key"]=indexType
-        SaveToH5py(v,f,compatibility,newgroup)
+        SaveToH5py(v,f,compatibility,complevel,newgroup)
     elif type(v) ==list:
         newgroup=group.create_group(k)
         newgroup.attrs["type"]="list";
