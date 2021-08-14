@@ -132,19 +132,19 @@ int main(void) {
       cl_ulong global_mem_size;
       err_num = clGetDeviceInfo(cl_devices[device_idx], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(global_mem_size), &global_mem_size, NULL);
       check_cl_error(err_num, "clGetDeviceInfo: Getting device global mem size");
-      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_GLOBAL_MEM_SIZE: %llu MB\n", platform_idx, device_idx, (unsigned long long)global_mem_size/(1024*1024));
+      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_GLOBAL_MEM_SIZE: %llu MB\n", platform_idx, device_idx, (_PT)global_mem_size/(1024*1024));
 
       // Get device max compute units available
       cl_ulong max_mem_alloc_size;
       err_num = clGetDeviceInfo(cl_devices[device_idx], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(max_mem_alloc_size), &max_mem_alloc_size, NULL);
       check_cl_error(err_num, "clGetDeviceInfo: Getting device max mem alloc size");
-      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_MAX_MEM_ALLOC_SIZE: %llu MB\n", platform_idx, device_idx, (unsigned long long)max_mem_alloc_size/(1024*1024));
+      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_MAX_MEM_ALLOC_SIZE: %llu MB\n", platform_idx, device_idx, (_PT)max_mem_alloc_size/(1024*1024));
 
       // Get device local mem size
       cl_ulong local_mem_size;
       err_num = clGetDeviceInfo(cl_devices[device_idx], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_mem_size), &local_mem_size, NULL);
       check_cl_error(err_num, "clGetDeviceInfo: Getting device local mem size");
-      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_LOCAL_MEM_SIZE: %llu KB\n", platform_idx, device_idx, (unsigned long long)local_mem_size/1024);
+      printf("\t\t\t\t\t [Platform %d] [Device %d] CL_DEVICE_LOCAL_MEM_SIZE: %llu KB\n", platform_idx, device_idx, (_PT)local_mem_size/1024);
 
       // Get device max work group size
       size_t max_work_group_size;

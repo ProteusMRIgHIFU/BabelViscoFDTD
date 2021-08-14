@@ -285,7 +285,7 @@ int __InitBuffer =0;
 #define InitSymbol(_NameVar,_datatype,_gtype) mxcheckGPUErrors(cudaMemcpyToSymbol(_NameVar,&INHOST(_NameVar),sizeof(_datatype)));
 
 #define ownGpuCalloc(_NameVar,_dataType,_size) _dataType * gpu_ ## _NameVar ## _pr; \
-									PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",_size*INHOST(ZoneCount),INHOST(ZoneCount));\
+									PRINTF("Allocating in GPU for " #_NameVar " %llu elem. (nZones=%i)\n",(_PT)_size*INHOST(ZoneCount),INHOST(ZoneCount));\
 									mxcheckGPUErrors(cudaMalloc((void **)&gpu_ ## _NameVar ##_pr,_size*sizeof(_dataType)*INHOST(ZoneCount))); \
 									NumberAlloc++;\
 									{ \
@@ -295,14 +295,14 @@ int __InitBuffer =0;
 									};
 
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
-										 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+										 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
 										 mxcheckGPUErrors(cudaMalloc((void **)&gpu_ ## _NameVar ##_pr,SizeCopy*sizeof(_dataType))); \
 										 NumberAlloc++;\
 										 mxcheckGPUErrors(cudaMemcpy(gpu_ ## _NameVar ## _pr, _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyHostToDevice));
 
 #define CreateAndCopyFromMXVarOnGPU(_NameVar,_dataType) _dataType * gpu_ ## _NameVar ## _pr; \
 										 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-										 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+										 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
 										 mxcheckGPUErrors(cudaMalloc((void **)&gpu_ ## _NameVar ##_pr,SizeCopy*sizeof(_dataType))); \
 										 NumberAlloc++;\
 										 mxcheckGPUErrors(cudaMemcpy(gpu_ ## _NameVar ## _pr, _NameVar ## _pr, SizeCopy*sizeof(_dataType), cudaMemcpyHostToDevice));
@@ -374,12 +374,12 @@ int __InitBuffer =0;
       * TauShear_pr,
       * InvRhoMatH_pr,
       * SqrAcc_pr,
-			* SensorOutput_pr;
-			unsigned int * MaterialMap_pr,
+	  * SensorOutput_pr;
+	unsigned int * MaterialMap_pr,
       * SourceMap_pr;
-			mexType * Ox_pr,
-			* Oy_pr,
-			* Oz_pr;
+	mexType * Ox_pr,
+		* Oy_pr,
+		* Oz_pr;
   };
 
 #endif
@@ -419,7 +419,7 @@ int __InitBuffer =0;
 
 
 #define ownGpuCalloc(_NameVar,_dataType,_size) cl_mem  gpu_ ## _NameVar ## _pr; \
-			PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",_size,INHOST(ZoneCount));\
+			PRINTF("Allocating in GPU for " #_NameVar " %llu elem. (nZones=%i)\n",(_PT)_size,INHOST(ZoneCount));\
       { \
     		_dataType * temp_zeros_pr = (_dataType *) calloc(_size*INHOST(ZoneCount),sizeof(_dataType)); \
         gpu_ ## _NameVar ##_pr = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,\
@@ -431,7 +431,7 @@ int __InitBuffer =0;
 
 
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
-			 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+			 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
        gpu_ ## _NameVar ##_pr = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,\
                  SizeCopy*sizeof(_dataType), _NameVar ## _pr, &err);\
        mxcheckGPUErrors(err);\
@@ -439,7 +439,7 @@ int __InitBuffer =0;
 
 #define CreateAndCopyFromMXVarOnGPU(_NameVar,_dataType) cl_mem gpu_ ## _NameVar ## _pr; \
 			 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-			 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+			 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
        gpu_ ## _NameVar ##_pr = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,\
                  SizeCopy*sizeof(_dataType), _NameVar ## _pr, &err);\
        mxcheckGPUErrors(err);\
@@ -658,7 +658,7 @@ else\
 
 
 #define ownGpuCalloc(_NameVar,_dataType,_size)\
-	PRINTF("Allocating in GPU for " #_NameVar " %i elem. (nZones=%i)\n",(int)_size*INHOST(ZoneCount),(int)INHOST(ZoneCount));\
+	PRINTF("Allocating in GPU for " #_NameVar " %llu elem. (nZones=%i)\n",(_PT)_size*INHOST(ZoneCount),(int)INHOST(ZoneCount));\
 	if (NULL!=strstr(#_dataType,"mexType"))\
 	{	\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
@@ -674,7 +674,7 @@ else\
 
  #define CreateAndCopyFromMXVarOnGPU(_NameVar,_dataType) \
  				 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
-				 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+				 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
 				 if (NULL!=strstr(#_dataType,"mexType"))\
 			 	{	\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
@@ -689,7 +689,7 @@ else\
 			 	}
 
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
-					 PRINTF("Allocating in GPU for " #_NameVar " %i elem.\n",SizeCopy);\
+					 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
 					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
 				              SizeCopy,\
 				             mtlpp::ResourceOptions::StorageModeManaged);\

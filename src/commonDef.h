@@ -9,6 +9,8 @@
 
 //#define CHECK_FOR_NANs
 
+typedef unsigned long long _PT;
+
 #ifdef SINGLE_PREC
 #define NAME_PREC "single"
 #define MEX_STR "float"
@@ -289,7 +291,7 @@ PyMODINIT_FUNC INIT_MAIN_NAME (){
 #define ASSIGN_RES(_VarName)\
 {\
 	mexType accum=0.0;\
-	unsigned int _index;\
+	_PT _index;\
 	for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)\
 	{\
 			_index = hInd_ ## _VarName(i,j,k);\

@@ -50,6 +50,7 @@
 #else
 	#include <Python.h>
 	#include <ndarrayobject.h>
+	
 #endif
 
 #include <math.h>
@@ -474,7 +475,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 #endif
 
     PRINTF("N1, N2,N3 , ZoneCount and DT= %i,%i,%i,%i,%g\n",INHOST(N1),INHOST(N2),INHOST(N3),INHOST(ZoneCount),INHOST(DT));
-    PRINTF("Number of sensors , timesteps for sensors and total maps= %li, %i, %i\n",INHOST(NumberSensors),	(int)dims[1],INHOST(NumberSelSensorMaps));
+    PRINTF("Number of sensors , timesteps for sensors and total maps= %ui, %i, %i\n",INHOST(NumberSensors),	(int)dims[1],INHOST(NumberSelSensorMaps));
 
 	time_t start_t, end_t;
 	time(&start_t);

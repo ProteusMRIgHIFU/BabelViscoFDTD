@@ -69,20 +69,14 @@
 #endif
 
 	//Lets roll the time
-	int ii,jj,kk,CurZone;
+	int ii,jj,kk;
+	int CurZone;
 
   #ifdef CHECK_FOR_NANs
     int bNanDetected =0;
     int indexforNaN=0;
   #endif
 
-	// unsigned int MaxIndex = INHOST(InternalIndexCount)> INHOST(EdgeIndexCount) ? INHOST(InternalIndexCount):INHOST(EdgeIndexCount);
-
-
-	// fprintf(FDEBUG,"TotalIndexCount,InternalIndexCount,EdgeIndexCount,ZoneCount =%i,%i,%i,%i\n",INHOST(TotalIndexCount),
-	// 			INHOST(InternalIndexCount),INHOST(EdgeIndexCount),INHOST(ZoneCount));
-
-	//fflush( FDEBUG );
 
 	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
 	{
@@ -96,15 +90,15 @@
 		//First we do the constrains tensors
 		//********************************
 		#pragma omp parallel for private(jj,ii,CurZone)
-		for(kk=0; kk<( int)(N3+1); kk++)
+		for(kk=0; kk<(N3+1); kk++)
 		{
-			unsigned int k= (unsigned int)kk;
-			for(jj=0; jj<( int)N2+1; jj++)
+			_PT k= (_PT)kk;
+			for(jj=0; jj<N2+1; jj++)
 			{
-				unsigned int j= (unsigned int)jj;
-				for(ii=0; ii<( int)N1+1; ii++)
+				_PT j= (_PT)jj;
+				for(ii=0; ii<N1+1; ii++)
 				{
-					unsigned int i= (unsigned int)ii;
+					_PT i= (_PT)ii;
 
 					#include "StressKernel.h"
 
@@ -113,16 +107,16 @@
 		}
 		#ifdef CHECK_FOR_NANs
 			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<( int)N3; kk++)
+			for(kk=0; kk<N3; kk++)
 			{
-				unsigned int k= (unsigned int)kk;
-				for(jj=0; jj<( int)N2; jj++)
+				_PT k= (_PT)kk;
+				for(jj=0; jj<N2; jj++)
 				{
-					unsigned int j= (unsigned int)jj;
-					for(ii=0; ii<( int)N1; ii++)
+					_PT j= (_PT)jj;
+					for(ii=0; ii<N1; ii++)
 					{
-						unsigned int i= (unsigned int)ii;
-						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
+						_PT i= (_PT)ii;
+						for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)
 						{
 							indexforNaN=Ind_Sigma_xx(i,j,k);
 							if (isnan(ELD(Sigma_xx,indexforNaN)) ||
@@ -150,15 +144,15 @@
 			//Then we do the particle displacements
 			//********************************
 			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<( int)N3+1; kk++)
+			for(kk=0; kk<N3+1; kk++)
 			{
-				unsigned int k= (unsigned int)kk;
-				for(jj=0; jj<( int)N2+1; jj++)
+				_PT k= (_PT)kk;
+				for(jj=0; jj<N2+1; jj++)
 				{
-					unsigned int j= (unsigned int)jj;
-					for(ii=0; ii<( int)N1+1; ii++)
+					_PT j= (_PT)jj;
+					for(ii=0; ii<N1+1; ii++)
 					{
-						unsigned int i= (unsigned int)ii;
+						_PT i= (_PT)ii;
 						#include "ParticleKernel.h"
 
 					}
@@ -167,16 +161,16 @@
 
 			#ifdef CHECK_FOR_NANs
 			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<( int)N3; kk++)
+			for(kk=0; kk<N3; kk++)
 			{
-				unsigned int k= (unsigned int)kk;
-				for(jj=0; jj<( int)N2; jj++)
+				_PT k= (_PT)kk;
+				for(jj=0; jj<N2; jj++)
 				{
-					unsigned int j= (unsigned int)jj;
-					for(ii=0; ii<( int)N1; ii++)
+					_PT j= (_PT)jj;
+					for(ii=0; ii<N1; ii++)
 					{
-						unsigned int i= (unsigned int)ii;
-						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
+						_PT i= (_PT)ii;
+						for ( CurZone=0;CurZone<(_PT)INHOST(ZoneCount);CurZone++)
 						{
 							if (isnan(EL(Vx,i,j,k)))
 							{
@@ -207,16 +201,16 @@
 			{
 
 				#pragma omp parallel for private(jj,ii,CurZone)
-				for(jj=0; jj<( int)N2; jj++)
+				for(jj=0; jj<N2; jj++)
 				{
-					unsigned int j= (unsigned int)jj;
-					for(ii=0; ii<( int)N1; ii++)
+					_PT j= (_PT)jj;
+					for(ii=0; ii<N1; ii++)
 					{
-						unsigned int i= (unsigned int)ii;
+						_PT i= (_PT)ii;
 						mexType accum=0.0;
-						for ( CurZone=0;CurZone<( int)INHOST(ZoneCount);CurZone++)
+						for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)
 						{
-							unsigned int index=Ind_Sigma_xx(i,j,N3/2);
+							_PT index=Ind_Sigma_xx(i,j,N3/2);
 							accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
 						}
 						Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
@@ -228,10 +222,11 @@
 		//Finally, the sensors
 		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
 		{
-			int sj;
+			int ssj;
 			#pragma omp parallel for private(CurZone)
-			for(sj=0; sj<( int)INHOST(NumberSensors); sj++)
-			{
+			for(ssj=0; ssj<INHOST(NumberSensors); ssj++)
+			{	
+				_PT sj = (_PT) ssj;
 					#include"SensorsKernel.h"
 			}
 		}
@@ -245,15 +240,15 @@
 
 	{
 	#pragma omp parallel for private(jj,ii,CurZone)
-	for(kk=0; kk<( int)N3; kk++)
+	for(kk=0; kk<N3; kk++)
 	{
-		unsigned int k= (unsigned int)kk;
-		for(jj=0; jj<( int)N2; jj++)
+		_PT k= (_PT)kk;
+		for(jj=0; jj<N2; jj++)
 		{
-			unsigned int j= (unsigned int)jj;
-			for(ii=0; ii<( int)N1; ii++)
+			_PT j= (_PT)jj;
+			for(ii=0; ii<N1; ii++)
 			{
-				unsigned int i= (unsigned int)ii;
+				_PT i= (_PT)ii;
 				ASSIGN_RES(Vx);
 				ASSIGN_RES(Vy);
 				ASSIGN_RES(Vz);

@@ -410,7 +410,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
     //Only used these for the PML
-	unsigned long long SizeCopy;
+	_PT SizeCopy;
 	ownGpuCalloc(V_x_x,mexType,INHOST(SizePMLxp1));
 	ownGpuCalloc(V_y_x,mexType,INHOST(SizePMLxp1));
 	ownGpuCalloc(V_z_x,mexType,INHOST(SizePMLxp1));
@@ -864,7 +864,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 			}
 
 		//~ //Finally, the sensors
-    if (((INHOST(nStep) % INHOST(SensorSubSampling))==0) && ((INHOST(nStep) / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
+    if (((((_PT)INHOST(nStep)) % ((_PT)INHOST(SensorSubSampling)))==0) && ((((_PT)INHOST(nStep)) / ((_PT)INHOST(SensorSubSampling)))>=((_PT)INHOST(SensorStart))))
 		{
 #if defined(CUDA)
       SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[nCurStream]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
@@ -931,11 +931,11 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CopyFromGPUToMX(Pressure,mexType);
 
   {
-    unsigned i,j,k,CurZone;
+    _PT i,j,k,CurZone;
   #pragma omp parallel for private(j,i,CurZone)
-  for(k=0; k<INHOST(N3); k++)
-    for(j=0; j<INHOST(N2); j++)
-      for(i=0; i<INHOST(N1); i++)
+  for(k=0; k<((_PT)INHOST(N3)); k++)
+    for(j=0; j<((_PT)INHOST(N2)); j++)
+      for(i=0; i<((_PT)INHOST(N1)); i++)
       {
         ASSIGN_RES(Vx);
         ASSIGN_RES(Vy);

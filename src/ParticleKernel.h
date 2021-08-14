@@ -1,8 +1,8 @@
 #ifdef USE_2ND_ORDER_EDGES
 	interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
-    unsigned long long index,index2;
-	unsigned int CurZone,source;
+    _PT index,index2, CurZone;
+	unsigned int source;
 	mexType AvgInvRhoI,AvgInvRhoJ,AvgInvRhoK,Dx,Dy,Dz,Diff,value,accum_x=0.0,accum_y=0.0,accum_z=0.0;
 			//accum_p=0.0;
 

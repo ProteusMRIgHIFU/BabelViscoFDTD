@@ -5,18 +5,18 @@
 #if defined(CUDA)
 __global__ void StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
 {
-	const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
-    const unsigned int k = blockIdx.z * blockDim.z + threadIdx.z;
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  const unsigned int i = get_global_id(0);
-  const unsigned int j = get_global_id(1);
-  const unsigned int k = get_global_id(2);
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void StressKernel(
@@ -28,9 +28,9 @@ kernel void StressKernel(
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
 	uint3 gid[[thread_position_in_grid]])
 {
-  const unsigned int i = gid.x;
-  const unsigned int j = gid.y;
-  const unsigned int k = gid.z;
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
 #endif
 
 
@@ -44,9 +44,9 @@ kernel void StressKernel(
 __global__ void ParticleKernel(InputDataKernel * p,
 			unsigned int nStep,unsigned int TypeSource)
 {
-	  const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
-    const unsigned int k = blockIdx.z * blockDim.z + threadIdx.z;
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void ParticleKernel(
@@ -54,9 +54,9 @@ __kernel void ParticleKernel(
 	, unsigned int nStep,
 	unsigned int TypeSource)
 {
-		const unsigned int i = get_global_id(0);
-	  const unsigned int j = get_global_id(1);
-	  const unsigned int k = get_global_id(2);
+	const _PT i = (_PT) get_global_id(0);
+	const _PT j = (_PT) get_global_id(1);
+	const _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void ParticleKernel(
@@ -69,9 +69,9 @@ kernel void ParticleKernel(
 	uint3 gid[[thread_position_in_grid]])
 
 {
-	const unsigned int i = gid.x;
-	const unsigned int j = gid.y;
-	const unsigned int k = gid.z;
+	const _PT i = (_PT) gid.x;
+	const _PT j = (_PT) gid.y;
+	const _PT k = (_PT) gid.z;
 #endif
 
     if (i>N1 || j >N2  || k>N3)
@@ -85,14 +85,14 @@ kernel void ParticleKernel(
 #if defined(CUDA)
 __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigma_xx_pr,mexType * Sigma_yy_pr,mexType * Sigma_zz_pr,unsigned int CurrSnap)
 {
-	const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-  const unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+  const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
 #endif
 #ifdef OPENCL
 __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__global mexType * Sigma_xx_pr,__global mexType * Sigma_yy_pr,__global mexType * Sigma_zz_pr,unsigned int CurrSnap)
 {
-  const unsigned int i = get_global_id(0);
-  const unsigned int j = get_global_id(1);
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
 #endif
 #ifdef METAL
 #define Sigma_xx_pr k_Sigma_xx_pr
@@ -110,8 +110,8 @@ kernel void SnapShot(
 	uint2 gid[[thread_position_in_grid]])
 
 	{
-	const unsigned int i = gid.x;
-	const unsigned int j = gid.y;
+	const _PT i = (_PT) gid.x;
+	const _PT j = (_PT) gid.y;
 #endif
 
     if (i>=N1 || j >=N2)
@@ -119,7 +119,7 @@ kernel void SnapShot(
 	mexType accum=0.0;
 	for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
 		{
-			unsigned int index=Ind_Sigma_xx(i,j,SelK);
+			_PT index=Ind_Sigma_xx(i,j,(_PT)SelK);
 			accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
 
 		}
@@ -141,7 +141,7 @@ __kernel void SensorsKernel(
 			__global unsigned int * IndexSensorMap_pr,
 			unsigned int nStep)
 {
-	unsigned int sj =get_global_id(0);
+	_PT sj =(_PT) get_global_id(0);
 #endif
 #ifdef METAL
 
@@ -156,10 +156,10 @@ kernel void SensorsKernel(
 	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
 	uint gid[[thread_position_in_grid]])
 {
-	unsigned int sj = gid;
+	_PT sj = (_PT) gid;
 #endif
 
-	if (sj>=	NumberSensors)
+	if (sj>=(_PT) NumberSensors)
 		return;
 	#include"SensorsKernel.h"
 

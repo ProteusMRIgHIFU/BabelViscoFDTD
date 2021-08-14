@@ -8,8 +8,9 @@
 #ifdef USE_2ND_ORDER_EDGES
     interface_t interfaceZ=inside, interfaceY=inside, interfaceX=inside;
 #endif
-   	unsigned long long index,index2;
-	unsigned long MaterialID,CurZone,source,bAttenuating=1;
+   	_PT index,index2;
+	unsigned long MaterialID,source,bAttenuating=1;
+	_PT CurZone;
 for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
   	if (i<N1 && j<N2 && k<N3)

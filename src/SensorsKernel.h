@@ -1,14 +1,13 @@
-unsigned long long index=(nStep/SensorSubSampling-SensorStart)*NumberSensors+(unsigned long long)sj;
-unsigned long long  i,j,k;
-unsigned long long index2,index3,
-subarrsize=(NumberSensors*(TimeSteps/SensorSubSampling+1-SensorStart ));
-
+_PT index=(((_PT)nStep)/((_PT)SensorSubSampling)-((_PT)SensorStart))*((_PT)NumberSensors)+(_PT)sj;
+_PT  i,j,k;
+_PT index2,index3,
+    subarrsize=(((_PT)NumberSensors)*(((_PT)TimeSteps)/((_PT)SensorSubSampling)+1-((_PT)SensorStart)));
 index2=IndexSensorMap_pr[sj]-1;
 
 mexType accumX=0.0,accumY=0.0,accumZ=0.0,
         accumXX=0.0, accumYY=0.0, accumZZ=0.0,
         accumXY=0.0, accumXZ=0.0, accumYZ=0.0, accum_p=0;;
-for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
+for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
   {
     k=index2/(N1*N2);
     j=index2%(N1*N2);
