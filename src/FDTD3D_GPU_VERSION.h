@@ -900,8 +900,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
     }
     INHOST(nStep)++;
-    nCurStream++;
   #if defined(CUDA)
+      nCurStream++;
     } //this one closes the bracket for the streams
     for(unsigned int nSyncStream=0;nSyncStream<nCurStream;nSyncStream++)
         cudaStreamSynchronize(streams[nSyncStream]);
