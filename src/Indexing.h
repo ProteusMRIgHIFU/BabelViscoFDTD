@@ -1,6 +1,12 @@
 #ifndef INDEXING_DEF
 #define INDEXING_DEF
 
+#if defined(OPENCL)
+typedef unsigned long  _PT;
+#else
+typedef unsigned long long _PT;
+#endif
+
 typedef unsigned char interface_t;
 typedef _PT tIndex ;
 #define inside 0x00

@@ -9,8 +9,6 @@
 
 //#define CHECK_FOR_NANs
 
-typedef unsigned long long _PT;
-
 #ifdef SINGLE_PREC
 #define NAME_PREC "single"
 #define MEX_STR "float"
