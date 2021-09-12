@@ -6,16 +6,12 @@ import Foundation
 
 let metallib : String = (ProcessInfo.processInfo.environment["__RayleighMetal"] ?? "the lat in the dictionary was nil!") + "/Rayleigh.metallib"
 
-@available(macOS 10.13, *)
-let device = MTLCreateSystemDefaultDevice()!,
-     commandQueue = device.makeCommandQueue()!,
-     defaultLibrary = try! device.makeLibrary(filepath: metallib)
 
 //SWIFT wrapper for METAL function for Rayleigh Integral
 
 @available(macOS 10.13, *)
 @_cdecl("ForwardSimpleMetal")
-public func ForwardSimpleMetal(mr2p:         UnsafePointer<Int>,
+public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
                                c_wvnb_real: UnsafePointer<Float>, 
                                c_wvnb_imag: UnsafePointer<Float>, 
                                mr1p:        UnsafePointer<Int>,
@@ -24,10 +20,37 @@ public func ForwardSimpleMetal(mr2p:         UnsafePointer<Int>,
                                a1pr:        UnsafePointer<Float>,
                                u1_real:     UnsafePointer<Float>,
                                u1_imag:     UnsafePointer<Float>,
+                               deviceNamepr: UnsafePointer<CChar>,
                                py_data_u2_real: UnsafeMutablePointer<Float>, 
                                py_data_u2_imag: UnsafeMutablePointer<Float>) -> Int {
     do {
-        
+        print("Beginning")
+        //let deviceName = String (cString:deviceNamepr)
+        let deviceName : String = ProcessInfo.processInfo.environment["__RayleighMetalDevice"]!
+
+        print("deviceName =" + deviceName)
+
+        var bFound = false
+        var device : MTLDevice!
+        for dev in MTLCopyAllDevices() {
+            if dev.name.contains(deviceName)
+            {
+                print("Device " + deviceName + "Found!")
+                bFound = true
+                device = dev
+            }
+            
+        }
+
+        if bFound == false {
+            print("Device " + deviceName + "Not Found!")
+            return 1
+        }
+
+        let commandQueue = device.makeCommandQueue()!,
+            defaultLibrary = try! device.makeLibrary(filepath: metallib)
+
+    
         let mr2Buffer = UnsafeRawPointer(mr2p)
         let c_wvnb_realBuffer = UnsafeRawPointer(c_wvnb_real)
         let c_wvnb_imagBuffer = UnsafeRawPointer(c_wvnb_imag)

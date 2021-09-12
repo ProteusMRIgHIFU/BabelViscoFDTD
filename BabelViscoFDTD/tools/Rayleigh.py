@@ -108,6 +108,7 @@ if platform == "darwin":
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_char_p),
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_float)]
 
@@ -444,7 +445,8 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
                                             
     return u2
 
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf):
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
+    os.environ['__RayleighMetalDevice'] =deviceName
     mr1=np.array([center.shape[0]])
     mr2=np.array([rf.shape[0]])
     cwvnb_real=np.array([np.real(cwvnb)])
@@ -459,7 +461,7 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf):
     a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    
+    deviceName_ptr=ctypes.c_char_p(deviceName.encode())
     u2_real_ptr = (ctypes.c_float * rf.shape[0])()
     u2_imag_ptr = (ctypes.c_float * rf.shape[0])()
     swift_fun.ForwardSimpleMetal(mr2_ptr,
@@ -471,11 +473,12 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf):
                                 a1_ptr,
                                 u1_real_ptr,
                                 u1_imag_ptr,
+                                deviceName_ptr,
                                 u2_real_ptr,
                                 u2_imag_ptr)
     return np.array(u2_real_ptr)+1j*np.array(u2_imag_ptr)
 
-def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal'):
+def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'):
     '''
     MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
     cwvnb is the complex speed of sound
@@ -490,7 +493,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal'):
     global prg 
     if platform == "darwin":
         if MacOsPlatform=='Metal':
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf)
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal)
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf)
     else:
