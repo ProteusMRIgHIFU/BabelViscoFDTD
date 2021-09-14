@@ -19,11 +19,11 @@ try:
     print ("StaggeredFDTD_3D_CUDA loaded")
 except:
     print ("StaggeredFDTD_3D_CUDA NOT loaded")
-try:
-    from .StaggeredFDTD_3D_With_Relaxation_OPENCL import StaggeredFDTD_3D_OPENCL
-    print ("StaggeredFDTD_3D_OPENCL loaded")
-except:
-    print ("StaggeredFDTD_3D_OPENCL NOT loaded")
+#try:
+from .StaggeredFDTD_3D_With_Relaxation_OPENCL import StaggeredFDTD_3D_OPENCL
+print ("StaggeredFDTD_3D_OPENCL loaded")
+# except:
+#     print ("StaggeredFDTD_3D_OPENCL NOT loaded")
 try:
     from .StaggeredFDTD_3D_With_Relaxation_METAL import StaggeredFDTD_3D_METAL
     print ("StaggeredFDTD_3D_METAL loaded")
