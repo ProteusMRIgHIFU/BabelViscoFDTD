@@ -302,8 +302,12 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
               'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:
         _CreateAndCopyFromMXVarOnGPU(k,ctx,ArraysGPUOp,arguments)
-    for k in ['V_x_x','V_y_x','V_z_x','V_x_y','V_y_y','V_z_y','V_x_z','V_y_z','V_z_z']:
+    for k in ['V_x_x','V_y_x','V_z_x']:
         _ownGpuCalloc(k,ctx,td,outparams['SizePMLxp1'],ArraysGPUOp)
+    for k in ['V_x_y','V_y_y','V_z_y']:
+        _ownGpuCalloc(k,ctx,td,outparams['SizePMLyp1'],ArraysGPUOp)
+    for k in ['V_x_z','V_y_z','V_z_z']:
+        _ownGpuCalloc(k,ctx,td,outparams['SizePMLzp1'],ArraysGPUOp)
     for k in ['Sigma_x_xx','Sigma_y_xx','Sigma_z_xx','Sigma_x_yy','Sigma_y_yy','Sigma_z_yy','Sigma_x_zz','Sigma_y_zz','Sigma_z_zz']:
         _ownGpuCalloc(k,ctx,td,outparams['SizePML'],ArraysGPUOp)
     for k in ['Sigma_x_xy','Sigma_y_xy','Sigma_x_xz','Sigma_z_xz','Sigma_y_yz','Sigma_z_yz']:
@@ -341,8 +345,8 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
 
     bFirstCopy=True
     events=[]
-    for k in ['SensorOutput','SqrAcc','Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
-          'Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots']:
+    for k in ['SqrAcc','Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
+          'Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots','SensorOutput']:
         events.append(cl.enqueue_copy(queue,ArrayResCPU[k] , ArraysGPUOp[k]))
 
     cl.wait_for_events(events)
