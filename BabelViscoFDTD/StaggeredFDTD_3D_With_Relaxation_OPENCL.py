@@ -287,6 +287,9 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     SensorStart=arguments['SensorStart']
     ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,NumberSelSensorMaps),dtype,order='F')
     
+    with open('t.c', 'w') as f:
+        f.write(AllC)
+
     prg = cl.Program(ctx,AllC).build()
     StressKernel=prg.StressKernel
     ParticleKernel=prg.ParticleKernel
@@ -332,14 +335,19 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
             queue.finish()
         if  (nStep % 100==0):
             print(nStep,TimeSteps)
-            
+
+    bFirstCopy=True
+    events=[]
     for k in ['SensorOutput','SqrAcc','Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
           'Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots']:
-        ev=cl.enqueue_copy(queue,ArrayResCPU[k] , ArraysGPUOp[k])
-        ev.wait()
+        events.append(cl.enqueue_copy(queue,ArrayResCPU[k] , ArraysGPUOp[k]))
+
+    cl.wait_for_events(events)
+    queue.finish()
+    time.sleep(1.0)
     
-    for k in ArraysGPUOp:
-        ArraysGPUOp[k].release()
+    # for k in ArraysGPUOp:
+    #     ArraysGPUOp[k].release()
         
     t1=time.time()
     print('time to do low level calculations',t1-t0)
