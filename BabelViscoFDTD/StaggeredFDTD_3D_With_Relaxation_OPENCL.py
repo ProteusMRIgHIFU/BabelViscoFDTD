@@ -121,11 +121,13 @@ def _ownGpuCalloc(Name,ctx,td,dims,ArraysGPUOp,flags=cl.mem_flags.READ_WRITE):
         f=4
     else: # double
         f=8
+    print('Allocating for',Name,dims,'elements')
     ArraysGPUOp[Name]=cl.Buffer(ctx, flags,size=dims*f)
     TotalAllocs+=1
     
 def _CreateAndCopyFromMXVarOnGPU(Name,ctx,ArraysGPUOp,ArrayResCPU,flags=cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR):
     global TotalAllocs
+    print('Allocating for',Name,ArrayResCPU[Name].size,'elements')
     ArraysGPUOp[Name]=cl.Buffer(ctx, flags,hostbuf=ArrayResCPU[Name])
     TotalAllocs+=1
     
@@ -152,7 +154,7 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     devices=platforms[0].get_devices()
     bFound=False
     for device in devices:
-        if arguments['DefaultGPUDeviceName'] in devices[0].name:
+        if arguments['DefaultGPUDeviceName'] in device.name:
             bFound=True
             break
     
@@ -321,6 +323,8 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     SensorsKernel.set_arg(55,ArraysGPUOp['IndexSensorMap'])
 
     for nStep in range(TimeSteps):
+        if  (nStep % 100==0):
+            print(nStep,TimeSteps)
         StressKernel.set_arg(54,np.uint32(nStep))
         StressKernel.set_arg(55,arguments['TypeSource'])
         ParticleKernel.set_arg(54,np.uint32(nStep))
@@ -333,8 +337,7 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
             SensorsKernel.set_arg(56,np.uint32(nStep))
             ev = cl.enqueue_nd_range_kernel(queue, SensorsKernel, (NumberSensors,1), None)
             queue.finish()
-        if  (nStep % 100==0):
-            print(nStep,TimeSteps)
+
 
     bFirstCopy=True
     events=[]

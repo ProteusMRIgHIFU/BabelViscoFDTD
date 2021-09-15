@@ -1,7 +1,7 @@
 #ifndef INDEXING_DEF
 #define INDEXING_DEF
 
-#if defined(OPENCL)
+#if defined(OPENCL) || defined(METAL)
 typedef unsigned long  _PT;
 #else
 typedef unsigned long long _PT;
