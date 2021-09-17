@@ -76,7 +76,9 @@
 #include <unistd.h>
 #else
 #include <CL/cl.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #endif
 #endif
 

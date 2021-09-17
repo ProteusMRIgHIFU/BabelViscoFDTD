@@ -37,7 +37,7 @@ char * getKernelSource(char *filename)
         exit(EXIT_FAILURE);
     }
     fseek(file, 0, SEEK_END);
-    int len = ftell(file) + 1;
+    int len = ftell(file) +1;
     rewind(file);
 
     char *source = (char *)calloc(sizeof(char), len);
@@ -61,7 +61,6 @@ char * getKernelSource(char *filename)
 
 int main(int argc, char *argv[])
 {
-    float *h_psum;              // vector to hold partial sum
     int in_nsteps = INSTEPS;    // default number of steps (updated later to device preferable)
     int niters = ITERS;         // number of iterations
     int nsteps;
@@ -160,5 +159,4 @@ int main(int argc, char *argv[])
     clReleaseCommandQueue(commands);
     clReleaseContext(context);
     free(kernelsource);
-    free(h_psum);
 }

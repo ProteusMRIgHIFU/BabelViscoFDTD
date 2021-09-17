@@ -395,25 +395,25 @@ int __InitBuffer =0;
 						snprintf(_bline,512,"__constant unsigned int " #_NameVar "=%i;\n",(int) INHOST(_NameVar));\
 				else\
 						snprintf(_bline,512,"__constant %s "#_NameVar "=%.9g;\n",MEX_STR,(mexType) INHOST(_NameVar));\
-			   strlcat(BUFFER_FOR_GPU_CODE,_bline, MAXP_BUFFER_GPU_CODE);\
+				fprintf(TempKernel,"%s",_bline);\
 			 };
 
 #define InitSymbolArray(_NameVar,_gtype,__Limit)\
 			{\
 				char _bline[512];\
 				snprintf(_bline,512,"__constant %s gpu" #_NameVar "pr[%i] ={\n",MEX_STR,__Limit);\
-				strncat(BUFFER_FOR_GPU_CODE,_bline,MAXP_BUFFER_GPU_CODE);\
+				fprintf(TempKernel,_bline);\
 				for (unsigned int nn=0;nn<__Limit;nn++)\
 				{\
 					if (_gtype==G_INT)\
 							snprintf(_bline,512,"%i",(int)INHOST(_NameVar ## _pr)[nn]);\
 					else\
 							snprintf(_bline,512,"%.9g",(mexType)INHOST(_NameVar ## _pr)[nn]);\
-					strlcat(BUFFER_FOR_GPU_CODE,_bline,MAXP_BUFFER_GPU_CODE);\
+					fprintf(TempKernel,"%s",_bline);\
 					if (nn<__Limit-1)\
-						strlcat(BUFFER_FOR_GPU_CODE,",\n",MAXP_BUFFER_GPU_CODE);\
+						fprintf(TempKernel,",\n");\
 					else\
-						strlcat(BUFFER_FOR_GPU_CODE,"};\n",MAXP_BUFFER_GPU_CODE);\
+						fprintf(TempKernel,"};\n");\
 				};\
 			};
 

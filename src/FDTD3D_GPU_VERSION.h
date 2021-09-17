@@ -96,7 +96,7 @@ int NumberAlloc=0;
     }
 
     // Get all platforms
-    cl_platform_id Platform[numPlatforms];
+    cl_platform_id * Platform = (cl_platform_id*) malloc(numPlatforms*sizeof(cl_platform_id));
     mxcheckGPUErrors(clGetPlatformIDs(numPlatforms, Platform, NULL));
 
     // Secure a GPU
@@ -144,15 +144,16 @@ int NumberAlloc=0;
 
     commands = clCreateCommandQueue(context, device_id[SelDevice], 0, &err);
     mxcheckGPUErrors(err);
-
-    sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
+    FILE * TempKernel;
+    TempKernel=fopen("kernel.cu-bad", "w");
+    fprintf(TempKernel,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
     char * indexingSource = load_file("_indexing.h");
     if (indexingSource==0)
     {
       ERROR_STRING("Unable to read _indexing.h file!!")
     }
-    strncat(BUFFER_FOR_GPU_CODE,indexingSource,MAXP_BUFFER_GPU_CODE);
-    strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
+    fwrite(indexingSource,sizeof(char),strlen(indexingSource),TempKernel);
+    fprintf(TempKernel,"\n");
     free(indexingSource);
 
 #endif
@@ -350,38 +351,37 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   {
     ERROR_STRING("Unable to read _gpu_kernel.c file!!")
   }
-  strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
-  strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
+  fwrite(KernelSource,sizeof(char),strlen(KernelSource),TempKernel);
+  fprintf(TempKernel,"\n");
   free(KernelSource);
   //PRINTF("%s",BUFFER_FOR_GPU_CODE);
-
-  // program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_GPU_CODE, NULL, &err);
-  // mxcheckGPUErrors(err);
-
-
-  FILE * TempKernel;
-  TempKernel=fopen("kernel.cu", "w");
-  fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
-  fclose(TempKernel);
-  char scmd [80];
-  sprintf(scmd,"./pi_ocl --device %i",SelDevice);
-  system(scmd);
-
-
-  char * binary;
-  size_t binary_size;
-  long l_szie;
-  cl_int binary_status;
-  binary = common_read_file("KERNEL.BIN", &l_szie);
-  binary_size=l_szie;
-  program = clCreateProgramWithBinary(
-        context, 1, &device_id[SelDevice], &binary_size,
-        (const unsigned char **)&binary, &binary_status, &err
-    );
-  mxcheckGPUErrors(err);
-  free(binary);
+  //   size_t szKernelLength = strlen(BUFFER_FOR_GPU_CODE);
+  //   program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_GPU_CODE, &szKernelLength, &err);
+  //   mxcheckGPUErrors(err);
+  
+    fclose(TempKernel);
+    char scmd [80];
+    #ifdef WIN32
+    sprintf(scmd,"pi_ocl.exe --device %i",SelDevice);
+    #else
+    sprintf(scmd,"./pi_ocl --device %i",SelDevice);
+    #endif
+    system(scmd);
 
 
+    char * binary;
+    size_t binary_size;
+    long l_szie;
+    cl_int binary_status;
+    binary = common_read_file("KERNEL.BIN", &l_szie);
+    binary_size=l_szie;
+    program = clCreateProgramWithBinary(
+          context, 1, &device_id[SelDevice], &binary_size,
+          (const unsigned char **)&binary, &binary_status, &err
+      );
+    mxcheckGPUErrors(err);
+    free(binary);
+  
   PRINTF("After clCreateProgramWithSource\n");
   // Build the program
   err = clBuildProgram(program, 1, &device_id[SelDevice], NULL, NULL, NULL);
@@ -1046,5 +1046,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     clReleaseKernel(SnapShot);
     clReleaseCommandQueue(commands);
     clReleaseContext(context);
+    free(Platform);
 #endif
 PRINTF("Number of unfreed allocs (it should be 0):%i\n",NumberAlloc);

@@ -92,8 +92,12 @@ if(STAGGERED_OPENCL_SUPPORT)
     if (APPLE)
         add_link_options(-Wl,-framework,OpenCL)
     else()
-        add_link_options(-L /usr/local/cuda-11.0/targets/x86_64-linux/lib/
+        if (WIN32)
+            find_package(OpenCL REQUIRED)
+        else()
+            add_link_options(-L /usr/local/cuda-11.0/targets/x86_64-linux/lib/
                         -lOpenCL)
+        endif()
     endif()
 endif()
 
@@ -173,11 +177,29 @@ if(STAGGERED_PYTHON_SUPPORT)
         )
     endif()
 
-    target_include_directories(python_c_extension PUBLIC
+    
+    if(STAGGERED_OPENCL_SUPPORT)
+        if (WIN32)
+            target_include_directories(python_c_extension PUBLIC
+            ${PYTHON_INCLUDE_DIRS}
+            ${NUMPY_INCLUDE_DIR}
+            ${PROJECT_SOURCE_DIR}/src/headers
+            ${OpenCL_INCLUDE_DIRS}
+            )
+        else()
+            target_include_directories(python_c_extension PUBLIC
+            ${PYTHON_INCLUDE_DIRS}
+            ${NUMPY_INCLUDE_DIR}
+            ${PROJECT_SOURCE_DIR}/src/headers
+            )
+        endif()
+    else()
+        target_include_directories(python_c_extension PUBLIC
         ${PYTHON_INCLUDE_DIRS}
         ${NUMPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}/src/headers
         )
+    endif()
 
     target_link_libraries(python_c_extension)
 
@@ -191,7 +213,12 @@ if(STAGGERED_PYTHON_SUPPORT)
 
     # On Windows, it is required to link to the Python libraries
     if(WIN32)
-        target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
+        
+        if (STAGGERED_OPENCL_SUPPORT)
+            target_link_libraries(python_c_extension ${PYTHON_LIBRARIES} ${OpenCL_LIBRARIES} )
+        else()
+            target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
+        endif()
     endif()
     if(STAGGERED_MACOS)
         target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})

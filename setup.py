@@ -151,36 +151,13 @@ class CMakeBuild(build_ext):
 version = '0.9.1'
 
 print()
-
+print('Adding  CPU')
+modules=[CMakeExtension(c_module_name+'_single'),
+            CMakeExtension(c_module_name+'_double')]
 if platform.system() in ['Linux','Windows']:
-    print('Adding CUDA and CPU')
-    modules=[CMakeExtension(c_module_name+'_CUDA_single'),
-             CMakeExtension(c_module_name+'_CUDA_double'),
-             CMakeExtension(c_module_name+'_single'),
-             CMakeExtension(c_module_name+'_double')]
-else:
-    print('Adding  CPU')
-    modules=[CMakeExtension(c_module_name+'_single'),
-             CMakeExtension(c_module_name+'_double')]
-
-# if platform.system() == 'Linux':
-#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_double',
-#             ['FDTDStaggered3D_with_relaxation_python.c'],
-#             extra_compile_args = ["-DOPENCL"],
-#             extra_link_args=["-lOpenCL"]))
-#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_single',
-#             ['FDTDStaggered3D_with_relaxation_python.c'],
-#             extra_compile_args = ["-DOPENCL","-DSINGLE_PREC"],
-#             extra_link_args=["-lOpenCL"]))
-# elif platform.system()=='Darwin':
-#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_double',
-#             ['FDTDStaggered3D_with_relaxation_python.c'],
-#             extra_compile_args = ["-DOPENCL", "-I"+npinc],
-#             extra_link_args=["-Wl,-framework,OpenCL"]))
-#     modules.append(Extension('_FDTDStaggered3D_with_relaxation_OPENCL_single',
-#             ['FDTDStaggered3D_with_relaxation_python.c'],
-#             extra_compile_args = ["-DOPENCL","-DSINGLE_PREC","-I"+npinc],
-#             extra_link_args=["-Wl,-framework,OpenCL"]))
+    print('Adding CUDA')
+    modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
+             CMakeExtension(c_module_name+'_CUDA_double')]
 
 #if(STAGGERED_MACOS)
 #  set(CMAKE_C_COMPILER "/usr/local/opt/llvm/bin/clang")
@@ -189,9 +166,10 @@ else:
 #  set(MACOS_OMP_INCLUDE "")
 #endif()
 
+modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
+modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
+
 if platform.system() in ['Darwin']:
-    modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
-    modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
     modules.append(CMakeExtension(c_module_name+'_METAL_single'))
 
 
