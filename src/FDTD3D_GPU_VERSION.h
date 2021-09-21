@@ -514,26 +514,24 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
       {
-          // inData[j] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_MEX[j][0]);
-          // inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
-          inData[j] =  (unsigned int) ( HOST_INDEX_MEX[j][0]);
-          // inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
+          inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_MEX[j][0]);
+          inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
+          
+          
       }
-      //_INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2));
-      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX));
+      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2));
+      
   }
 
   {
       unsigned int * inData = static_cast< unsigned int *>(_INDEX_UINT.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
       {
-          // inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_UINT[j][0]);
-          // inData[j*2+1] = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
-          inData[j] =  (unsigned int) ( HOST_INDEX_UINT[j][0]);
+           inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_UINT[j][0]);
+           inData[j*2+1] = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
           
       }
-      // _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT*2));
-      _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT));
+      _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT*2));
   }
 
   _CONSTANT_BUFFER_UINT.DidModify(ns::Range(0, sizeof(unsigned int)*LENGTH_CONST_UINT));
