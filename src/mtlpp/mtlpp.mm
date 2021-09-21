@@ -1291,20 +1291,20 @@ namespace mtlpp
 #endif
     }
 
-    Buffer Device::NewBuffer(uint32_t length, ResourceOptions options)
+    Buffer Device::NewBuffer(uint64_t length, ResourceOptions options)
     {
         Validate();
         return ns::Handle{ (__bridge void*)[(__bridge id<MTLDevice>)m_ptr newBufferWithLength:length options:MTLResourceOptions(options)] };
     }
 
-    Buffer Device::NewBuffer(const void* pointer, uint32_t length, ResourceOptions options)
+    Buffer Device::NewBuffer(const void* pointer, uint64_t length, ResourceOptions options)
     {
         Validate();
         return ns::Handle{ (__bridge void*)[(__bridge id<MTLDevice>)m_ptr newBufferWithBytes:pointer length:length options:MTLResourceOptions(options)] };
     }
 
 
-    Buffer Device::NewBuffer(void* pointer, uint32_t length, ResourceOptions options, std::function<void (void* pointer, uint32_t length)> deallocator)
+    Buffer Device::NewBuffer(void* pointer, uint64_t length, ResourceOptions options, std::function<void (void* pointer, uint64_t length)> deallocator)
     {
         Validate();
         return ns::Handle{
