@@ -77,7 +77,7 @@
     int indexforNaN=0;
   #endif
 
-
+	unsigned int SensorEntry=0;
 	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
 	{
 		if ((nStep % 200)==0)
@@ -220,8 +220,10 @@
 			}
 
 		//Finally, the sensors
-		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
+		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=INHOST(SensorStart)) &&
+			(SensorEntry < MaxSensorSteps))
 		{
+			SensorEntry++;
 			int ssj;
 			#pragma omp parallel for private(CurZone)
 			for(ssj=0; ssj<INHOST(NumberSensors); ssj++)

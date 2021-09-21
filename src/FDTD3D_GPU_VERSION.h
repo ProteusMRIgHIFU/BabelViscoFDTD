@@ -159,16 +159,15 @@ int NumberAlloc=0;
 #endif
 
 #ifdef METAL
-    unsigned int _c_mex_type = 0;
-    unsigned int _c_uint_type = 0;
-    unsigned int HOST_INDEX_MEX[LENGTH_INDEX_MEX][2];
+    unsigned long _c_mex_type = 0;
+    unsigned long _c_uint_type = 0;
+    unsigned long HOST_INDEX_MEX[LENGTH_INDEX_MEX][2]; //need to encode 64 bits numbers in 32 arrays...
 
-    unsigned int HOST_INDEX_UINT[LENGTH_INDEX_MEX][2];
+    unsigned long HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
     ns::Array<mtlpp::Device>  AllDev= mtlpp::Device::CopyAllDevices();
     mxcheckGPUErrors(((int)AllDev));
-
-
+  
     if (AllDev.GetSize()==0)
     {
       ERROR_STRING("Found 0 METAL platforms!\n");
@@ -177,7 +176,7 @@ int NumberAlloc=0;
     {
       for (int _n = 0;_n<AllDev.GetSize();_n++)
       {
-        PRINTF("Meta device available: %i %s\n",_n,AllDev[_n].GetName().GetCStr());
+        PRINTF("Metal device available: %i %s\n",_n,AllDev[_n].GetName().GetCStr());
         if (NULL!=strstr(AllDev[_n].GetName().GetCStr(),DefaultGPUDeviceName_pr))
         {
           PRINTF("Found %s device!\n",DefaultGPUDeviceName_pr);
@@ -218,7 +217,6 @@ int NumberAlloc=0;
     PRINTF("After reading files\n");
 
     ns::Error error;
-
     mtlpp::Library library = device.NewLibrary(BUFFER_FOR_GPU_CODE, mtlpp::CompileOptions(), &error);
     if (((int)library)==0)
     {
@@ -501,28 +499,40 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   mxcheckGPUErrors(((int)_UINT_BUFFER));
 
   mtlpp::Buffer _INDEX_MEX = device.NewBuffer(sizeof(unsigned int) *
-            LENGTH_INDEX_MEX,
+            LENGTH_INDEX_MEX*2,
             mtlpp::ResourceOptions::StorageModeManaged);
   mxcheckGPUErrors(((int)_INDEX_MEX));
 
   mtlpp::Buffer _INDEX_UINT = device.NewBuffer(sizeof(unsigned int) *
-            LENGTH_INDEX_UINT,
+            LENGTH_INDEX_UINT*2,
             mtlpp::ResourceOptions::StorageModeManaged);
   mxcheckGPUErrors(((int)_INDEX_UINT));
 
 
 
   {
-      unsigned int * inData = static_cast<unsigned int*>(_INDEX_MEX.GetContents());
+      unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
-          inData[j] = HOST_INDEX_MEX[j][0];
+      {
+          // inData[j] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_MEX[j][0]);
+          // inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
+          inData[j] =  (unsigned int) ( HOST_INDEX_MEX[j][0]);
+          // inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
+      }
+      //_INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2));
       _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX));
   }
 
   {
       unsigned int * inData = static_cast< unsigned int *>(_INDEX_UINT.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
-          inData[j] = HOST_INDEX_UINT[j][0];
+      {
+          // inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_UINT[j][0]);
+          // inData[j*2+1] = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
+          inData[j] =  (unsigned int) ( HOST_INDEX_UINT[j][0]);
+          
+      }
+      // _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT*2));
       _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT));
   }
 
@@ -736,8 +746,13 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   LOCAL_CALLOC(Pressure,GET_NUMBER_ELEMS(Pressure_res));
 
   unsigned int INHOST(nStep)=0;
+  unsigned int SensorEntry=0;
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
+    if  (INHOST(nStep) % 100==0)
+    {
+         PRINTF("nStep, total steps = %i, %i\n",(int)(INHOST(nStep)),(int)(INHOST(TimeSteps)));
+    }
 #if defined(CUDA)
         unsigned int nCurStream=0;
         unsigned int maxStream=TOTAL_streams;
@@ -784,8 +799,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(((int)commandBufferStress));
 
         mtlpp::ComputeCommandEncoder commandEncoderStress = commandBufferStress.ComputeCommandEncoder();
-        COMMON_METAL_PARAMS;
-        commandEncoderStress.SetBuffer(gpu_Snapshots_pr, 0, 6);
+        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderStress.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderStress.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderStress.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderStress.SetBuffer(_MEX_BUFFER, 0, 5);
         commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
         commandEncoderStress.DispatchThreadgroups(
             mtlpp::Size(
@@ -804,7 +823,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(((int)commandBufferParticle));
 
         mtlpp::ComputeCommandEncoder commandEncoderParticle = commandBufferParticle.ComputeCommandEncoder();
-        COMMON_METAL_PARAMS;
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderParticle.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderParticle.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderParticle.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderParticle.SetBuffer(_MEX_BUFFER, 0, 5);
         commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
         commandEncoderParticle.DispatchThreadgroups(
             mtlpp::Size(
@@ -843,7 +867,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(((int)commandBufferSnapShot));
 
         mtlpp::ComputeCommandEncoder commandEncoderSnapShot = commandBufferSnapShot.ComputeCommandEncoder();
-        COMMON_METAL_PARAMS;
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
+        commandEncoderSnapShot.SetBuffer(_MEX_BUFFER, 0, 5);
         commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 6);
         commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
         commandEncoderSnapShot.DispatchThreadgroups(
@@ -864,8 +893,11 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 			}
 
 		//~ //Finally, the sensors
-    if (((((_PT)INHOST(nStep)) % ((_PT)INHOST(SensorSubSampling)))==0) && ((((_PT)INHOST(nStep)) / ((_PT)INHOST(SensorSubSampling)))>=((_PT)INHOST(SensorStart))))
+    if (((((_PT)INHOST(nStep)) % ((_PT)INHOST(SensorSubSampling)))==0) && 
+        ((((_PT)INHOST(nStep)) / ((_PT)INHOST(SensorSubSampling)))>=((_PT)INHOST(SensorStart))) &&
+        (SensorEntry < MaxSensorSteps))
 		{
+      SensorEntry++;
 #if defined(CUDA)
       SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[nCurStream]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
 #endif
@@ -879,7 +911,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       mxcheckGPUErrors(((int)commandBufferSensors));
 
       mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
-      COMMON_METAL_PARAMS;
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+      commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
+      commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
+      commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
+      commandEncoderSensors.SetBuffer(_MEX_BUFFER, 0, 5);
       commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
       commandEncoderSensors.DispatchThreadgroups(
           mtlpp::Size(

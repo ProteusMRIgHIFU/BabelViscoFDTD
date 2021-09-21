@@ -89,21 +89,15 @@ endif()
 
 if(STAGGERED_OPENCL_SUPPORT)
     add_definitions(-DOPENCL)
+    find_package(OpenCL REQUIRED)
     if (APPLE)
         add_link_options(-Wl,-framework,OpenCL)
-    else()
-        if (WIN32)
-            find_package(OpenCL REQUIRED)
-        else()
-            add_link_options(-L /usr/local/cuda-11.0/targets/x86_64-linux/lib/
-                        -lOpenCL)
-        endif()
     endif()
 endif()
 
 if(STAGGERED_METAL_SUPPORT)
     add_definitions(-DMETAL)
-    add_compile_options(-std=c++11 -mmacosx-version-min=11.0)
+    add_compile_options(-std=c++11 -mmacosx-version-min=11.5)
     add_link_options(-Wl,-framework,Metal -Wl,-framework,MetalKit -Wl,-framework,Cocoa -Wl,-framework,CoreFoundation -fobjc-link-runtime)
 
 endif()
@@ -152,7 +146,7 @@ if(STAGGERED_PYTHON_SUPPORT)
           mtlpp/mtlpp.mm
           FDTDStaggered3D_with_relaxation_python.cpp
       )
-      set_source_files_properties(mtlpp/mtlpp.mm PROPERTIES COMPILE_FLAGS "-std=c++11 -x objective-c++ -mmacosx-version-min=11.0")
+      set_source_files_properties(mtlpp/mtlpp.mm PROPERTIES COMPILE_FLAGS "-std=c++11 -x objective-c++")
     else()
       set(PYTHON_C_EXTENSION_SRCS
           "FDTDStaggered3D_with_relaxation_python.c"
@@ -179,20 +173,12 @@ if(STAGGERED_PYTHON_SUPPORT)
 
     
     if(STAGGERED_OPENCL_SUPPORT)
-        if (WIN32)
-            target_include_directories(python_c_extension PUBLIC
-            ${PYTHON_INCLUDE_DIRS}
-            ${NUMPY_INCLUDE_DIR}
-            ${PROJECT_SOURCE_DIR}/src/headers
-            ${OpenCL_INCLUDE_DIRS}
-            )
-        else()
-            target_include_directories(python_c_extension PUBLIC
-            ${PYTHON_INCLUDE_DIRS}
-            ${NUMPY_INCLUDE_DIR}
-            ${PROJECT_SOURCE_DIR}/src/headers
-            )
-        endif()
+        target_include_directories(python_c_extension PUBLIC
+        ${PYTHON_INCLUDE_DIRS}
+        ${NUMPY_INCLUDE_DIR}
+        ${PROJECT_SOURCE_DIR}/src/headers
+        ${OpenCL_INCLUDE_DIRS}
+        )
     else()
         target_include_directories(python_c_extension PUBLIC
         ${PYTHON_INCLUDE_DIRS}
@@ -212,17 +198,12 @@ if(STAGGERED_PYTHON_SUPPORT)
     endif()
 
     # On Windows, it is required to link to the Python libraries
-    if(WIN32)
-        
-        if (STAGGERED_OPENCL_SUPPORT)
-            target_link_libraries(python_c_extension ${PYTHON_LIBRARIES} ${OpenCL_LIBRARIES} )
-        else()
-            target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
-        endif()
-    endif()
-    if(STAGGERED_MACOS)
+    if (STAGGERED_OPENCL_SUPPORT)
+        target_link_libraries(python_c_extension ${PYTHON_LIBRARIES} ${OpenCL_LIBRARIES} )
+    else()
         target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
     endif()
+    
     if(APPLE)
       set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
     endif(APPLE)
