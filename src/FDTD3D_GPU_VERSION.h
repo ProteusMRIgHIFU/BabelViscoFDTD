@@ -557,6 +557,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   _UINT_BUFFER.DidModify(ns::Range(0,sizeof(unsigned int) *_c_uint_type));
 
+  PRINTF("Total float entries %lu and int entries %lu\n",_c_mex_type,_c_uint_type);
+
 #endif
 
 	//putting Pointers in structure

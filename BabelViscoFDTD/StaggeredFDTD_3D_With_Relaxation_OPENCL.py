@@ -1,6 +1,6 @@
-import numpy as np;
+import numpy as np
 import os
-
+from pathlib import Path
 import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
 import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
 
@@ -104,7 +104,7 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     global NumberSelSensorMaps
     global TotalAllocs
     
-    IncludeDir=get_python_inc()+os.sep+'BabelViscoFDTD'+os.sep
+    IncludeDir=str(Path(__file__).parent.absolute())+os.sep
     print("Copying opencl files from "+IncludeDir +" to " +os.getcwd())
     copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'_gpu_kernel.c')
     copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'_indexing.h')
@@ -126,7 +126,7 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     else:
         dtype=np.float64
 
-    IncludeDir=get_python_inc()+os.sep+'BabelViscoFDTD'+os.sep
+    
     gpu_kernelSrc=IncludeDir+'_gpu_kernel.c'
     index_src=IncludeDir+'_indexing.h'
 

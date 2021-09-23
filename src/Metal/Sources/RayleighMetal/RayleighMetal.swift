@@ -7,6 +7,20 @@ import Foundation
 let metallib : String = (ProcessInfo.processInfo.environment["__RayleighMetal"] ?? "the lat in the dictionary was nil!") + "/Rayleigh.metallib"
 
 
+@available(macOS 10.13, *)
+@_cdecl("PrintMetalDevices")
+public func PrintMetalDevices() -> Int {
+    let devices = MTLCopyAllDevices()
+    print("Metal devices")
+    for device in devices {
+        print(device.name)
+        print("Is device low power? \(device.isLowPower).")
+        print("Is device external? \(device.isRemovable).")
+        print("Maximum threads per group: \(device.maxThreadsPerThreadgroup).")
+        print("Maximum buffer length: \(Float(device.maxBufferLength) / 1024 / 1024 / 1024) GB.")
+    }
+    return 0
+}
 //SWIFT wrapper for METAL function for Rayleigh Integral
 
 @available(macOS 10.13, *)

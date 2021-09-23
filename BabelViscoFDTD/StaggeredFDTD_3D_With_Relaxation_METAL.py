@@ -1,6 +1,6 @@
 import numpy as np;
 import os
-
+from pathlib import Path
 import _FDTDStaggered3D_with_relaxation_METAL_single as FDTD_single;
 
 import time
@@ -12,7 +12,7 @@ from distutils.sysconfig import get_python_inc
 
 
 def StaggeredFDTD_3D_METAL(arguments):
-    IncludeDir=get_python_inc()+os.sep+'BabelViscoFDTD'+os.sep
+    IncludeDir=str(Path(__file__).parent.absolute())+os.sep
     print("Copying opencl files from "+IncludeDir +" to " +os.getcwd())
     copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'_gpu_kernel.c')
     copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'_indexing.h')

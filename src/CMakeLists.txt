@@ -98,6 +98,7 @@ endif()
 if(STAGGERED_METAL_SUPPORT)
     add_definitions(-DMETAL)
     add_compile_options(-std=c++11 -mmacosx-version-min=11.5)
+    
     add_link_options(-Wl,-framework,Metal -Wl,-framework,MetalKit -Wl,-framework,Cocoa -Wl,-framework,CoreFoundation -fobjc-link-runtime)
 
 endif()

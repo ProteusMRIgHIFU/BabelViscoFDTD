@@ -18,7 +18,7 @@ def PrepareOpenCLKernel():
     with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
         GPU_KERNELS=f.readlines()
 
-    with open('_gpu_kernel.c','w') as f:
+    with open('BabelViscoFDTD'+os.sep+'_gpu_kernel.c','w') as f:
         for l in GPU_KERNELS:
             if "#include" not in l:
                 f.write(l)
@@ -27,7 +27,7 @@ def PrepareOpenCLKernel():
                 with open('src'+os.sep+incfile,'r') as g:
                     inclines=g.readlines()
                 f.writelines(inclines)
-    copyfile('src'+os.sep+'Indexing.h','_indexing.h')
+    copyfile('src'+os.sep+'Indexing.h','BabelViscoFDTD'+os.sep+'_indexing.h')
 
 
 npinc=np.get_include()+os.sep+'numpy'
@@ -61,6 +61,7 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
     def build_extensions(self):
+ 
         try:
             out = subprocess.check_output(['cmake', '--version'])
         except OSError:
@@ -106,12 +107,6 @@ class CMakeBuild(build_ext):
                 '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
                 '-DPYTHON_EXECUTABLE={}'.format(sys.executable)]
 
-            # if platform.system()=='Darwin' and 'OPENCL' not in ext.name:
-            #     cmake_args.append('-DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang')
-            #     cmake_args.append('-DCMAKE_C_COMPILER_WORKS=1')
-                #cmake_args.append('-DC_INCLUDE_DIRS=/usr/local/opt/llvm/include')
-                #cmake_args.append('-DOPENMP_LIBRARIES=/usr/local/Cellar/llvm/11.0.0/lib/')
-                #cmake_args.append('-DOPENMP_INCLUDES=/usr/local/Cellar/llvm/11.0.0/lib/clang/11.0.0/include/')
 
             if platform.system() == 'Windows':
                 plat = ('x64' if platform.architecture()[0] == '64bit' else 'Win32')
@@ -166,19 +161,23 @@ if platform.system() in ['Linux','Windows']:
 #  set(MACOS_OMP_INCLUDE "")
 #endif()
 
-modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
-modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
 
 if platform.system() in ['Darwin']:
-    modules.append(CMakeExtension(c_module_name+'_METAL_single'))
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_double',extra_compile_args = ["-mmacosx-version-min=11.3"]))
+    modules.append(CMakeExtension(c_module_name+'_METAL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
+else:
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
+    modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
 
 
 PrepareOpenCLKernel()
 
-
 setup(name='BabelViscoFDTD',
-      #packages=['BabelViscoFDTD'],
-      packages=find_packages(),
+      packages=['BabelViscoFDTD','BabelViscoFDTD.tools'],
+      #packages=find_packages(),
+      include_package_data=True,
+      package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
       version=version,
       description='GPU/CPU 3D FDTD solution of viscoelastic equation',
       author='Samuel Pichardo',
@@ -190,10 +189,9 @@ setup(name='BabelViscoFDTD',
       long_description_content_type='text/markdown',
       install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0','pyopencl>=2020.1'],
       ext_modules=modules,
-      headers=['_gpu_kernel.c','_indexing.h'],
-      cmdclass={'build_ext': CMakeBuild,
-                'install_headers': install_headers},
-      zip_safe=False,
+      #headers=['_gpu_kernel.c','_indexing.h'],
+      cmdclass={'build_ext': CMakeBuild},#                'install_headers': install_headers},
+      zip_safe=False,#data_files=[(None, ['_gpu_kernel.c','_indexing.h'])],
       classifiers=[
           "Programming Language :: Python :: 3",
           "License :: OSI Approved :: MIT License",

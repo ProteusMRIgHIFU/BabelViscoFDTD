@@ -400,15 +400,18 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_V_x_z 6
 #define CInd_V_y_z 7
 #define CInd_V_z_z 8
+
 #define CInd_Vx 9
 #define CInd_Vy 10
 #define CInd_Vz 11
+
 #define CInd_Rxx 12
 #define CInd_Ryy 13
 #define CInd_Rzz 14
 #define CInd_Rxy 15
 #define CInd_Rxz 16
 #define CInd_Ryz 17
+
 #define CInd_Sigma_x_xx 18
 #define CInd_Sigma_y_xx 19
 #define CInd_Sigma_z_xx 20
@@ -424,13 +427,16 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_Sigma_z_xz 30
 #define CInd_Sigma_y_yz 31
 #define CInd_Sigma_z_yz 32
+
 #define CInd_Sigma_xy 33
 #define CInd_Sigma_xz 34
 #define CInd_Sigma_yz 35
 #define CInd_Sigma_xx 36
 #define CInd_Sigma_yy 37
 #define CInd_Sigma_zz 38
+
 #define CInd_SourceFunctions 39
+
 #define CInd_LambdaMiuMatOverH  40
 #define CInd_LambdaMatOverH	 41
 #define CInd_MiuMatOverH 42
@@ -442,6 +448,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_Ox 48
 #define CInd_Oy 49
 #define CInd_Oz 50
+
 #define CInd_SensorOutput 51
 #define CInd_Pressure 52
 #define LENGTH_INDEX_MEX 53

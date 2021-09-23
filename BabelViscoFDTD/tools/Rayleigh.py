@@ -112,6 +112,9 @@ if platform == "darwin":
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_float)]
 
+    swift_fun.PrintMetalDevices()
+    print("loaded Metal")
+
 else:
     prg = None
     import pycuda.driver as cuda
