@@ -408,6 +408,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_Rxx 12
 #define CInd_Ryy 13
 #define CInd_Rzz 14
+
 #define CInd_Rxy 15
 #define CInd_Rxz 16
 #define CInd_Ryz 17
@@ -420,6 +421,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_Sigma_z_yy 23
 #define CInd_Sigma_x_zz 24
 #define CInd_Sigma_y_zz 25
+
 #define CInd_Sigma_z_zz 26
 #define CInd_Sigma_x_xy 27
 #define CInd_Sigma_y_xy 28
@@ -431,6 +433,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_Sigma_xy 33
 #define CInd_Sigma_xz 34
 #define CInd_Sigma_yz 35
+
 #define CInd_Sigma_xx 36
 #define CInd_Sigma_yy 37
 #define CInd_Sigma_zz 38
@@ -444,13 +447,15 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_OneOverTauSigma	44
 #define CInd_TauShear 45
 #define CInd_InvRhoMatH	 46
-#define CInd_SqrAcc 47
-#define CInd_Ox 48
-#define CInd_Oy 49
-#define CInd_Oz 50
+#define CInd_Ox 47
+#define CInd_Oy 48
+#define CInd_Oz 49
+#define CInd_Pressure 50
 
-#define CInd_SensorOutput 51
-#define CInd_Pressure 52
+#define CInd_SqrAcc 51
+
+#define CInd_SensorOutput 52
+
 #define LENGTH_INDEX_MEX 53
 
 #define CInd_IndexSensorMap  0

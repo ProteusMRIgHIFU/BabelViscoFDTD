@@ -159,11 +159,11 @@ int NumberAlloc=0;
 #endif
 
 #ifdef METAL
-    unsigned long _c_mex_type = 0;
-    unsigned long _c_uint_type = 0;
-    unsigned long HOST_INDEX_MEX[LENGTH_INDEX_MEX][2]; //need to encode 64 bits numbers in 32 arrays...
+    _PT _c_mex_type[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+    _PT  _c_uint_type = 0;
+    _PT  HOST_INDEX_MEX[LENGTH_INDEX_MEX][2]; //need to encode 64 bits numbers in 32 arrays...
 
-    unsigned long HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
+    _PT  HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
     ns::Array<mtlpp::Device>  AllDev= mtlpp::Device::CopyAllDevices();
     mxcheckGPUErrors(((int)AllDev));
@@ -490,9 +490,18 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #ifdef METAL
 
 
-  mtlpp::Buffer _MEX_BUFFER = device.NewBuffer(sizeof(mexType) *_c_mex_type,
+  mtlpp::Buffer _MEX_BUFFER[12];
+  for (_PT ii=0;ii<12;ii++)
+  {
+     PRINTF("Allocating Buffer %i with %lu float entries\n",ii,_c_mex_type[ii]);
+    _MEX_BUFFER[ii]= device.NewBuffer(sizeof(mexType) *_c_mex_type[ii],
             mtlpp::ResourceOptions::StorageModeManaged);
-  mxcheckGPUErrors(((int)_MEX_BUFFER));
+    mxcheckGPUErrors(((int)_MEX_BUFFER[ii]));
+    if (_MEX_BUFFER[ii].GetLength() != sizeof(mexType) *_c_mex_type[ii])
+    {
+        PRINTF("ERROR, size of buffer is not what is expected %lu, %lu\n",_MEX_BUFFER[ii].GetLength(),sizeof(mexType) *_c_mex_type[ii]);
+    }
+  }
 
   mtlpp::Buffer _UINT_BUFFER = device.NewBuffer(sizeof(unsigned int) *_c_uint_type,
             mtlpp::ResourceOptions::StorageModeManaged);
@@ -552,12 +561,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CompleteCopyToGpu(IndexSensorMap	,unsigned int);
   CompleteCopyToGpu(SourceMap		,unsigned int);
   CompleteCopyToGpu(MaterialMap		,unsigned int);
-
-  _MEX_BUFFER.DidModify(ns::Range(0,sizeof(mexType) *_c_mex_type));
+  _PT totalfloat=0;
+  for (_PT ii=0;ii<12;ii++)
+  {
+    _MEX_BUFFER[ii].DidModify(ns::Range(0,sizeof(mexType) *_c_mex_type[ii]));
+    totalfloat+=_c_mex_type[ii];
+  }
 
   _UINT_BUFFER.DidModify(ns::Range(0,sizeof(unsigned int) *_c_uint_type));
-
-  PRINTF("Total float entries %lu and int entries %lu\n",_c_mex_type,_c_uint_type);
+  
+  PRINTF("Total float entries %lu and int entries %lu\n",totalfloat,_c_uint_type);
 
 #endif
 
@@ -804,7 +817,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderStress.SetBuffer(_INDEX_MEX, 0, 2);
         commandEncoderStress.SetBuffer(_INDEX_UINT, 0, 3);
         commandEncoderStress.SetBuffer(_UINT_BUFFER, 0, 4);
-        commandEncoderStress.SetBuffer(_MEX_BUFFER, 0, 5);
+        for (_PT ii=0;ii<12;ii++)
+            commandEncoderStress.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        
         commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
         commandEncoderStress.DispatchThreadgroups(
             mtlpp::Size(
@@ -828,7 +843,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderParticle.SetBuffer(_INDEX_MEX, 0, 2);
         commandEncoderParticle.SetBuffer(_INDEX_UINT, 0, 3);
         commandEncoderParticle.SetBuffer(_UINT_BUFFER, 0, 4);
-        commandEncoderParticle.SetBuffer(_MEX_BUFFER, 0, 5);
+        for (_PT ii=0;ii<12;ii++)
+            commandEncoderParticle.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
         commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
         commandEncoderParticle.DispatchThreadgroups(
             mtlpp::Size(
@@ -872,8 +888,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
         commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
         commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
-        commandEncoderSnapShot.SetBuffer(_MEX_BUFFER, 0, 5);
-        commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 6);
+        for (_PT ii=0;ii<12;ii++)
+            commandEncoderSnapShot.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 17);
         commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
         commandEncoderSnapShot.DispatchThreadgroups(
             mtlpp::Size(
@@ -916,7 +933,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
       commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
       commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
-      commandEncoderSensors.SetBuffer(_MEX_BUFFER, 0, 5);
+      for (_PT ii=0;ii<12;ii++)
+            commandEncoderSensors.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
       commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
       commandEncoderSensors.DispatchThreadgroups(
           mtlpp::Size(
@@ -929,7 +947,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       mtlpp::BlitCommandEncoder blitCommandEncoderSensors = commandBufferSensors.BlitCommandEncoder();
       if (INHOST(nStep)==(INHOST(TimeSteps)-1))
       {  //just in the very last step we synchronize
-        blitCommandEncoderSensors.Synchronize(_MEX_BUFFER);
+        for (_PT ii=0;ii<12;ii++)
+          blitCommandEncoderSensors.Synchronize(_MEX_BUFFER[ii]);
       }
       blitCommandEncoderSensors.EndEncoding();
       commandBufferSensors.Commit();

@@ -649,14 +649,86 @@ else\
 	}\
 }\
 
+const _PT  _IndexDataMetal(const char * NameVar)
+        {
+			if (strcmp(NameVar,"V_x_x")==0) return 0;
+			if (strcmp(NameVar,"V_y_x")==0) return 0;
+			if (strcmp(NameVar,"V_z_x")==0) return 0;
+			if (strcmp(NameVar,"V_x_y")==0) return 0;
+			if (strcmp(NameVar,"V_y_y")==0) return 0;
+			if (strcmp(NameVar,"V_z_y")==0) return 0;
+			if (strcmp(NameVar,"V_x_z")==0) return 0;
+			if (strcmp(NameVar,"V_y_z")==0) return 0;
+			if (strcmp(NameVar,"V_z_z")==0) return 0;
+
+			if (strcmp(NameVar,"Vx")==0)    return 1;
+			if (strcmp(NameVar,"Vy")==0)	return 1;
+			if (strcmp(NameVar,"Vz")==0)	return 1;
+
+			if (strcmp(NameVar,"Rxx")==0)	return 2;
+			if (strcmp(NameVar,"Ryy")==0)	return 2;
+			if (strcmp(NameVar,"Rzz")==0)	return 2;
+
+			if (strcmp(NameVar,"Rxy")==0)	return 3;
+			if (strcmp(NameVar,"Rxz")==0)	return 3;
+			if (strcmp(NameVar,"Ryz")==0)	return 3;
+
+			if (strcmp(NameVar,"Sigma_x_xx")==0) return 4;
+			if (strcmp(NameVar,"Sigma_y_xx")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_z_xx")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_x_yy")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_y_yy")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_z_yy")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_x_zz")==0)	return 4;
+			if (strcmp(NameVar,"Sigma_y_zz")==0)	return 4;
+
+			if (strcmp(NameVar,"Sigma_z_zz")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_x_xy")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_y_xy")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_x_xz")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_z_xz")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_y_yz")==0)	return 5;
+			if (strcmp(NameVar,"Sigma_z_yz")==0)	return 5;
+
+			if (strcmp(NameVar,"Sigma_xy")==0)		return 6;
+			if (strcmp(NameVar,"Sigma_xz")==0)		return 6;
+			if (strcmp(NameVar,"Sigma_yz")==0)		return 6;
+			
+			if (strcmp(NameVar,"Sigma_xx")==0)		return 7;
+			if (strcmp(NameVar,"Sigma_yy")==0)		return 7;
+			if (strcmp(NameVar,"Sigma_zz")==0)		return 7;
+
+			if (strcmp(NameVar,"SourceFunctions")==0) return 8;
+
+			if (strcmp(NameVar,"LambdaMiuMatOverH")==0) return 9;
+			if (strcmp(NameVar,"LambdaMatOverH")==0)	return 9;
+			if (strcmp(NameVar,"MiuMatOverH")==0)	return 9;
+			if (strcmp(NameVar,"TauLong")==0)	return 9;
+			if (strcmp(NameVar,"OneOverTauSigma")==0)	return 9;
+			if (strcmp(NameVar,"TauShear")==0)	return 9;
+			if (strcmp(NameVar,"InvRhoMatH")==0)	return 9;
+			if (strcmp(NameVar,"Ox")==0) return 9;
+			if (strcmp(NameVar,"Oy")==0) return 9;
+			if (strcmp(NameVar,"Oz")==0) return 9;
+			if (strcmp(NameVar,"Pressure")==0) return 9;
+
+			if (strcmp(NameVar,"SqrAcc")==0)	return 10;
+
+			if (strcmp(NameVar,"SensorOutput")==0)	return 11;
+					
+			
+			ERROR_STRING("Unknown parameter");
+				return -1;
+        };
 
 #define ownGpuCalloc(_NameVar,_dataType,_size)\
 	PRINTF("Allocating in GPU for " #_NameVar " %llu elem. (nZones=%i)\n",(_PT)_size*INHOST(ZoneCount),(int)INHOST(ZoneCount));\
 	if (NULL!=strstr(#_dataType,"mexType"))\
 	{	\
-		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
+		_PT subArray = _IndexDataMetal(#_NameVar);\
+		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
-		_c_mex_type+=_size*INHOST(ZoneCount);\
+		_c_mex_type[subArray]+=_size*INHOST(ZoneCount);\
 	} \
 	else\
 	{\
@@ -670,9 +742,10 @@ else\
 				 PRINTF("Allocating in GPU for " #_NameVar " %llu elem.\n",(_PT)SizeCopy);\
 				 if (NULL!=strstr(#_dataType,"mexType"))\
 			 	{	\
-			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type;\
+				 	_PT subArray = _IndexDataMetal(#_NameVar);\
+			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=SizeCopy;\
-			 		_c_mex_type+=SizeCopy;\
+			 		_c_mex_type[subArray]+=SizeCopy;\
 			 	} \
 			 	else\
 			 	{\
@@ -696,7 +769,8 @@ else\
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
-		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+	 	 _PT subArray = _IndexDataMetal(#_NameVar);\
+		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
 		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 	 } \
 	 else\
@@ -721,7 +795,8 @@ else\
  #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 	 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 	 {	\
-	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+		     _PT subArray = _IndexDataMetal(#_NameVar);\
+	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
 			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 			  } \
 	 	 else\
@@ -739,7 +814,8 @@ else\
 		#define CompleteCopyToGpu(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
-		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER.GetContents());\
+	 	_PT subArray = _IndexDataMetal(#_NameVar);\
+		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
 		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
 	 } \
 	 else\

@@ -25,7 +25,18 @@ kernel void StressKernel(
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
 	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
 	uint3 gid[[thread_position_in_grid]])
 {
   const _PT i = (_PT) gid.x;
@@ -65,7 +76,18 @@ kernel void ParticleKernel(
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
 	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
 	uint3 gid[[thread_position_in_grid]])
 
 {
@@ -105,8 +127,19 @@ kernel void SnapShot(
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
 	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
-	device mexType * Snapshots_pr [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	device mexType * Snapshots_pr [[ buffer(17) ]],
 	uint2 gid[[thread_position_in_grid]])
 
 	{
@@ -153,7 +186,18 @@ kernel void SensorsKernel(
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
 	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
 	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
 	uint gid[[thread_position_in_grid]])
 {
 	_PT sj = (_PT) gid;
