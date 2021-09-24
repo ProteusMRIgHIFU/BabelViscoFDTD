@@ -143,7 +143,7 @@ class CMakeBuild(build_ext):
 
 
 # The following line is parsed by Sphinx
-version = '0.9.1'
+version = '0.9.3'
 
 print()
 print('Adding  CPU')

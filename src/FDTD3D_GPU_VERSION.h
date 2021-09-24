@@ -943,14 +943,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
             1),
           mtlpp::Size(32, 1, 1));
       commandEncoderSensors.EndEncoding();
-
-      mtlpp::BlitCommandEncoder blitCommandEncoderSensors = commandBufferSensors.BlitCommandEncoder();
-      if (INHOST(nStep)==(INHOST(TimeSteps)-1))
-      {  //just in the very last step we synchronize
-        for (_PT ii=0;ii<12;ii++)
-          blitCommandEncoderSensors.Synchronize(_MEX_BUFFER[ii]);
-      }
-      blitCommandEncoderSensors.EndEncoding();
       commandBufferSensors.Commit();
       commandBufferSensors.WaitUntilCompleted();
 #endif
@@ -963,7 +955,18 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         cudaStreamSynchronize(streams[nSyncStream]);
    #endif
 	}
+  #if defined(METAL)
+      //#we just synchronize before transferring data back to CPU
+      mtlpp::CommandBuffer commandBufferSync = commandQueue.CommandBuffer();
+      mxcheckGPUErrors(((int)commandBufferSync));
 
+      mtlpp::BlitCommandEncoder blitCommandEncoderSync = commandBufferSync.BlitCommandEncoder();
+      for (_PT ii=0;ii<12;ii++)
+          blitCommandEncoderSync.Synchronize(_MEX_BUFFER[ii]);
+      blitCommandEncoderSync.EndEncoding();
+      commandBufferSync.Commit();
+      commandBufferSync.WaitUntilCompleted();
+  #endif
 
 
 
