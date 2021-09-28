@@ -9,6 +9,7 @@ from shutil import copyfile
 
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc
+import platform
 
 MASKID={}
 MASKID['ALLV']=0x0000000001
@@ -183,6 +184,10 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     with open('kernel.cu', 'w') as f:
         f.write(AllC)
 
+    arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl'
+    if platform.system() == 'Windows':
+        arguments['PI_OCL_PATH']+='.exe'
+    
     t0 = time.time()
     if arguments['DT'].dtype==np.dtype('float32'):
         Results= FDTD_single.FDTDStaggered_3D(arguments)

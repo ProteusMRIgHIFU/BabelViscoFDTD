@@ -389,33 +389,10 @@ int __InitBuffer =0;
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 
 #define InitSymbol(_NameVar,_datatype,_gtype) \
-			{\
-				char _bline[512];\
-				if (_gtype==G_INT)\
-						snprintf(_bline,512,"__constant unsigned int " #_NameVar "=%i;\n",(int) INHOST(_NameVar));\
-				else\
-						snprintf(_bline,512,"__constant %s "#_NameVar "=%.9g;\n",MEX_STR,(mexType) INHOST(_NameVar));\
-				fprintf(TempKernel,"%s",_bline);\
-			 };
+			{ }
 
 #define InitSymbolArray(_NameVar,_gtype,__Limit)\
-			{\
-				char _bline[512];\
-				snprintf(_bline,512,"__constant %s gpu" #_NameVar "pr[%i] ={\n",MEX_STR,__Limit);\
-				fprintf(TempKernel,_bline);\
-				for (unsigned int nn=0;nn<__Limit;nn++)\
-				{\
-					if (_gtype==G_INT)\
-							snprintf(_bline,512,"%i",(int)INHOST(_NameVar ## _pr)[nn]);\
-					else\
-							snprintf(_bline,512,"%.9g",(mexType)INHOST(_NameVar ## _pr)[nn]);\
-					fprintf(TempKernel,"%s",_bline);\
-					if (nn<__Limit-1)\
-						fprintf(TempKernel,",\n");\
-					else\
-						fprintf(TempKernel,"};\n");\
-				};\
-			};
+			{}
 
 
 #define ownGpuCalloc(_NameVar,_dataType,_size) cl_mem  gpu_ ## _NameVar ## _pr; \

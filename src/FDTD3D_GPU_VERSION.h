@@ -144,17 +144,7 @@ int NumberAlloc=0;
 
     commands = clCreateCommandQueue(context, device_id[SelDevice], 0, &err);
     mxcheckGPUErrors(err);
-    FILE * TempKernel;
-    TempKernel=fopen("kernel.cu-bad", "w");
-    fprintf(TempKernel,"\n#define mexType %s\n#define OPENCL\n",MEX_STR);
-    char * indexingSource = load_file("_indexing.h");
-    if (indexingSource==0)
-    {
-      ERROR_STRING("Unable to read _indexing.h file!!")
-    }
-    fwrite(indexingSource,sizeof(char),strlen(indexingSource),TempKernel);
-    fprintf(TempKernel,"\n");
-    free(indexingSource);
+    
 
 #endif
 
@@ -344,26 +334,14 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
 #ifdef OPENCL
-  char * KernelSource = load_file("_gpu_kernel.c");
-  if (KernelSource==0)
-  {
-    ERROR_STRING("Unable to read _gpu_kernel.c file!!")
-  }
-  fwrite(KernelSource,sizeof(char),strlen(KernelSource),TempKernel);
-  fprintf(TempKernel,"\n");
-  free(KernelSource);
+
   //PRINTF("%s",BUFFER_FOR_GPU_CODE);
   //   size_t szKernelLength = strlen(BUFFER_FOR_GPU_CODE);
   //   program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_GPU_CODE, &szKernelLength, &err);
   //   mxcheckGPUErrors(err);
-  
-    fclose(TempKernel);
-    char scmd [80];
-    #ifdef WIN32
-    sprintf(scmd,"pi_ocl.exe --device %i",SelDevice);
-    #else
-    sprintf(scmd,"./pi_ocl --device %i",SelDevice);
-    #endif
+
+    char scmd [800];
+    snprintf(scmd,800,"\"%s\" --device %i",PI_OCL_PATH_pr,SelDevice);
     system(scmd);
 
 
