@@ -165,11 +165,12 @@ if platform.system() in ['Darwin']:
     modules.append(CMakeExtension(c_module_name+'_OPENCL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
     modules.append(CMakeExtension(c_module_name+'_OPENCL_double',extra_compile_args = ["-mmacosx-version-min=11.3"]))
     modules.append(CMakeExtension(c_module_name+'_METAL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
+    modules.append(CMakeExtension('pi_ocl',cmake_lists_dir='pi_ocl'))
 else:
     modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
     modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
 
-modules.append(CMakeExtension('pi_ocl',cmake_lists_dir='pi_ocl'))
+
 
 PrepareOpenCLKernel()
 

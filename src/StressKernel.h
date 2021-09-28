@@ -509,10 +509,12 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     index=IndN1N2N3(i,j,k,0);
     index2=N1*N2*N3;
 
-	// int bDoPrint=0;
-	// if (i==20 && j==20 && k==20)
-	// 	bDoPrint=1;
-
+//#define _DebugPrint
+#ifdef _DebugPrint
+	int bDoPrint=0;
+	if (i==64 && j==64 && k==117)
+		bDoPrint=1;
+#endif
     if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
     {
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
@@ -530,17 +532,22 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 		if (IS_Pressure_SELECTED(SelMapsRMSPeak))
 		{
 			ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)+=accum_p*accum_p;
-			// #ifdef OPENCL
-			// if (bDoPrint)
-			// 	printf("Capturing RMS  Pressure %g,%g\n",accum_p*accum_p,DT);
-			// #endif
+			#ifdef _DebugPrint
+			#ifdef OPENCL
+			if (bDoPrint)
+				printf("Capturing RMS  Pressure %g,%g,%lu,%lu\n",ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure),
+							DT,index,index2*IndexRMSPeak_Pressure);
+			#endif
+			#endif
 		}
-		// else{
-		// #ifdef OPENCL
-		// if (bDoPrint)
-		// 	printf("Capturing Pressure RMS not enabled \n");
-		// #endif
-		// }
+		#ifdef _DebugPrint
+		#ifdef OPENCL
+		else{
+		if (bDoPrint)
+			printf("Capturing Pressure RMS not enabled \n");
+		}
+		#endif
+		#endif
     }
     if ((SelRMSorPeak & SEL_RMS) && (SelRMSorPeak & SEL_PEAK) ) //If both PEAK and RMS were selected we save in the far part of the array
         index+=index2*NumberSelRMSPeakMaps;
@@ -561,18 +568,22 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 		if (IS_Pressure_SELECTED(SelMapsRMSPeak))
 		{
 			ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)=accum_p > ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure) ? accum_p :ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure);
-			// #ifdef OPENCL
-			// if (bDoPrint)
-			// 	printf("Capturing peak  Pressure %g,%g\n",ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure),DT);
-			// #endif
+			#ifdef _DebugPrint
+			#ifdef OPENCL
+			if (bDoPrint)
+				printf("Capturing peak  Pressure %g,%g\n",ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure),DT);
+			#endif
+			#endif
 		}
-		// else
-		// {
-		// #ifdef OPENCL
-		// if (bDoPrint)
-		// 	printf("Capturing Pressure Peak not enabled \n");
-		// #endif
-		// }
+		#ifdef _DebugPrint
+		#ifdef OPENCL
+		else
+		{
+		if (bDoPrint)
+			printf("Capturing Pressure Peak not enabled \n");
+		}
+		#endif
+		#endif
     }
 
   }

@@ -342,8 +342,11 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
     char scmd [800];
     snprintf(scmd,800,"\"%s\" --device %i",PI_OCL_PATH_pr,SelDevice);
-    system(scmd);
-
+    PRINTF("compiling kernel with \"%s\"\n",scmd)
+    if (system(scmd)!=0)
+    {
+      ERROR_STRING("Error when trying to compile program");
+    }
 
     char * binary;
     size_t binary_size;
