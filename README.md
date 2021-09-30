@@ -33,20 +33,22 @@ Please note that Python and Linux are the preferred frontend and OS. Some of the
 
 | OS \ Feature | CPU single | CPU double | CUDA single | CUDA double | OpenCL single | OpenCL double | Metal single |
 | --- | --- |  --- |  --- |  --- |  --- |  --- |  --- |
-| Windows | Y (OpenMP) | Y (OpenMP) | Y | Y |Y | N\* | N |
-|Linux |  Y (OpenMP) | Y (OpenMP) | Y | Y | N\* | N\* | N |
-| MacOS | Y (single thread) | Y (single thread)  | N | N | Y | Y | Y |
-*N\** Indicate that the feature is technically possible, but not yet fully implemented and tested.
+| Windows | Y (OpenMP) | Y (OpenMP) | Y | Y |Y | Y | N |
+|Linux |  Y (OpenMP) | Y (OpenMP) | Y | Y | Y\* | Y\* | N |
+| MacOS | Y (single thread) | Y (single thread)  | N | N | Y\+ | Y\+ | Y |
 
-OpenCL for Windows is operational via `pyopencl`. The same backend for MacOS (via a standalone OpenCL compiler included in BabelViscoFDTD) should work in Linux but I do not have yet full confirmation is working. The code is OpenCL 1.2 compliant.
+*Y\** Feature is enabled, but not yet fully tested. *Y\+* Feature may be limited to only 32-bits addressable memory independently of the GPU memory available.
 
-MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. 
-57s in Metal
-Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118$\times$118$\times$211$ and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s. In Jan 2021, Metal was added as GPU backend.
+OpenCL for Windows is operational via `pyopencl`. In Linux and MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
-Early tests indicate that Metal performs roughly just a bit slower than OpenCL (at least in the same MacBook Pro with the same Radeon Pro 560), suggesting that there may be still remains some extra improvements in the kernel execution. Interesting enough, the same domain size (118$\times$118$\times$211$ and 817 time steps) in an AMD Vega56 takes also 5s (same as a 3yr-newer card RTX 2080) using OpenCL and 6s with Metal. 
+### MacOS limitations
+MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL is officially being out of support beyond Big Slur. For MacOS, Metal backend is recommended. Also, OpenCL in MacOS has other limitations such as the underlying driver has only support for 32 bits memory access, even if the card has more than 4 GB of RAM. If you need to access more than 4 GB of space for your simulation, only Metal can support it.
 
-Overall, Metal seems requiring a bit more coding to prepare the pipelines for compute execution. A challenge is that Metal for scientific computing lacks serious examples. Nevertheless, the support for Metal is desirable for Apple silicon. Once all toolchains including native Python becomes available, it will be interesting to see how well their devices stand compared to Nvidia based systems, which are still leading in performance by a significant margin.
+### Performance comparison
+You can anticipate similar performance between modern AMD and NVIDIA GPUs, at least if using Metal backend. A simulation for a domain of $304\times304\times584$ grid steps and over 1408 temporal steps with CUDA 11.3 with a A6000 GPU (48 GB RAM) takes about 63s, vs 61s with Metal  using a Radeon Pro W6800 GPU (32 GB RAM) in MacOS via a Thunderbolt eGPU.
+
+### Metal support
+Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing lacks serious examples. Nevertheless, the support for Metal is desirable for Apple silicon. Once all toolchains including native Python becomes available, it will be interesting to see how well their devices stand compared to Nvidia or AMD based systems, which are still leading in performance by a significant margin. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs with up 32 GB of RAM.
 
 ### Supported platforms for Rayleigh integral
 In v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
@@ -54,9 +56,7 @@ In v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\T
 Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` and `pyopencl` to compile the kernel directly in the Python library. For Metal, a wrapper written in Swift language is compiled during the installation. 
 # Requirements
 ## Python 3.5 and up - x64
-Use of virtual environments is highly recommended.
-
-The code should work with Python 3.5 and up, including Anaconda, EDM Canopy (both supported in all 3 main OSs) or Linux-based distribution Python installation; same for brew-based installation for MacOS.
+Use of virtual environments is highly recommended. Anaconda Python is a great choice as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.7 
 
 Please note that the most advanced tutorial showing the Superposition method requires a library mainly available in Linux X64 and for Python 3.5 to 3.7. This library (`pymesh`) is constructive solid geometry (CSG) processing and is required to prepare the simulation domain. By saying this, any good CSG library that can perform intersection between meshes should do the job. If you know a more universal library that can run in any OS, please let me know via a new Github issue submission.
 
@@ -68,6 +68,8 @@ latest version of `pip`
 * h5py>=2.9.0
 * pydicom>=1.3.0
 * setuptools >=51.0.0
+* pyopencl>=2020
+* pycuda>=2020 (only in Linux and Windows)
 
 ### Extra dependencies required in some of the tutorials
 * scikit-image >= 0.17
@@ -87,7 +89,7 @@ All those packages (excepting `pymesh`) are installable via `pip`.  For `pymesh`
 ## CUDA
 The code has been verified to work from CUDA 9 to CUDA 11. Highly likely older versions of CUDA (7, 8) should work without a problem. Be sure of installing the CUDA samples and take note of the location where they were installed.
 
-Please note CUDA is not supported anymore in MacOS as NVIDA and Apple seem to be in a feud since several years.
+
 ## CMAKE
 CMAKE version 3.16.3 and up should be good
 ## Linux
@@ -103,7 +105,7 @@ You will need a VStudio installation that is compatible with your CUDA version (
 When installing CMAKE, be sure it is accessible in the Windows path.
 
 ## MacOS
-Any recent version of MacOS and XCode should be enough. Please note that the CPU version in MacOS does not support OpenMP (still working in a definitive solution via brew llvm or brew gcc). However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has only been tested in a couple of AMD-based systems.
+Any recent version of MacOS and XCode should be enough. Please note that the CPU version in MacOS does not support OpenMP (still working in a definitive solution via brew llvm or brew gcc). However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has only been tested in AMD-based systems.
 
 ## Installation
 If CUDA and supporting compiler are correctly installed, then it is straightforward to install using `pip install <directory>` or `pip3 install <directory>` depending on your installation. You need to specify the location where the CUDA samples are installed as those are required for the compilation.
@@ -131,10 +133,6 @@ Since CUDA is not supported anymore in MacOS, just install with:
 ```
 pip install  BabelViscoFDTD/
 ```
-#### OpenCL and Metal backends
-The OpenCL and Metal backends are a bit convoluted as the library needs to compile on-the-flight the GPU code. This cannot be avoided as the OpenCL and Metal accelerated code is driver-specific and cannot be generated as in CUDA in advance for all the possible hardware variants that OpenCL supports. *It is not as bad as it sounds*, but for OpenCL you need to compile manually a little supplementary program and copy it to the location where your simulation is being executed. For Metal, this online compilation is carried over directly in the library at execution time.
-
-For OpenCL, the mentioned extra little program is at `BabelViscoFDTD/pi_ocl`. Just open a terminal in MacOS at that location and compile the program with `make`. It will generate a small program called `pi_ocl`. Copy that program to the location where your simulation will be run. For example, if you want to run the tutorial in a MacOS system using OpenCL, just copy `pi_ocl` to the `Tuorial Notebooks` directory. As a side note, in principle the compilation of the kernels should have worked as for Metal (meaning, no need of external program to compile the kernels), but by some weird reason when the OpenCL libraries are embedded as part of the Python extension (and also for Matlab MEX), the driver crashes the program if trying to compile the source code. So the solution was to create a little standalone program that exports a binary of the compile kernels and then the Python extension just loads that binary. So yes, *it is a bit convoluted*, but at the end, it was worth. 
 
 # How to use
 After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
@@ -161,6 +159,8 @@ Consult `setup.py` and `CompileMatlab.m` to review how all the potential modalit
 Please note that the Matlab implementation is still missing an updated high-level equivalence to `BabelViscoFDTD\PropagationModel.py`. Given most of my personal computing platform moved years ago to Python, the Matlab frontend is a low-priority by the time being. However, the compilation for Matlab frontend is still operational.
 
 # Release notes
+* 0.9.3  Sep 29, 2021.
+    * Improved support for both Metal and OpenCL. For Metal, stable operation is now feasible for large domains using all available memory in modern high-end GPUs. OpenCL is now supported in all OSs.
 * 0.9.2  June 13, 2021.
     * Add Rayleigh integral support in homoneous medium with CUDA, OpenCL and Metal backends.
     * Support for stress sources
