@@ -33,14 +33,16 @@ Please note that Python and Linux are the preferred frontend and OS. Some of the
 
 | OS \ Feature | CPU single | CPU double | CUDA single | CUDA double | OpenCL single | OpenCL double | Metal single |
 | --- | --- |  --- |  --- |  --- |  --- |  --- |  --- |
-| Windows | Y (OpenMP) | Y (OpenMP) | Y | Y | N\* | N\* | N |
+| Windows | Y (OpenMP) | Y (OpenMP) | Y | Y |Y | N\* | N |
 |Linux |  Y (OpenMP) | Y (OpenMP) | Y | Y | N\* | N\* | N |
 | MacOS | Y (single thread) | Y (single thread)  | N | N | Y | Y | Y |
 *N\** Indicate that the feature is technically possible, but not yet fully implemented and tested.
 
-OpenCL for both for Windows and Linux is in principle possible. The code is OpenCL 1.2 compliant, so it should work with the adequate hardware and toolchains in Windows and Linux.
+OpenCL for Windows is operational via `pyopencl`. The same backend for MacOS (via a standalone OpenCL compiler included in BabelViscoFDTD) should work in Linux but I do not have yet full confirmation is working. The code is OpenCL 1.2 compliant.
 
-MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118$\times$118$\times$211$ and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s. In Jan 2021, Metal was added as GPU backend.
+MacOS support for HPC has shifted significantly as since several MacOS versions the support for NVIDIA cards is practically inexistent and OpenCL is officially being out of support beyond Big Slur. Nevertheless, OpenCL in MacOS still gives excellent performance. 
+57s in Metal
+Back in 2017,  an OpenCL implementation with an AMD Vega56 outperformed an NVIDIA Titan XP via CUDA (31 s vs 47s, for a simulation with a domain size of 158$\times$154$\times$111 and 5800 time steps). In 2020, a RTX 2080 SUPER via CUDA can run a given simulation in around 5s for a domain 118$\times$118$\times$211$ and 817 time steps, while a much simpler Radeon Pro 560 (available in a MacBook Pro 2017) takes 18 s, and an i7-9700 (4 cores x 2 with hyperthreading) via OpenMP takes 35s. In Jan 2021, Metal was added as GPU backend.
 
 Early tests indicate that Metal performs roughly just a bit slower than OpenCL (at least in the same MacBook Pro with the same Radeon Pro 560), suggesting that there may be still remains some extra improvements in the kernel execution. Interesting enough, the same domain size (118$\times$118$\times$211$ and 817 time steps) in an AMD Vega56 takes also 5s (same as a 3yr-newer card RTX 2080) using OpenCL and 6s with Metal. 
 

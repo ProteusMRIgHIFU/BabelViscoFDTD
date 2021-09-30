@@ -135,6 +135,11 @@ int NumberAlloc=0;
       PRINTF("Device requested %s \n",DefaultGPUDeviceName_pr);
       ERROR_STRING("Device requested was not found!\n");
     }
+    size_t size_bits;
+    cl_uint address_bits;
+    clGetDeviceInfo(device_id[SelDevice], CL_DEVICE_ADDRESS_BITS, 0, NULL, &size_bits);
+    clGetDeviceInfo(device_id[SelDevice], CL_DEVICE_ADDRESS_BITS, size_bits, &address_bits, NULL);
+    PRINTF("size: %lu , bits: %u\n", size_bits, address_bits);
 
 
     context = clCreateContext(0, 1, &device_id[SelDevice], NULL, NULL, &err);
@@ -715,6 +720,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
 #ifdef OPENCL
   const  size_t global_stress_particle[3] ={N1,N2,N3};
+  const  size_t global_stress_local[3] ={4,4,4};
   const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
   {
@@ -743,10 +749,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int SensorEntry=0;
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-    if  (INHOST(nStep) % 100==0)
-    {
-         PRINTF("nStep, total steps = %i, %i\n",(int)(INHOST(nStep)),(int)(INHOST(TimeSteps)));
-    }
+    if (INHOST(nStep)%100==0)
+      PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
 #if defined(CUDA)
         unsigned int nCurStream=0;
         unsigned int maxStream=TOTAL_streams;

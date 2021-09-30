@@ -1,5 +1,6 @@
 import numpy as np
 import os
+os.environ['GPU_FORCE_64BIT_PTR'] ="1"
 from pathlib import Path
 import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
 import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
@@ -83,10 +84,10 @@ def _InitSymbol(IP,_NameVar,td,SCode):
     if td in ['float','double']:
         res = '__constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
     else:
-        if ('IndexRMSPeak_' in _NameVar) or ('IndexSensor_' in _NameVar):
-            lType =' _PT '
-        else:
-            lType =' unsigned int '
+        # if ('IndexRMSPeak_' in _NameVar) or ('IndexSensor_' in _NameVar):
+        lType =' _PT '
+        # else:
+        #     lType =' unsigned int '
         res = '__constant '+ lType  + _NameVar + ' = %i;\n' %(IP[_NameVar])
     SCode.append(res)
     
