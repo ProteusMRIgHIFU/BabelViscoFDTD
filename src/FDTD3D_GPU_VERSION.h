@@ -141,6 +141,14 @@ int NumberAlloc=0;
     clGetDeviceInfo(device_id[SelDevice], CL_DEVICE_ADDRESS_BITS, size_bits, &address_bits, NULL);
     PRINTF("size: %lu , bits: %u\n", size_bits, address_bits);
 
+    if (address_bits==32)
+    {
+      PRINTF("********************************\n");
+      PRINTF("WARNING - OpenCL driver only supports 32 bits, simulations only will be\n");
+      PRINTF("WARNING - useful for domains that uses less than 4 GB in total memory\n");
+      PRINTF("WARNING - Program may crash without an easy way to catch the error\n");
+      PRINTF("WARNING - Consider using CUDA backend if NVIDIA GPU in Win or Linux, or METAL backend in MacOS\n");
+    }
 
     context = clCreateContext(0, 1, &device_id[SelDevice], NULL, NULL, &err);
     mxcheckGPUErrors(err);
@@ -749,8 +757,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int SensorEntry=0;
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-    if (INHOST(nStep)%100==0)
-      PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+    // if (INHOST(nStep)%100==0)
+    //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
 #if defined(CUDA)
         unsigned int nCurStream=0;
         unsigned int maxStream=TOTAL_streams;

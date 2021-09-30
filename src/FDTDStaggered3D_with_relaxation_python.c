@@ -393,9 +393,9 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	unsigned int INHOST(SizeCorrK)=INHOST(N3)-2*INHOST(PML_Thickness);
 
 	//The size of the matrices where the PML is valid depends on the size of the PML barrier
-	unsigned int INHOST(SizePML) = (INHOST(N1))*(INHOST(N2))*(INHOST(N3)) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
+	unsigned int INHOST(SizePML) = (INHOST(N1))*(INHOST(N2))*(INHOST(N3))      - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLxp1) = (INHOST(N1)+1)*(INHOST(N2))*(INHOST(N3)) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
-	unsigned int INHOST(SizePMLyp1) = (INHOST(N1))*(INHOST(N2)+1)*INHOST(N3) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
+	unsigned int INHOST(SizePMLyp1) = (INHOST(N1))*(INHOST(N2)+1)*INHOST(N3)   - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLzp1) = (INHOST(N1))*(INHOST(N2))*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 	unsigned int INHOST(SizePMLxp1yp1zp1) = (INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1) - INHOST(SizeCorrI)*INHOST(SizeCorrJ)*INHOST(SizeCorrK)+1;
 

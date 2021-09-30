@@ -265,7 +265,7 @@
 		}
 	}
 	}
-fprintf(FDEBUG,"After finishing assigning results\n");
+fprintf(FDEBUG,"After finnishing assigning results\n");
 fflush(FDEBUG);
 free(Vx_pr);
 free(Vy_pr);
