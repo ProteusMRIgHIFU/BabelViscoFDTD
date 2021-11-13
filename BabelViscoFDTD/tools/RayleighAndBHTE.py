@@ -21,10 +21,67 @@ import sys
 npyInc=np.get_include()
 info = get_paths()
 
+KernelCoreSourceBHTE="""
+    #define Tref 43.0
+    int DzDy=outerDimz*outerDimy;
+    int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
+    
+    float R1,R2,dtp;
+    if(gtidx > 0 && gtidx < outerDimx-1 && gtidy > 0 && gtidy < outerDimy-1 && gtidz > 0 && gtidz < outerDimz-1)
+    {
+
+            const int label = d_labels[coord];
+
+            d_output[coord] = d_input[coord] + d_bhArr[label] * ( 
+                     d_input[coord + 1] + d_input[coord - 1] + d_input[coord + outerDimz] + d_input[coord - outerDimz] +
+                      d_input[coord + DzDy] + d_input[coord - DzDy] - 6.0 * d_input[coord]) +
+                    + d_perfArr[label] * (CoreTemp - d_input[coord]) ;
+            if (sonication)
+            {
+                d_output[coord]+=d_Qarr[coord];
+            }
+            
+            R2 = (d_output[coord] >= Tref)?0.5:0.25; 
+            R1 = (d_input[coord] >= Tref)?0.5:0.25;
+
+            if(fabs(d_output[coord]-d_input[coord])<0.0001)
+            {
+                d_output2[coord] = d_input2[coord] + dt * pow(R1,Tref-d_input[coord]);
+            }
+            else
+            {
+                if(R1 == R2)
+                {
+                    d_output2[coord] = d_input2[coord] + (pow(R2,Tref-d_output[coord]) - pow(R1,Tref-d_input[coord])) / 
+                                   ( -(d_output[coord]-d_input[coord])/ dt * log(R1));
+                }
+                else
+                {
+                    dtp = dt * (Tref - d_input[coord])/(d_output[coord] - d_input[coord]);
+
+                    d_output2[coord] = d_input2[coord] + (1 - pow(R1,Tref-d_input[coord]) ) / (- (Tref - d_input[coord])/ dtp * log(R1)) + 
+                                   (pow(R2,Tref-d_output[coord]) - 1) / (-(d_output[coord] - Tref)/(dt - dtp) * log(R2));
+                }
+            }
+
+            if (gtidy==SelJ)
+            {
+                 d_MonitorSlice[gtidx*outerDimz*TotalDurationSeps+gtidz*TotalDurationSeps+ n_Step] =d_output[coord];
+            }
+        }
+        else if(gtidx < outerDimx && gtidy < outerDimy && gtidz < outerDimz){
+            d_output[coord] = d_input[coord];
+            d_output2[coord] = d_input2[coord];
+
+        }
+
+}
+"""
+
 if platform == "darwin":
     import pyopencl as cl
     
-    openCLSource="""
+    RayleighOpenCLSource="""
 
     #define pi 3.141592653589793
 
@@ -88,6 +145,34 @@ if platform == "darwin":
         }
         }
       """
+
+    OpenCLHeaderBHTE="""
+        __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
+                                        __global float 		*d_output2,
+                                        __global const float 			*d_input, 
+                                        __global const float 			*d_input2,
+                                        __global const float 			*d_bhArr,
+                                        __global const float 			*d_perfArr, 
+                                        __global const unsigned int		*d_labels,
+                                        __global const float 			*d_Qarr,
+                                            const float 			CoreTemp,
+                                            const  int				sonication,
+                                            const  int				outerDimx, 
+                                            const  int              outerDimy, 
+                                            const  int              outerDimz,
+                                            const float 			dt,
+                                            __global  float 	*d_MonitorSlice,
+                                            const  int TotalDurationSeps,
+                                            const  int n_Step,
+                                            const int SelJ)	
+        {
+            const int gtidx =  get_global_id(0);
+            const int gtidy =  get_global_id(1);
+            const int gtidz =  get_global_id(2);
+        """
+
+    OpenCLKernelBHTE =OpenCLHeaderBHTE + KernelCoreSourceBHTE
+
     Platforms=None
     queue = None
     prg = None
@@ -113,14 +198,14 @@ if platform == "darwin":
         ctypes.POINTER(ctypes.c_float)]
 
     swift_fun.PrintMetalDevices()
-    print("loaded Metal")
+    print("loaded Metal",str(swift_fun))
 
 else:
     prg = None
     import pycuda.driver as cuda
     import pycuda.autoinit
     
-    CudaSource="""
+    RayleighCUDASource="""
     #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
     #include <ndarrayobject.h>
 
@@ -319,7 +404,7 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
 def InitCuda():
     global prg
     from pycuda.compiler import SourceModule
-    prg  = SourceModule(CudaSource,include_dirs=[npyInc+os.sep+'numpy',info['include']])
+    prg  = SourceModule(RayleighCUDASource,include_dirs=[npyInc+os.sep+'numpy',info['include']])
 
 def InitOpenCL(DeviceName='AMD'):
     global Platforms
@@ -341,7 +426,8 @@ def InitOpenCL(DeviceName='AMD'):
         print('Selecting device: ', SelDevice.name)
     ctx = cl.Context([SelDevice])
     queue = cl.CommandQueue(ctx)
-    prg = cl.Program(ctx, openCLSource).build()
+    prg = cl.Program(ctx, RayleighOpenCLSource+OpenCLKernelBHTE).build()
+
     
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf):
     mr1=center.shape[0]
@@ -503,3 +589,171 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'
         return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf)
 
     
+
+def getBHTECoefficient( kappa,rho,c_t,h,t_int,dt=0.1):
+    """ calculates the Bioheat Transfer Equation coefficient required (time step/density*conductivity*voxelsize"""
+    # get the bioheat coefficients for a tissue type -- independent of surrounding tissue types
+    # dt = t_int/nt
+    # h - voxel resolution - default 1e-3
+
+    bhc_coeff = kappa * dt / (rho * c_t * h**2)
+    if bhc_coeff >= (1 / 6):
+        best_nt = np.ceil(6 * kappa * t_int) / (rho * c_t *h**2)
+        print("The conditions %f,%f,%f does not meet the C-F-L condition and may not be stable. Use nt of %f or greater." %\
+            (dt,t_int,bhc_coeff,best_nt))
+    return bhc_coeff
+
+def getPerfusionCoefficient( w_b,c_t,blood_rho,blood_ct,dt=0.1):
+    """Calculates the perfusion coefficient based on the simulation parameters and time step """
+    # get the perfusion coeff for a speicfic tissue type and time period  -- independent of surrounding tissue types
+    # wb is in ml/min/kg, needs to be converted to m3/s/kg (1min/60 * 1e-6 m3/ml)
+
+    coeff = w_b/60*1.0e-6* blood_rho * blood_ct * dt / c_t  
+
+    return coeff
+
+def getQCoeff(rho,SoS,alpha,c_t,h,dt):
+    coeff=dt/(2*rho**2*SoS*h*c_t)*(1-np.exp(-2*h*alpha))
+    return coeff
+
+def factors_gpu(x):
+    res=[]
+    for i in range(2, x + 1):
+        if x % i == 0:
+            res.append(i)
+    res=np.array(res)
+    return res
+
+def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
+                TotalDurationSeps,nStepsOn,LocationMonitoring,
+                dt=0.1,blood_rho=1050,blood_ct=3617,stableTemp=37.0,DutyCycle=1.0):
+    global queue 
+    global prg 
+    global ctx
+
+    perfArr=np.zeros(MaterialMap.max()+1,np.float32)
+    bhArr=np.zeros(MaterialMap.max()+1,np.float32)
+    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32) 
+    Qarr=np.zeros(MaterialMap.shape, dtype=np.float32) 
+
+    for n in range(MaterialMap.max()+1):
+        bhArr[n]=getBHTECoefficient(MaterialList['Conductivity'][n],MaterialList['Density'][n],
+                                    MaterialList['SpecificHeat'][n],dx,TotalDurationSeps,dt=dt)
+        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
+                                           blood_rho,blood_ct,dt=dt)
+        initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
+        print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
+
+        Qarr[MaterialMap==n]=Pressure[MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],MaterialList['SoS'][n],MaterialList['Attenuation'][n],
+                                                                   MaterialList['SpecificHeat'][n],dx,dt)*DutyCycle
+
+    N1=np.int32(Pressure.shape[0])
+    N2=np.int32(Pressure.shape[1])
+    N3=np.int32(Pressure.shape[2])
+    coreTemp = np.array([stableTemp],np.float32)
+    initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
+
+    mf = cl.mem_flags
+
+    d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+    d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+    d_Qarr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
+    d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+
+    T0 = np.zeros(initTemp.shape,dtype=np.float32)
+    T1 = np.zeros(initTemp.shape,dtype=np.float32)
+
+    d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+    d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+
+    Dose0 = initDose
+    Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
+
+    d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+    d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
+
+
+    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalDurationSeps),np.float32)
+    d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+
+    knl = prg.BHTEFDTDKernel
+
+    l1=factors_gpu(MaterialMap.shape[0])
+    if len(l1)>0:
+        local=[l1[0],l1[0],1]
+    else:
+        local=None
+
+    #this will calculate the optimal global size to make it multiple of [4,4,4]
+
+    gl=[]
+    for n in range(3):
+        m=MaterialMap.shape[n]
+        while(not np.any(factors_gpu(m)==4)):
+            m+=1
+        gl.append(m)
+
+    for n in range(TotalDurationSeps):
+        if n<nStepsOn:
+            dUS=1
+        else:
+            dUS=0
+        if (n%2==0):
+            knl(queue,gl , [4,4,4],
+                d_T1,
+                d_Dose1,
+                d_T0,
+                d_Dose0,
+                d_bhArr,
+                d_perfArr,
+                d_MaterialMap,
+                d_Qarr,
+                np.float32(coreTemp),
+                np.int32(dUS),
+                N1,
+                N2,
+                N3,
+                np.float32(dt),
+                d_MonitorSlice,
+                np.int32(TotalDurationSeps),
+                np.int32(n),
+                np.int32(LocationMonitoring))
+
+        else:
+            knl(queue, gl , [4,4,4],
+                d_T0,
+                d_Dose0,
+                d_T1,
+                d_Dose1,
+                d_bhArr,
+                d_perfArr,
+                d_MaterialMap,
+                d_Qarr,
+                np.float32(coreTemp),
+                np.int32(dUS),
+                N1,
+                N2,
+                N3,
+                np.float32(dt),
+                d_MonitorSlice,
+                np.int32(TotalDurationSeps),
+                np.int32(n),
+                np.int32(LocationMonitoring))
+        queue.finish()
+        if n%100==0:
+            print(n,TotalDurationSeps)
+
+    if (n%2==0):
+        ResTemp=d_T1
+        ResDose=d_Dose1
+    else:
+        ResTemp=d_T0
+        ResDose=d_Dose0
+
+
+    print('Done BHTE')                               
+    cl.enqueue_copy(queue, T1,ResTemp)
+    cl.enqueue_copy(queue, Dose1,ResDose)
+    cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
+    queue.finish()
+    return T1,Dose1,MonitorSlice,Qarr

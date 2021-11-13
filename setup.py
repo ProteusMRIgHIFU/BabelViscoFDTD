@@ -19,6 +19,28 @@ npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
 
+bRayleighMetalCompiled=False
+def CompileRayleighMetal(build_temp,build_lib):
+    global bRayleighMetalCompiled
+    if not bRayleighMetalCompiled:
+        print('Compiling Metal Rayleigh')
+        ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
+        ## since the compilation is very simple, we can do this manually
+        print('Compiling Rayleigh Metal interface')
+        copytree('src/Metal',build_temp )
+        command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
+        subprocess.check_call(command,cwd=build_temp)
+        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
+        subprocess.check_call(command,cwd=build_temp)
+        command=['swift','build', '-c', 'release']
+        subprocess.check_call(command,cwd=build_temp)
+        for fn in ['libRayleighMetal.dylib']:
+            copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
+        for fn in ['Rayleigh.metallib']:
+            copyfile(build_temp+'/Sources/RayleighMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
+        bRayleighMetalCompiled=True
+
+
 if 'arm64' not in platform.platform():
 
     def PrepareOpenCLKernel():
@@ -63,7 +85,6 @@ if 'arm64' not in platform.platform():
             Extension.__init__(self, name, sources=sources, **kwa)
             self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)
 
-
     class CMakeBuild(build_ext):
         def build_extensions(self):
     
@@ -73,21 +94,9 @@ if 'arm64' not in platform.platform():
                 raise RuntimeError('Cannot find CMake executable')
 
             if platform.system() in ['Darwin']:
+                CompileRayleighMetal(self.build_temp,self.build_lib)
                 ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
                 ## since the compilation is very simple, we can do this manually
-                print('Compiling Rayleigh Metal interface')
-                copytree('src/Metal',self.build_temp )
-                command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
-                subprocess.check_call(command,cwd=self.build_temp)
-                command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
-                subprocess.check_call(command,cwd=self.build_temp)
-                command=['swift','build', '-c', 'release']
-                subprocess.check_call(command,cwd=self.build_temp)
-
-                for fn in ['libRayleighMetal.dylib']:
-                    copyfile(self.build_temp+'/.build/release/'+fn,self.build_lib+'/BabelViscoFDTD/tools/'+fn)
-                for fn in ['Rayleigh.metallib']:
-                    copyfile(self.build_temp+'/Sources/RayleighMetal/'+fn,self.build_lib+'/BabelViscoFDTD/tools/'+fn)
                 
 
             for ext in self.extensions:
@@ -261,10 +270,16 @@ else:
             UnixCCompiler.link = patched_link
             super().initialize_options()
 
+        def build_extensions(self):
+            print('building extension')
+            if platform.system() in ['Darwin']:
+                CompileRayleighMetal(self.build_temp,self.build_lib)
+            super().build_extensions()
+
 
     setup(name="BabelViscoFDTD",
             version=version,
-            packages=['BabelViscoFDTD'],
+            packages=['BabelViscoFDTD','BabelViscoFDTD.tools'],
             description='GPU/CPU 3D FDTD solution of viscoelastic equation',
             package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
             author_email='samuel.pichardo@ucalgary.ca',

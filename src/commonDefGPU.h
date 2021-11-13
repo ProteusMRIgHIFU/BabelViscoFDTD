@@ -14,6 +14,15 @@ enum CONSTANT_TYPES
 
 #define MAX_SIZE_PML 101
 
+long Find_GPU_Size(const long m)
+{
+	//find higher dimension that is multilpe of 4
+	long n =m;
+	while(n%4!=0)
+		n++;
+	return n;
+}
+
 char* common_read_file(const char *path, long *length_out)
 {
 	//common_read_file is used to read the compiled binary for OPENCL
