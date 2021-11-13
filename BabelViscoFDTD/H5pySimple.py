@@ -52,7 +52,7 @@ def ProcType(k,v,f,compatibility,complevel,group):
         for n in range(len(v)):
             vlist=v[n]
             itemname = "item_%d"%n
-            ProcType(itemname,vlist,f,compatibility,newgroup)
+            ProcType(itemname,vlist,f,compatibility,complevel,newgroup)
     elif type(v) ==tuple:
         nameList = k
         newgroup=group.create_group(k)
@@ -60,7 +60,7 @@ def ProcType(k,v,f,compatibility,complevel,group):
         for n in range(len(v)):
             vlist=v[n]
             itemname = "item_%d"%n
-            ProcType(itemname,vlist,f,compatibility,newgroup)
+            ProcType(itemname,vlist,f,compatibility,complevel,newgroup)
     elif type(v) == numpy.ndarray :
         ##we can apply compression rules for larger arrays
         if v.nbytes >2**10: # if array takes more 1024 bytes
