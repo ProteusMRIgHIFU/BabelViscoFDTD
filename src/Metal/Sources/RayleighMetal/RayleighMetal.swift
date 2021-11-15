@@ -78,13 +78,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
         let mr2 = mr2Buffer.load(as: Int.self)   
         let mr1 = mr1Buffer.load(as: Int.self)   
         
-        let commandBuffer = commandQueue.makeCommandBuffer()!
-        let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
-
-        let ForwardSimpleMetalFunction = defaultLibrary.makeFunction(name: "ForwardSimpleMetal")!
-        let computePipelineState = try device.makeComputePipelineState(function: ForwardSimpleMetalFunction)
-        computeCommandEncoder.setComputePipelineState(computePipelineState)
-
+       
         let mr1VectorBuffer = device.makeBuffer(bytes: mr1Buffer, length: MemoryLayout<Int>.size, options: [])
         let c_wvnb_realVectorBuffer = device.makeBuffer(bytes: c_wvnb_realBuffer, length: MemoryLayout<Float>.size, options: [])
         let c_wvnb_imagVecorBuffer = device.makeBuffer(bytes: c_wvnb_imagBuffer, length: MemoryLayout<Float>.size, options: [])
@@ -93,41 +87,77 @@ public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
         let a1prVectorBuffer = device.makeBuffer(bytes: a1prBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
         let u1_realVectorBuffer = device.makeBuffer(bytes: u1_realBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
         let u1_imagVectorBuffer = device.makeBuffer(bytes: u1_imagBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
-              
-        
-        computeCommandEncoder.setBuffer(c_wvnb_realVectorBuffer, offset: 0, index:0)
-        computeCommandEncoder.setBuffer(c_wvnb_imagVecorBuffer, offset: 0, index: 1)
-        computeCommandEncoder.setBuffer(mr1VectorBuffer, offset: 0, index: 2)
-        computeCommandEncoder.setBuffer(r2prVectorBuffer, offset: 0, index: 3)
-        computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 4)
-        computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 5)
-        computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 6)
-        computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 7)
-        
-        
+            
         let py_data_u2_realRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
         let py_data_u2_realVectorBuffer = device.makeBuffer(bytes: py_data_u2_realRef, length: mr2*MemoryLayout<Float>.size, options: [])
         let py_data_u2_imagRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
         let py_data_u2_imagVectorBuffer = device.makeBuffer(bytes: py_data_u2_imagRef, length:  mr2*MemoryLayout<Float>.size, options: [])
-        
-        computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: 0, index: 8)
-        computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: 0, index: 9)
-        
-        let maxTotalThreadsPerThreadgroup = computePipelineState.maxTotalThreadsPerThreadgroup
-        let threadExecutionWidth = computePipelineState.threadExecutionWidth
-        let width  = maxTotalThreadsPerThreadgroup / threadExecutionWidth * threadExecutionWidth
-        let height = 1
-        let depth  = 1
-        
-        // 1D
-        let threadsPerGroup = MTLSize(width:width, height: height, depth: depth)
-        let numThreadgroups = MTLSize(width: (mr2 + width - 1) / width, height: 1, depth: 1)
-        
-        computeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
-        computeCommandEncoder.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-        
+ 
+        // We need to split in small chunks to be sure the kernel does not take too much time
+        // otherwise the OS will kill it
+        var nm2 = Int(0)
+        let TotalIteractions = mr1 * mr2 
+        let NonBlockingstep = Int(500e6)
+        var nm_step = Int(NonBlockingstep/mr1)
+
+
+        if nm_step > mr2
+        {
+            nm_step=mr2
+        }
+
+        var basemr2 = Int(0)
+        var n2Limit = Int(0)
+        while basemr2 < mr2
+        {   
+
+            if basemr2+nm_step<mr2
+            {
+                n2Limit = nm_step
+            }
+            else
+            {
+                n2Limit = mr2 - basemr2
+            }
+
+            let commandBuffer = commandQueue.makeCommandBuffer()!
+            let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
+
+            let ForwardSimpleMetalFunction = defaultLibrary.makeFunction(name: "ForwardSimpleMetal")!
+            let computePipelineState = try device.makeComputePipelineState(function: ForwardSimpleMetalFunction)
+            computeCommandEncoder.setComputePipelineState(computePipelineState)
+
+
+            let mr2VectorBuffer = device.makeBuffer(bytes: &n2Limit, length: MemoryLayout<Int>.size, options: [])
+            computeCommandEncoder.setBuffer(c_wvnb_realVectorBuffer, offset: 0, index:0)
+            computeCommandEncoder.setBuffer(c_wvnb_imagVecorBuffer, offset: 0, index: 1)
+            computeCommandEncoder.setBuffer(mr1VectorBuffer, offset: 0, index: 2)
+            computeCommandEncoder.setBuffer(mr2VectorBuffer, offset: 0, index: 3)
+            computeCommandEncoder.setBuffer(r2prVectorBuffer, 
+                            offset: MemoryLayout<Float>.size*basemr2*3, index: 4)
+            computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 5)
+            computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 6)
+            computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 7)
+            computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 8)
+            computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 9)
+            computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 10)
+            
+            let maxTotalThreadsPerThreadgroup = computePipelineState.maxTotalThreadsPerThreadgroup
+            let threadExecutionWidth = computePipelineState.threadExecutionWidth
+            let width  = maxTotalThreadsPerThreadgroup / threadExecutionWidth * threadExecutionWidth
+            let height = 1
+            let depth  = 1
+            
+            // 1D
+            let threadsPerGroup = MTLSize(width:width, height: height, depth: depth)
+            let numThreadgroups = MTLSize(width: (n2Limit + width - 1) / width, height: 1, depth: 1)
+            
+            computeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+            computeCommandEncoder.endEncoding()
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
+            basemr2+=nm_step
+        }
         // unsafe bitcast and assigin result pointer to output
         py_data_u2_real.initialize(from: py_data_u2_realVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
         py_data_u2_imag.initialize(from: py_data_u2_imagVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
