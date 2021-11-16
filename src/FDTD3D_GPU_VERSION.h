@@ -493,7 +493,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     mxcheckGPUErrors(((int)_MEX_BUFFER[ii]));
     if (_MEX_BUFFER[ii].GetLength() != sizeof(mexType) *_c_mex_type[ii])
     {
-        ERROR_STRING("ERROR, size of buffer is not what is expected %lu, %lu\n",_MEX_BUFFER[ii].GetLength(),sizeof(mexType) *_c_mex_type[ii]);
+        PRINTF("ERROR, size of buffer is not what is expected %lu, %lu\n",_MEX_BUFFER[ii].GetLength(),sizeof(mexType) *_c_mex_type[ii]);
+        ERROR_STRING("Stopping simulation");
     }
   }
 
