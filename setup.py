@@ -276,6 +276,7 @@ else:
                 CompileRayleighMetal(self.build_temp,self.build_lib)
             super().build_extensions()
 
+    from mmap import PAGESIZE
 
     setup(name="BabelViscoFDTD",
             version=version,
@@ -287,7 +288,11 @@ else:
             long_description=open('README.md').read(),
             long_description_content_type='text/markdown',
             cmdclass={'build_ext': DarwinInteropBuildExt},
-            ext_modules=[Extension(c_module_name+'_single', 
+            ext_modules=[Extension('BabelViscoFDTD.tools._page_memory', 
+                            ["src/page_memory.c"],
+                            define_macros=[("PAGE_SIZE",str(PAGESIZE))],
+                            include_dirs=[npinc]),
+                        Extension(c_module_name+'_single', 
                             ["src/FDTDStaggered3D_with_relaxation_python.c"],
                             define_macros=[("SINGLE_PREC",None),
                                         ("USE_OPENMP",None)],

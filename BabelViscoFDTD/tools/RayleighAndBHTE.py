@@ -46,21 +46,21 @@ KernelCoreSourceBHTE="""
 
             if(fabs(d_output[coord]-d_input[coord])<0.0001)
             {
-                d_output2[coord] = d_input2[coord] + dt * pow(float(R1),float(Tref-d_input[coord]));
+                d_output2[coord] = d_input2[coord] + dt * pow(float(R1),float((Tref-d_input[coord])));
             }
             else
             {
                 if(R1 == R2)
                 {
-                    d_output2[coord] = d_input2[coord] + (pow(float(R2),float(Tref-d_output[coord])) - pow(float(R1),float(Tref-d_input[coord]))) / 
+                    d_output2[coord] = d_input2[coord] + (pow(float(R2),float((Tref-d_output[coord]))) - pow(float(R1),float((Tref-d_input[coord])))) / 
                                    ( -(d_output[coord]-d_input[coord])/ dt * log(R1));
                 }
                 else
                 {
                     dtp = dt * (Tref - d_input[coord])/(d_output[coord] - d_input[coord]);
 
-                    d_output2[coord] = d_input2[coord] + (1 - pow(float(R1),float(Tref-d_input[coord])))     / (- (Tref - d_input[coord])/ dtp * log(R1)) + 
-                                   (pow(float(R2),float(Tref-d_output[coord])) - 1) / (-(d_output[coord] - Tref)/(dt - dtp) * log(R2));
+                    d_output2[coord] = d_input2[coord] + (1 - pow(float(R1),float((Tref-d_input[coord]))))     / (- (Tref - d_input[coord])/ dtp * log(R1)) + 
+                                   (pow(float(R2),float((Tref-d_output[coord]))) - 1) / (-(d_output[coord] - Tref)/(dt - dtp) * log(R2));
                 }
             }
 
