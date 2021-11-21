@@ -13,10 +13,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import mpl_toolkits.mplot3d.art3d as art3d
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
-from sys import platform
+import sys
 from sysconfig import get_paths
 import ctypes
 import sys 
+import platform
 
 npyInc=np.get_include()
 info = get_paths()
@@ -78,7 +79,7 @@ KernelCoreSourceBHTE="""
 }
 """
 
-if platform == "darwin":
+if sys.platform == "darwin":
     import pyopencl as cl
     
     RayleighOpenCLSource="""
@@ -195,7 +196,8 @@ if platform == "darwin":
         ctypes.POINTER(ctypes.c_float),
         ctypes.POINTER(ctypes.c_char_p),
         ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float)]
+        ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_int)]
 
     swift_fun.PrintMetalDevices()
     print("loaded Metal",str(swift_fun))
@@ -536,13 +538,21 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
 
 def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
     os.environ['__RayleighMetalDevice'] =deviceName
+    bUseMappedMemory=0
+    if 'arm64' in platform.platform() and\
+        np.core.multiarray.get_handler_name(center)=="page_data_allocator":
+        bUseMappedMemory=1
+        #We assume arrays were allocated with page_data_allocator to have aligned date
+        
     mr1=np.array([center.shape[0]])
     mr2=np.array([rf.shape[0]])
+    ibUseMappedMemory =np.array([bUseMappedMemory])
     cwvnb_real=np.array([np.real(cwvnb)])
     cwvnb_imag=np.array([np.imag(cwvnb)])
     
     mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+    bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -551,9 +561,13 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
     u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     deviceName_ptr=ctypes.c_char_p(deviceName.encode())
-    u2_real_ptr = (ctypes.c_float * rf.shape[0])()
-    u2_imag_ptr = (ctypes.c_float * rf.shape[0])()
-    swift_fun.ForwardSimpleMetal(mr2_ptr,
+    u2_real = np.zeros(rf.shape[0],np.float32)
+    u2_imag = np.zeros(rf.shape[0],np.float32)
+    u2_real_ptr = u2_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    u2_imag_ptr = u2_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    
+
+    ret = swift_fun.ForwardSimpleMetal(mr2_ptr,
                                 cwvnb_real_ptr,
                                 cwvnb_imag_ptr,
                                 mr1_ptr,
@@ -564,8 +578,11 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
                                 u1_imag_ptr,
                                 deviceName_ptr,
                                 u2_real_ptr,
-                                u2_imag_ptr)
-    return np.array(u2_real_ptr)+1j*np.array(u2_imag_ptr)
+                                u2_imag_ptr,
+                                bUseMappedMemory_ptr)
+    if ret ==1:
+        raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
+    return u2_real+1j*u2_imag
 
 def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'):
     '''
@@ -580,7 +597,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'
     
     '''
     global prg 
-    if platform == "darwin":
+    if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
             return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal)
         else:

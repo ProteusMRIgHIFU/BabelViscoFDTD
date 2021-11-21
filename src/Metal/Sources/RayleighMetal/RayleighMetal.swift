@@ -25,31 +25,32 @@ public func PrintMetalDevices() -> Int {
 
 @available(macOS 10.13, *)
 @_cdecl("ForwardSimpleMetal")
-public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
-                               c_wvnb_real: UnsafePointer<Float>, 
-                               c_wvnb_imag: UnsafePointer<Float>, 
-                               mr1p:        UnsafePointer<Int>,
-                               r2pr:        UnsafePointer<Float>, 
-                               r1pr:        UnsafePointer<Float>, 
-                               a1pr:        UnsafePointer<Float>,
-                               u1_real:     UnsafePointer<Float>,
-                               u1_imag:     UnsafePointer<Float>,
+public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
+                               c_wvnb_real: UnsafeMutablePointer<Float>, 
+                               c_wvnb_imag: UnsafeMutablePointer<Float>, 
+                               mr1p:        UnsafeMutablePointer<Int>,
+                               r2pr:        UnsafeMutablePointer<Float>, 
+                               r1pr:        UnsafeMutablePointer<Float>, 
+                               a1pr:        UnsafeMutablePointer<Float>,
+                               u1_real:     UnsafeMutablePointer<Float>,
+                               u1_imag:     UnsafeMutablePointer<Float>,
                                deviceNamepr: UnsafePointer<CChar>,
                                py_data_u2_real: UnsafeMutablePointer<Float>, 
-                               py_data_u2_imag: UnsafeMutablePointer<Float>) -> Int {
+                               py_data_u2_imag: UnsafeMutablePointer<Float>,
+                               bUseAlignedMemp: UnsafeMutablePointer<Int>) -> Int {
     do {
-        print("Beginning")
+        // print("Beginning")
         //let deviceName = String (cString:deviceNamepr)
         let deviceName : String = ProcessInfo.processInfo.environment["__RayleighMetalDevice"]!
 
-        print("deviceName =" + deviceName)
+        // print("deviceName =" + deviceName)
 
         var bFound = false
         var device : MTLDevice!
         for dev in MTLCopyAllDevices() {
             if dev.name.contains(deviceName)
             {
-                print("Device " + deviceName + "Found!")
+                // print("Device " + deviceName + "Found!")
                 bFound = true
                 device = dev
             }
@@ -57,42 +58,119 @@ public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
         }
 
         if bFound == false {
-            print("Device " + deviceName + "Not Found!")
+            // print("Device " + deviceName + "Not Found!")
             return 1
         }
 
         let commandQueue = device.makeCommandQueue()!,
             defaultLibrary = try! device.makeLibrary(filepath: metallib)
 
-    
-        let mr2Buffer = UnsafeRawPointer(mr2p)
-        let c_wvnb_realBuffer = UnsafeRawPointer(c_wvnb_real)
-        let c_wvnb_imagBuffer = UnsafeRawPointer(c_wvnb_imag)
-        let mr1Buffer = UnsafeRawPointer(mr1p)
-        let r2prBuffer = UnsafeRawPointer(r2pr)
-        let r1prBuffer = UnsafeRawPointer(r1pr)
-        let a1prBuffer = UnsafeRawPointer(a1pr)
-        let u1_realBuffer = UnsafeRawPointer(u1_real)
-        let u1_imagBuffer = UnsafeRawPointer(u1_imag)
+        let mr1Buffer = UnsafeMutableRawPointer(mr1p)
+        let mr2Buffer = UnsafeMutableRawPointer(mr2p)
+        let bUseAlignedMemBuffer = UnsafeMutableRawPointer(bUseAlignedMemp)
+        let bUseAlignedMem = bUseAlignedMemBuffer.load(as:Int.self)
+        // if bUseAlignedMem == 1 {
+        //     print("Uising aligned memory")
+        // }
+
+        let c_wvnb_realBuffer = UnsafeMutableRawPointer(c_wvnb_real)
+        let c_wvnb_imagBuffer = UnsafeMutableRawPointer(c_wvnb_imag)
+        
+        let r2prBuffer = UnsafeMutableRawPointer(r2pr)
+        let r1prBuffer =  UnsafeMutableRawPointer(r1pr)
+        let a1prBuffer = UnsafeMutableRawPointer(a1pr)
+        let u1_realBuffer = UnsafeMutableRawPointer(u1_real)
+        let u1_imagBuffer = UnsafeMutableRawPointer(u1_imag)
         
         let mr2 = mr2Buffer.load(as: Int.self)   
-        let mr1 = mr1Buffer.load(as: Int.self)   
-        
+        let mr1 = mr1Buffer.load(as: Int.self) 
+       
+        var ll = MemoryLayout<Float>.size*mr1*3
+        let PAGE_MAP_SIZE = 16384
+        if bUseAlignedMem == 1
+        {
+            if ll % PAGE_MAP_SIZE != 0 {
+                ll = (Int(ll/PAGE_MAP_SIZE)+1)*PAGE_MAP_SIZE
+            }
+        }
+        var r1prVectorBuffer:MTLBuffer?
+        if bUseAlignedMem == 1
+        { 
+            r1prVectorBuffer = device.makeBuffer(bytesNoCopy:r1prBuffer, length: ll, options: [],deallocator:nil)
+        }
+        else {
+            r1prVectorBuffer = device.makeBuffer(bytes: r1prBuffer, length: MemoryLayout<Float>.size*mr1*3, options: [])
+        }
        
         let mr1VectorBuffer = device.makeBuffer(bytes: mr1Buffer, length: MemoryLayout<Int>.size, options: [])
         let c_wvnb_realVectorBuffer = device.makeBuffer(bytes: c_wvnb_realBuffer, length: MemoryLayout<Float>.size, options: [])
         let c_wvnb_imagVecorBuffer = device.makeBuffer(bytes: c_wvnb_imagBuffer, length: MemoryLayout<Float>.size, options: [])
-        let r2prVectorBuffer = device.makeBuffer(bytes: r2prBuffer, length: MemoryLayout<Float>.size*mr2*3, options: [])
-        let r1prVectorBuffer = device.makeBuffer(bytes: r1prBuffer, length: MemoryLayout<Float>.size*mr1*3, options: [])
-        let a1prVectorBuffer = device.makeBuffer(bytes: a1prBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
-        let u1_realVectorBuffer = device.makeBuffer(bytes: u1_realBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
-        let u1_imagVectorBuffer = device.makeBuffer(bytes: u1_imagBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
+        
+        var r2prVectorBuffer:MTLBuffer?
+        ll = MemoryLayout<Float>.size*mr2*3
+        if bUseAlignedMem == 1
+        {
+            if ll % PAGE_MAP_SIZE != 0 {
+                ll = (Int(ll/PAGE_MAP_SIZE)+1)*PAGE_MAP_SIZE
+            }
+        }
+        if bUseAlignedMem == 1
+        { 
+            r2prVectorBuffer = device.makeBuffer(bytesNoCopy:r2prBuffer, length: ll, options: [],deallocator:nil)
             
-        let py_data_u2_realRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
-        let py_data_u2_realVectorBuffer = device.makeBuffer(bytes: py_data_u2_realRef, length: mr2*MemoryLayout<Float>.size, options: [])
-        let py_data_u2_imagRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
-        let py_data_u2_imagVectorBuffer = device.makeBuffer(bytes: py_data_u2_imagRef, length:  mr2*MemoryLayout<Float>.size, options: [])
- 
+        }
+        else {
+            r2prVectorBuffer = device.makeBuffer(bytes: r2prBuffer, length: ll, options: [])
+        }
+
+        var a1prVectorBuffer:MTLBuffer?
+        var u1_realVectorBuffer:MTLBuffer?
+        var u1_imagVectorBuffer:MTLBuffer?
+        ll = MemoryLayout<Float>.size*mr1
+        if bUseAlignedMem == 1
+        {
+            if ll % PAGE_MAP_SIZE != 0 {
+                ll = (Int(ll/PAGE_MAP_SIZE)+1)*PAGE_MAP_SIZE
+            }
+        }
+        if bUseAlignedMem == 1
+        { 
+            a1prVectorBuffer = device.makeBuffer(bytesNoCopy:a1prBuffer, length: ll, options: [],deallocator:nil)
+            u1_realVectorBuffer = device.makeBuffer(bytesNoCopy:u1_realBuffer, length: ll, options: [],deallocator:nil)
+            u1_imagVectorBuffer = device.makeBuffer(bytesNoCopy:u1_imagBuffer, length: ll, options: [],deallocator:nil)
+            
+        }
+        else {
+            a1prVectorBuffer = device.makeBuffer(bytes: a1prBuffer, length: ll, options: [])
+            u1_realVectorBuffer = device.makeBuffer(bytes: u1_realBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
+            u1_imagVectorBuffer = device.makeBuffer(bytes: u1_imagBuffer, length: MemoryLayout<Float>.size*mr1, options: [])
+        }
+
+        ll = MemoryLayout<Float>.size*mr2
+        if bUseAlignedMem == 1
+        {
+            if ll % PAGE_MAP_SIZE != 0 {
+                ll = (Int(ll/PAGE_MAP_SIZE)+1)*PAGE_MAP_SIZE
+            }
+        }
+        var py_data_u2_realRef = UnsafeMutablePointer(py_data_u2_real)
+        var py_data_u2_realVectorBuffer:MTLBuffer?
+        var py_data_u2_imagRef = UnsafeMutablePointer(py_data_u2_imag) 
+        var py_data_u2_imagVectorBuffer:MTLBuffer?
+        if bUseAlignedMem == 1 {
+            py_data_u2_realVectorBuffer = device.makeBuffer(bytesNoCopy:py_data_u2_realRef, length: ll, options: [],deallocator:nil)
+            py_data_u2_imagVectorBuffer = device.makeBuffer(bytesNoCopy:py_data_u2_imagRef, length: ll, options: [],deallocator:nil)
+            
+        }
+        else {
+
+            py_data_u2_realRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
+            py_data_u2_imagRef = UnsafeMutablePointer<Float>.allocate(capacity: mr2)
+            py_data_u2_realVectorBuffer = device.makeBuffer(bytes: py_data_u2_realRef, length: mr2*MemoryLayout<Float>.size, options: [])
+            py_data_u2_imagVectorBuffer = device.makeBuffer(bytes: py_data_u2_imagRef, length:  mr2*MemoryLayout<Float>.size, options: [])
+
+        }
+        
         // We need to split in small chunks to be sure the kernel does not take too much time
         // otherwise the OS will kill it
         var nm2 = Int(0)
@@ -159,12 +237,15 @@ public func ForwardSimpleMetal(mr2p:        UnsafePointer<Int>,
             basemr2+=nm_step
         }
         // unsafe bitcast and assigin result pointer to output
-        py_data_u2_real.initialize(from: py_data_u2_realVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
-        py_data_u2_imag.initialize(from: py_data_u2_imagVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
+        if bUseAlignedMem == 0 
+        {
+            py_data_u2_real.initialize(from: py_data_u2_realVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
+            py_data_u2_imag.initialize(from: py_data_u2_imagVectorBuffer!.contents().assumingMemoryBound(to: Float.self), count: mr2)
+            free(py_data_u2_realRef)
+            free(py_data_u2_imagRef)
+        }
         
         
-        free(py_data_u2_realRef)
-        free(py_data_u2_imagRef)
 
         return 0
     } catch {
