@@ -268,10 +268,10 @@ typedef _PT tIndex ;
 #endif
 
 
-#define MASK_ALLV				0x0000000001
-#define MASK_Vx   			0x0000000002
-#define MASK_Vy   			0x0000000004
-#define MASK_Vz   			0x0000000008
+#define MASK_ALLV		0x0000000001
+#define MASK_Vx   		0x0000000002
+#define MASK_Vy   		0x0000000004
+#define MASK_Vz   		0x0000000008
 #define MASK_Sigmaxx    0x0000000010
 #define MASK_Sigmayy    0x0000000020
 #define MASK_Sigmazz    0x0000000040
@@ -280,10 +280,10 @@ typedef _PT tIndex ;
 #define MASK_Sigmayz    0x0000000200
 #define MASK_Pressure   0x0000000400
 
-#define IS_ALLV_SELECTED(_Value) 					(_Value &MASK_ALLV)
-#define IS_Vx_SELECTED(_Value) 						(_Value &MASK_Vx)
-#define IS_Vy_SELECTED(_Value) 						(_Value &MASK_Vy)
-#define IS_Vz_SELECTED(_Value) 						(_Value &MASK_Vz)
+#define IS_ALLV_SELECTED(_Value) 				(_Value &MASK_ALLV)
+#define IS_Vx_SELECTED(_Value) 					(_Value &MASK_Vx)
+#define IS_Vy_SELECTED(_Value) 					(_Value &MASK_Vy)
+#define IS_Vz_SELECTED(_Value) 					(_Value &MASK_Vz)
 #define IS_Sigmaxx_SELECTED(_Value) 			(_Value &MASK_Sigmaxx)
 #define IS_Sigmayy_SELECTED(_Value) 			(_Value &MASK_Sigmayy)
 #define IS_Sigmazz_SELECTED(_Value) 			(_Value &MASK_Sigmazz)

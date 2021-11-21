@@ -28,6 +28,10 @@ def CompileRayleighMetal(build_temp,build_lib):
         ## since the compilation is very simple, we can do this manually
         print('Compiling Rayleigh Metal interface')
         copytree('src/Metal',build_temp )
+        for fn in ['Indexing.h','GPU_KERNELS.h','kernelparamsMetal.h','StressKernel.h',
+                    'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
+            copyfile('src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
+
         command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
         command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
