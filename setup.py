@@ -44,26 +44,23 @@ def CompileRayleighMetal(build_temp,build_lib):
             copyfile(build_temp+'/Sources/RayleighMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         bRayleighMetalCompiled=True
 
+def PrepareOpenCLKernel():
+    #this function merges the kernel code to be usable for opencl
+    with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
+        GPU_KERNELS=f.readlines()
 
+    with open('BabelViscoFDTD'+os.sep+'_gpu_kernel.c','w') as f:
+        for l in GPU_KERNELS:
+            if "#include" not in l:
+                f.write(l)
+            else:
+                incfile = l.split('"')[1]
+                with open('src'+os.sep+incfile,'r') as g:
+                    inclines=g.readlines()
+                f.writelines(inclines)
+    copyfile('src'+os.sep+'Indexing.h','BabelViscoFDTD'+os.sep+'_indexing.h')
+    
 if 'arm64' not in platform.platform():
-
-    def PrepareOpenCLKernel():
-        #this function merges the kernel code to be usable for opencl
-        with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
-            GPU_KERNELS=f.readlines()
-
-        with open('BabelViscoFDTD'+os.sep+'_gpu_kernel.c','w') as f:
-            for l in GPU_KERNELS:
-                if "#include" not in l:
-                    f.write(l)
-                else:
-                    incfile = l.split('"')[1]
-                    with open('src'+os.sep+incfile,'r') as g:
-                        inclines=g.readlines()
-                    f.writelines(inclines)
-        copyfile('src'+os.sep+'Indexing.h','BabelViscoFDTD'+os.sep+'_indexing.h')
-
-
     CUDA_SAMPLES_LOCATION=os.environ.get('CUDA_SAMPLES_LOCATION',None)
 
 
@@ -213,6 +210,8 @@ if 'arm64' not in platform.platform():
         ],
         )
 else:
+    PrepareOpenCLKernel()
+
     class DarwinInteropBuildExt(build_ext):
         def initialize_options(self):
 
