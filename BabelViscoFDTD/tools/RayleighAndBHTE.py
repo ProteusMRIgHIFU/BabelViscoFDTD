@@ -629,8 +629,8 @@ def getPerfusionCoefficient( w_b,c_t,blood_rho,blood_ct,dt=0.1):
 
     return coeff
 
-def getQCoeff(rho,SoS,alpha,c_t,h,dt):
-    coeff=dt/(2*rho**2*SoS*h*c_t)*(1-np.exp(-2*h*alpha))
+def getQCoeff(rho,SoS,alpha,c_t,Absorption,h,dt):
+    coeff=dt/(2*rho**2*SoS*h*c_t)*Absorption*(1-np.exp(-2*h*alpha))
     return coeff
 
 def factors_gpu(x):
@@ -661,8 +661,12 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
         initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
 
-        Qarr[MaterialMap==n]=Pressure[MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],MaterialList['SoS'][n],MaterialList['Attenuation'][n],
-                                                                   MaterialList['SpecificHeat'][n],dx,dt)*DutyCycle
+        Qarr[MaterialMap==n]=Pressure[MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],
+                                                                  MaterialList['SoS'][n],
+                                                                  MaterialList['Attenuation'][n],
+                                                                  MaterialList['SpecificHeat'][n],
+                                                                  MaterialList['Absorption'][n],
+                                                                  dx,dt)*DutyCycle
 
     N1=np.int32(Pressure.shape[0])
     N2=np.int32(Pressure.shape[1])
