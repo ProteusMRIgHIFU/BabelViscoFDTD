@@ -839,7 +839,7 @@ def BHTEeOpenCLMultiplePressureFields(PressureFields,
         TimingFields[m,2]=TimingFields[m,1]+nStepsOnOffList[m,1]
 
     print('TimingFields',TimingFields)
-    NstepsPerCycle=TimingFields[-1,3]
+    NstepsPerCycle=TimingFields[-1,2]
     
 
     N1=np.int32(MaterialMap.shape[0])
