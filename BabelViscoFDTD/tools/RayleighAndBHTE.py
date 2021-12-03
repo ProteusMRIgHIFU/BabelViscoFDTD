@@ -39,7 +39,7 @@ KernelCoreSourceBHTE="""
                     + d_perfArr[label] * (CoreTemp - d_input[coord]) ;
             if (sonication)
             {
-                d_output[coord]+=d_Qarr[coord];
+                d_output[coord]+=d_Qarr[coord+StartIndexQ];
             }
             
             R2 = (d_output[coord] >= Tref)?0.5:0.25; 
@@ -65,9 +65,9 @@ KernelCoreSourceBHTE="""
                 }
             }
 
-            if (gtidy==SelJ)
+            if (gtidy==SelJ && (n_Step % nFactorMonitoring ==0))
             {
-                 d_MonitorSlice[gtidx*outerDimz*TotalDurationSeps+gtidz*TotalDurationSeps+ n_Step] =d_output[coord];
+                 d_MonitorSlice[gtidx*outerDimz*TotalStepsMonitoring+gtidz*TotalStepsMonitoring+ n_Step/nFactorMonitoring] =d_output[coord];
             }
         }
         else if(gtidx < outerDimx && gtidy < outerDimy && gtidz < outerDimz){
@@ -163,9 +163,11 @@ if sys.platform == "darwin":
                                             const  int              outerDimz,
                                             const float 			dt,
                                             __global  float 	*d_MonitorSlice,
-                                            const  int TotalDurationSeps,
+                                            const  int TotalStepsMonitoring,
+                                            const  int nFactorMonitoring,
                                             const  int n_Step,
-                                            const int SelJ)	
+                                            const int SelJ,
+                                            const unsigned int StartIndexQ)	
         {
             const int gtidx =  get_global_id(0);
             const int gtidy =  get_global_id(1);
@@ -643,6 +645,7 @@ def factors_gpu(x):
 
 def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
                 TotalDurationSeps,nStepsOn,LocationMonitoring,
+                nFactorMonitoring=1,
                 dt=0.1,blood_rho=1050,blood_ct=3617,stableTemp=37.0,DutyCycle=1.0):
     global queue 
     global prg 
@@ -689,8 +692,10 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
     d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
     d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
 
-
-    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalDurationSeps),np.float32)
+    TotalStepsMonitoring=int(TotalDurationSeps/nFactorMonitoring)
+    if TotalStepsMonitoring % nFactorMonitoring!=0:
+        TotalStepsMonitoring+=1
+    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
     d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
 
     knl = prg.BHTEFDTDKernel
@@ -709,7 +714,7 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
         while(not np.any(factors_gpu(m)==4)):
             m+=1
         gl.append(m)
-
+    nFraction=TotalDurationSeps/10
     for n in range(TotalDurationSeps):
         if n<nStepsOn:
             dUS=1
@@ -732,9 +737,11 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
                 N3,
                 np.float32(dt),
                 d_MonitorSlice,
-                np.int32(TotalDurationSeps),
+                np.int32(TotalStepsMonitoring),
+                np.int32(nFactorMonitoring),
                 np.int32(n),
-                np.int32(LocationMonitoring))
+                np.int32(LocationMonitoring),
+                np.uint32(0))
 
         else:
             knl(queue, gl , [4,4,4],
@@ -753,11 +760,13 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
                 N3,
                 np.float32(dt),
                 d_MonitorSlice,
-                np.int32(TotalDurationSeps),
+                np.int32(TotalStepsMonitoring),
+                np.int32(nFactorMonitoring),
                 np.int32(n),
-                np.int32(LocationMonitoring))
+                np.int32(LocationMonitoring),
+                np.uint32(0))
         queue.finish()
-        if n%100==0:
+        if n % nFraction ==0:
             print(n,TotalDurationSeps)
 
     if (n%2==0):
@@ -774,3 +783,175 @@ def BHTEeOpenCL(Pressure,MaterialMap,MaterialList,dx,
     cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
     queue.finish()
     return T1,Dose1,MonitorSlice,Qarr
+
+
+def BHTEeOpenCLMultiplePressureFields(PressureFields,
+                MaterialMap,
+                MaterialList,
+                dx,
+                TotalDurationSeps,
+                nStepsOnOffList,
+                LocationMonitoring,
+                nFactorMonitoring=1,
+                dt=0.1,
+                blood_rho=1050,
+                blood_ct=3617,
+                stableTemp=37.0):
+    global queue 
+    global prg 
+    global ctx
+
+    assert(PressureFields.shape[1]==MaterialMap.shape[0] and \
+           PressureFields.shape[2]==MaterialMap.shape[1] and \
+           PressureFields.shape[3]==MaterialMap.shape[2])
+
+    assert(nStepsOnOffList.shape[0]==PressureFields.shape[0])
+
+    perfArr=np.zeros(MaterialMap.max()+1,np.float32)
+    bhArr=np.zeros(MaterialMap.max()+1,np.float32)
+    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32) 
+    
+    QArrList=np.zeros(PressureFields.shape, dtype=np.float32) 
+    
+    for n in range(MaterialMap.max()+1):
+        bhArr[n]=getBHTECoefficient(MaterialList['Conductivity'][n],MaterialList['Density'][n],
+                                    MaterialList['SpecificHeat'][n],dx,TotalDurationSeps,dt=dt)
+        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
+                                           blood_rho,blood_ct,dt=dt)
+        initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
+        for m in range(PressureFields.shape[0]):
+            QArrList[m,:,:,:][MaterialMap==n]=PressureFields[m,:,:,:][MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],MaterialList['SoS'][n],MaterialList['Attenuation'][n],
+                                                                   MaterialList['SpecificHeat'][n],dx,dt)
+    TimingFields=np.zeros((nStepsOnOffList.shape[0],3),np.int32)
+    #we prepare the index location when each field is on and off
+    TimingFields[0,1]=nStepsOnOffList[0,0]
+    TimingFields[0,2]=nStepsOnOffList[0,1]+nStepsOnOffList[0,0]
+    for m in range(1,nStepsOnOffList.shape[0]):
+        TimingFields[m,0]=TimingFields[m-1,2]
+        TimingFields[m,1]=TimingFields[m,0]+nStepsOnOffList[m,0]
+        TimingFields[m,2]=TimingFields[m,1]+nStepsOnOffList[m,1]
+
+    print('TimingFields',TimingFields)
+    NstepsPerCycle=TimingFields[-1,3]
+    
+
+    N1=np.int32(MaterialMap.shape[0])
+    N2=np.int32(MaterialMap.shape[1])
+    N3=np.int32(MaterialMap.shape[2])
+    coreTemp = np.array([stableTemp],np.float32)
+    initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
+
+    mf = cl.mem_flags
+
+    d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+    d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+    d_QArrList=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
+    d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+
+    T0 = np.zeros(initTemp.shape,dtype=np.float32)
+    T1 = np.zeros(initTemp.shape,dtype=np.float32)
+
+    d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+    d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+
+    Dose0 = initDose
+    Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
+
+    d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+    d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
+
+    TotalStepsMonitoring=int(TotalDurationSeps/nFactorMonitoring)
+    if TotalStepsMonitoring % nFactorMonitoring!=0:
+        TotalStepsMonitoring+=1
+    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+
+    knl = prg.BHTEFDTDKernel
+
+    l1=factors_gpu(MaterialMap.shape[0])
+    if len(l1)>0:
+        local=[l1[0],l1[0],1]
+    else:
+        local=None
+
+    #this will calculate the optimal global size to make it multiple of [4,4,4]
+
+    gl=[]
+    for n in range(3):
+        m=MaterialMap.shape[n]
+        while(not np.any(factors_gpu(m)==4)):
+            m+=1
+        gl.append(m)
+    nFraction=TotalDurationSeps/10
+    for n in range(TotalDurationSeps):
+        mStep=n % NstepsPerCycle
+        QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
+        if mStep<TimingFields[QSegment,1]:
+            dUS=1
+        else:
+            assert(mStep>=TimingFields[QSegment,1])
+            dUS=0
+        StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+        if (n%2==0):
+            knl(queue,gl , [4,4,4],
+                d_T1,
+                d_Dose1,
+                d_T0,
+                d_Dose0,
+                d_bhArr,
+                d_perfArr,
+                d_MaterialMap,
+                d_QArrList,
+                np.float32(coreTemp),
+                np.int32(dUS),
+                N1,
+                N2,
+                N3,
+                np.float32(dt),
+                d_MonitorSlice,
+                np.int32(TotalStepsMonitoring),
+                np.int32(nFactorMonitoring),
+                np.int32(n),
+                np.int32(LocationMonitoring),
+                np.uint32(StartIndexQ))
+
+        else:
+            knl(queue, gl , [4,4,4],
+                d_T0,
+                d_Dose0,
+                d_T1,
+                d_Dose1,
+                d_bhArr,
+                d_perfArr,
+                d_MaterialMap,
+                d_QArrList,
+                np.float32(coreTemp),
+                np.int32(dUS),
+                N1,
+                N2,
+                N3,
+                np.float32(dt),
+                d_MonitorSlice,
+                np.int32(TotalStepsMonitoring),
+                np.int32(nFactorMonitoring),
+                np.int32(n),
+                np.int32(LocationMonitoring),
+                np.uint32(StartIndexQ))
+        queue.finish()
+        if n % nFraction ==0:
+            print(n,TotalDurationSeps)
+
+    if (n%2==0):
+        ResTemp=d_T1
+        ResDose=d_Dose1
+    else:
+        ResTemp=d_T0
+        ResDose=d_Dose0
+
+
+    print('Done BHTE')                               
+    cl.enqueue_copy(queue, T1,ResTemp)
+    cl.enqueue_copy(queue, Dose1,ResDose)
+    cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
+    queue.finish()
+    return T1,Dose1,MonitorSlice,QArrList
