@@ -824,8 +824,11 @@ def BHTEeOpenCLMultiplePressureFields(PressureFields,
                                            blood_rho,blood_ct,dt=dt)
         initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         for m in range(PressureFields.shape[0]):
-            QArrList[m,:,:,:][MaterialMap==n]=PressureFields[m,:,:,:][MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],MaterialList['SoS'][n],MaterialList['Attenuation'][n],
-                                                                   MaterialList['SpecificHeat'][n],dx,dt)
+            QArrList[m,:,:,:][MaterialMap==n]=PressureFields[m,:,:,:][MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],
+                                                                    MaterialList['SoS'][n],
+                                                                    MaterialList['Attenuation'][n],
+                                                                    MaterialList['SpecificHeat'][n],
+                                                                    MaterialList['Absorption'][n],dx,dt)
     TimingFields=np.zeros((nStepsOnOffList.shape[0],3),np.int32)
     #we prepare the index location when each field is on and off
     TimingFields[0,1]=nStepsOnOffList[0,0]
