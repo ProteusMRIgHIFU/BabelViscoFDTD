@@ -5,15 +5,15 @@ from future.utils import iteritems
 import sys
 if sys.version_info > (3, 2):
     def bCheckIfStr(v):
-        return type(v) ==str
+        return type(v) is str
     def cStr(v):
-        if type(v)==bytes:
+        if type(v) is bytes:
             return v.decode("utf-8")
         else:
             return v
 else:
     def bCheckIfStr(v):
-        return (type(v) ==str or type(v) ==unicode)
+        return (type(v) is str or type(v) is unicode)
     def cStr(v):
         return v
 '''
@@ -46,14 +46,14 @@ def ProcType(k,v,f,compatibility,complevel,group):
         newgroup.attrs["type"]="dict" if type(v) is dict else "OrderedDict"
         newgroup.attrs["type_key"]=indexType
         SaveToH5py(v,f,compatibility,complevel,newgroup)
-    elif type(v) ==list:
+    elif type(v) is list:
         newgroup=group.create_group(k)
         newgroup.attrs["type"]="list";
         for n in range(len(v)):
             vlist=v[n]
             itemname = "item_%d"%n
             ProcType(itemname,vlist,f,compatibility,complevel,newgroup)
-    elif type(v) ==tuple:
+    elif type(v)  is tuple:
         nameList = k
         newgroup=group.create_group(k)
         newgroup.attrs["type"]="tuple"
@@ -61,7 +61,7 @@ def ProcType(k,v,f,compatibility,complevel,group):
             vlist=v[n]
             itemname = "item_%d"%n
             ProcType(itemname,vlist,f,compatibility,complevel,newgroup)
-    elif type(v) == numpy.ndarray :
+    elif type(v)  is  numpy.ndarray :
         ##we can apply compression rules for larger arrays
         if v.nbytes >2**10: # if array takes more 1024 bytes
             if compatibility=="lzf":
@@ -73,8 +73,8 @@ def ProcType(k,v,f,compatibility,complevel,group):
         else:
             ds=group.create_dataset(k, data=v)
         ds.attrs["type"]="ndarray"
-    elif  bCheckIfStr(v) or type(v) == numpy.string_ or \
-         type(v) ==numpy.unicode_ :
+    elif  bCheckIfStr(v) or type(v)  is  numpy.string_ or \
+         type(v)  is numpy.unicode_ :
         ##we'll apply compression rules for larger arrays
         ds=group.create_dataset(k, data=v)
         ds.attrs["type"]=str(type(v))
@@ -95,12 +95,12 @@ def ProcType(k,v,f,compatibility,complevel,group):
 def SaveToH5py(MyDict,f,compatibility="blosc",complevel=9,group=None):
     if bCheckIfStr(f):
         fileobj=h5py.File(f, "w")
-    elif type(f)==h5py._hl.files.File:
+    elif type(f) is h5py._hl.files.File:
         fileobj=f
     else:
         raise TypeError( "only string or h5py.file objects are accepted for 'f' object")
 
-    if type(MyDict) not in [dict,OrderedDict] or type(MyDict)==list:
+    if type(MyDict) not in [dict,OrderedDict] or type(MyDict) is list:
         raise TypeError("Only dictionaries are supported to be saved")
     for (k, v )in iteritems(MyDict):
         ProcType(k,v,fileobj,compatibility,complevel,group)
@@ -110,7 +110,7 @@ def SaveToH5py(MyDict,f,compatibility="blosc",complevel=9,group=None):
 def ReadFromH5py(f,group=None,typeattr=None):
     if bCheckIfStr(f):
         fileobj=h5py.File(f, "r")
-    elif type(f)==h5py._hl.files.File:
+    elif type(f) is h5py._hl.files.File:
         fileobj=f
     else:
         raise TypeError( "only string or h5py.file objects are accepted for 'f' object")
@@ -126,7 +126,7 @@ def ReadFromH5py(f,group=None,typeattr=None):
 
         NameList=None
         typeattr=cStr(val.attrs["type"])
-        if type(val)==h5py._hl.group.Group:
+        if type(val) is h5py._hl.group.Group:
             ValGroup=ReadFromH5py(fileobj,val)
             if typeattr=="list" or  typeattr=="tuple" :
                 NameList=namevar
@@ -162,7 +162,7 @@ def ReadFromH5py(f,group=None,typeattr=None):
             MyDict[namevar]=UID(val[()])
         else:
             if cStr(val.attrs["type"])=="scalar":
-                if type(val[()])==numpy.int32 or type(val[()])==numpy.int64:
+                if type(val[()]) is numpy.int32 or type(val[()]) is numpy.int64:
                     MyDict[namevar]=int(val[()])
                 else:
                     MyDict[namevar] = val[()]
