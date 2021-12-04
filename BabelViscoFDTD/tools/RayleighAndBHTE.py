@@ -205,7 +205,11 @@ if sys.platform == "darwin":
     print("loaded Metal",str(swift_fun))
 
 else:
+    Platforms=None
+    queue = None
     prg = None
+    ctx = None
+
     import pycuda.driver as cuda
     import pycuda.autoinit
     
@@ -713,13 +717,12 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         TotalStepsMonitoring+=1
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
 
-    T0 = np.zeros(initTemp.shape,dtype=np.float32)
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
 
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
 
-    nFraction=TotalDurationSteps/10
+    nFraction=int(TotalDurationSteps/10)
 
     if Backend=='OpenCL':
 
@@ -811,12 +814,12 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
 
-        if (n%2==0):
-            ResTemp=d_T1
-            ResDose=d_Dose1
-        else:
-            ResTemp=d_T0
-            ResDose=d_Dose0
+            if (n%2==0):
+                ResTemp=d_T1
+                ResDose=d_Dose1
+            else:
+                ResTemp=d_T0
+                ResDose=d_Dose0
 
 
         print('Done BHTE')                               
@@ -907,12 +910,19 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     np.uint32(0),
                     block=dimBlockBHTE,
                     grid=dimGridBHTE)
-            pycuda.autoinit.context.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
 
-        
-
+            if (n%2==0):
+                ResTemp=d_T1
+                ResDose=d_Dose1
+            else:
+                ResTemp=d_T0
+                ResDose=d_Dose0
+        pycuda.autoinit.context.synchronize()
+        cuda.memcpy_dtoh(T1,ResTemp) 
+        cuda.memcpy_dtoh(Dose1,ResDose) 
+        cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice) 
     return T1,Dose1,MonitorSlice,Qarr
 
 
@@ -982,7 +992,6 @@ def BHTEMultiplePressureFields(PressureFields,
     d_QArrList=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
     d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
 
-    T0 = np.zeros(initTemp.shape,dtype=np.float32)
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
 
     d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
