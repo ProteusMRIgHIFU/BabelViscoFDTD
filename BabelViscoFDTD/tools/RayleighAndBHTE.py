@@ -178,7 +178,7 @@ if sys.platform == "darwin":
 
     Platforms=None
     queue = None
-    prg = None
+    prgcl = None
     ctx = None
 
     # Loads METAL interface
@@ -205,10 +205,8 @@ if sys.platform == "darwin":
     print("loaded Metal",str(swift_fun))
 
 else:
-    Platforms=None
-    queue = None
-    prg = None
-    ctx = None
+
+    prgcuda = None
 
     import pycuda.driver as cuda
     import pycuda.autoinit
@@ -438,15 +436,15 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     return Tx
 
 def InitCuda():
-    global prg
+    global prgcuda
     from pycuda.compiler import SourceModule
     AllCudaCode=RayleighCUDASource + CUDAHeaderBHTE + KernelCoreSourceBHTE
-    prg  = SourceModule(AllCudaCode,include_dirs=[npyInc+os.sep+'numpy',info['include']])
+    prgcuda  = SourceModule(AllCudaCode,include_dirs=[npyInc+os.sep+'numpy',info['include']])
 
 def InitOpenCL(DeviceName='AMD'):
     global Platforms
     global queue 
-    global prg 
+    global prgcl 
     global ctx
     
     Platforms=cl.get_platforms()
@@ -463,7 +461,7 @@ def InitOpenCL(DeviceName='AMD'):
         print('Selecting device: ', SelDevice.name)
     ctx = cl.Context([SelDevice])
     queue = cl.CommandQueue(ctx)
-    prg = cl.Program(ctx, RayleighOpenCLSource+OpenCLKernelBHTE).build()
+    prgcl = cl.Program(ctx, RayleighOpenCLSource+OpenCLKernelBHTE).build()
 
     
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf):
@@ -631,7 +629,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'
     Function returns a [N] complex array of particle speed at locations rf
     
     '''
-    global prg 
+    global prgcuda 
     if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
             return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal)
@@ -683,7 +681,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                 stableTemp=37.0,DutyCycle=1.0,
                 Backend='OpenCL'):
     global queue 
-    global prg 
+    global prgcl 
+    global prgcuda
     global ctx
 
     perfArr=np.zeros(MaterialMap.max()+1,np.float32)
@@ -709,7 +708,6 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     N1=np.int32(Pressure.shape[0])
     N2=np.int32(Pressure.shape[1])
     N3=np.int32(Pressure.shape[2])
-    coreTemp = np.array([stableTemp],np.float32)
     initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
 
     TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
@@ -743,7 +741,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
         d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
 
-        knl = prg.BHTEFDTDKernel
+        knl = prgcl.BHTEFDTDKernel
 
         l1=factors_gpu(MaterialMap.shape[0])
         if len(l1)>0:
@@ -775,7 +773,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
-                    np.float32(coreTemp),
+                    np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
                     N2,
@@ -798,7 +796,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
-                    np.float32(coreTemp),
+                    np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
                     N2,
@@ -814,12 +812,12 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
 
-            if (n%2==0):
-                ResTemp=d_T1
-                ResDose=d_Dose1
-            else:
-                ResTemp=d_T0
-                ResDose=d_Dose0
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
 
 
         print('Done BHTE')                               
@@ -831,7 +829,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     else:
         assert(Backend=='CUDA')
 
-        dimBlockBHTE = (8,8,8)
+        dimBlockBHTE = (4,4,4)
 
         dimGridBHTE  = (int(N1/dimBlockBHTE[0]+1),
                         int(N2/dimBlockBHTE[1]+1),
@@ -856,7 +854,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cuda.memcpy_htod(d_Dose0, Dose0)
         cuda.memcpy_htod(d_Dose1, Dose1)
 
-        BHTEKernel = prg.get_function("BHTEFDTDKernel")
+        BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
         for n in range(TotalDurationSteps):
             if n<nStepsOn:
@@ -872,7 +870,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
-                    np.float32(coreTemp),
+                    np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
                     N2,
@@ -896,7 +894,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
-                    np.float32(coreTemp),
+                    np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
                     N2,
@@ -910,16 +908,17 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     np.uint32(0),
                     block=dimBlockBHTE,
                     grid=dimGridBHTE)
+            pycuda.autoinit.context.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
-
-            if (n%2==0):
-                ResTemp=d_T1
-                ResDose=d_Dose1
-            else:
-                ResTemp=d_T0
-                ResDose=d_Dose0
-        pycuda.autoinit.context.synchronize()
+        
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+        
         cuda.memcpy_dtoh(T1,ResTemp) 
         cuda.memcpy_dtoh(Dose1,ResDose) 
         cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice) 
@@ -939,7 +938,7 @@ def BHTEMultiplePressureFields(PressureFields,
                 blood_ct=3617,
                 stableTemp=37.0):
     global queue 
-    global prg 
+    global prgcl 
     global ctx
 
     assert(PressureFields.shape[1]==MaterialMap.shape[0] and \
@@ -1009,7 +1008,7 @@ def BHTEMultiplePressureFields(PressureFields,
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
     d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
 
-    knl = prg.BHTEFDTDKernel
+    knl = prgcl.BHTEFDTDKernel
 
     l1=factors_gpu(MaterialMap.shape[0])
     if len(l1)>0:
