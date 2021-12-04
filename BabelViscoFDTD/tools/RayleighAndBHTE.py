@@ -687,7 +687,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
     perfArr=np.zeros(MaterialMap.max()+1,np.float32)
     bhArr=np.zeros(MaterialMap.max()+1,np.float32)
-    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32) 
+    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32)
     Qarr=np.zeros(MaterialMap.shape, dtype=np.float32) 
 
     for n in range(MaterialMap.max()+1):
@@ -850,7 +850,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cuda.memcpy_htod(d_Qarr, Qarr)
         cuda.memcpy_htod(d_MaterialMap, MaterialMap)
         cuda.memcpy_htod(d_T0, initTemp)
-        cuda.memcpy_htod(d_T0, T1)
+        cuda.memcpy_htod(d_T1, T1)
         cuda.memcpy_htod(d_Dose0, Dose0)
         cuda.memcpy_htod(d_Dose1, Dose1)
 
@@ -936,7 +936,8 @@ def BHTEMultiplePressureFields(PressureFields,
                 dt=0.1,
                 blood_rho=1050,
                 blood_ct=3617,
-                stableTemp=37.0):
+                stableTemp=37.0,
+                Backend='OpenCL'):
     global queue 
     global prgcl 
     global ctx
@@ -984,116 +985,221 @@ def BHTEMultiplePressureFields(PressureFields,
     coreTemp = np.array([stableTemp],np.float32)
     initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
 
-    mf = cl.mem_flags
-
-    d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
-    d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
-    d_QArrList=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
-    d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
-
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
-
-    d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
-    d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
-
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
-
-    d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
-    d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
 
     TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
     if TotalStepsMonitoring % nFactorMonitoring!=0:
         TotalStepsMonitoring+=1
+        
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
-    d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+    nFraction=int(TotalDurationSteps/10)
 
-    knl = prgcl.BHTEFDTDKernel
+    if Backend == 'OpenCL':
 
-    l1=factors_gpu(MaterialMap.shape[0])
-    if len(l1)>0:
-        local=[l1[0],l1[0],1]
-    else:
-        local=None
+        mf = cl.mem_flags
 
-    #this will calculate the optimal global size to make it multiple of [4,4,4]
+        d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+        d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+        d_QArrList=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
+        d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
 
-    gl=[]
-    for n in range(3):
-        m=MaterialMap.shape[n]
-        while(not np.any(factors_gpu(m)==4)):
-            m+=1
-        gl.append(m)
-    nFraction=TotalDurationSteps/10
-    for n in range(TotalDurationSteps):
-        mStep=n % NstepsPerCycle
-        QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
-        if mStep<TimingFields[QSegment,1]:
-            dUS=1
+        d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+        d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+        d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+        d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
+
+        d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+
+        knl = prgcl.BHTEFDTDKernel
+
+        l1=factors_gpu(MaterialMap.shape[0])
+        if len(l1)>0:
+            local=[l1[0],l1[0],1]
         else:
-            assert(mStep>=TimingFields[QSegment,1])
-            dUS=0
-        StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+            local=None
+
+        #this will calculate the optimal global size to make it multiple of [4,4,4]
+
+        gl=[]
+        for n in range(3):
+            m=MaterialMap.shape[n]
+            while(not np.any(factors_gpu(m)==4)):
+                m+=1
+            gl.append(m)
+        
+        for n in range(TotalDurationSteps):
+            mStep=n % NstepsPerCycle
+            QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
+            if mStep<TimingFields[QSegment,1]:
+                dUS=1
+            else:
+                assert(mStep>=TimingFields[QSegment,1])
+                dUS=0
+            StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+            if (n%2==0):
+                knl(queue,gl , [4,4,4],
+                    d_T1,
+                    d_Dose1,
+                    d_T0,
+                    d_Dose0,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_QArrList,
+                    np.float32(coreTemp),
+                    np.int32(dUS),
+                    N1,
+                    N2,
+                    N3,
+                    np.float32(dt),
+                    d_MonitorSlice,
+                    np.int32(TotalStepsMonitoring),
+                    np.int32(nFactorMonitoring),
+                    np.int32(n),
+                    np.int32(LocationMonitoring),
+                    np.uint32(StartIndexQ))
+
+            else:
+                knl(queue, gl , [4,4,4],
+                    d_T0,
+                    d_Dose0,
+                    d_T1,
+                    d_Dose1,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_QArrList,
+                    np.float32(coreTemp),
+                    np.int32(dUS),
+                    N1,
+                    N2,
+                    N3,
+                    np.float32(dt),
+                    d_MonitorSlice,
+                    np.int32(TotalStepsMonitoring),
+                    np.int32(nFactorMonitoring),
+                    np.int32(n),
+                    np.int32(LocationMonitoring),
+                    np.uint32(StartIndexQ))
+            queue.finish()
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+
         if (n%2==0):
-            knl(queue,gl , [4,4,4],
-                d_T1,
-                d_Dose1,
-                d_T0,
-                d_Dose0,
-                d_bhArr,
-                d_perfArr,
-                d_MaterialMap,
-                d_QArrList,
-                np.float32(coreTemp),
-                np.int32(dUS),
-                N1,
-                N2,
-                N3,
-                np.float32(dt),
-                d_MonitorSlice,
-                np.int32(TotalStepsMonitoring),
-                np.int32(nFactorMonitoring),
-                np.int32(n),
-                np.int32(LocationMonitoring),
-                np.uint32(StartIndexQ))
-
+            ResTemp=d_T1
+            ResDose=d_Dose1
         else:
-            knl(queue, gl , [4,4,4],
-                d_T0,
-                d_Dose0,
-                d_T1,
-                d_Dose1,
-                d_bhArr,
-                d_perfArr,
-                d_MaterialMap,
-                d_QArrList,
-                np.float32(coreTemp),
-                np.int32(dUS),
-                N1,
-                N2,
-                N3,
-                np.float32(dt),
-                d_MonitorSlice,
-                np.int32(TotalStepsMonitoring),
-                np.int32(nFactorMonitoring),
-                np.int32(n),
-                np.int32(LocationMonitoring),
-                np.uint32(StartIndexQ))
+            ResTemp=d_T0
+            ResDose=d_Dose0
+
+
+        print('Done BHTE')                               
+        cl.enqueue_copy(queue, T1,ResTemp)
+        cl.enqueue_copy(queue, Dose1,ResDose)
+        cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
         queue.finish()
-        if n % nFraction ==0:
-            print(n,TotalDurationSteps)
-
-    if (n%2==0):
-        ResTemp=d_T1
-        ResDose=d_Dose1
     else:
-        ResTemp=d_T0
-        ResDose=d_Dose0
+        assert(Backend=='CUDA')
 
+        dimBlockBHTE = (4,4,4)
 
-    print('Done BHTE')                               
-    cl.enqueue_copy(queue, T1,ResTemp)
-    cl.enqueue_copy(queue, Dose1,ResDose)
-    cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
-    queue.finish()
+        dimGridBHTE  = (int(N1/dimBlockBHTE[0]+1),
+                        int(N2/dimBlockBHTE[1]+1),
+                        int(N3/dimBlockBHTE[2]+1))
+
+        d_perfArr=cuda.mem_alloc(perfArr.nbytes)
+        d_bhArr=cuda.mem_alloc(bhArr.nbytes)
+        d_QArrList=cuda.mem_alloc(d_QArrList.nbytes)
+        d_MaterialMap=cuda.mem_alloc(MaterialMap.nbytes)
+        d_T0 = cuda.mem_alloc(initTemp.nbytes)
+        d_T1 = cuda.mem_alloc(T1.nbytes)
+        d_Dose0 = cuda.mem_alloc(Dose0.nbytes)
+        d_Dose1 = cuda.mem_alloc(Dose1.nbytes)
+        d_MonitorSlice = cuda.mem_alloc(MonitorSlice.nbytes)
+
+        cuda.memcpy_htod(d_perfArr, perfArr)
+        cuda.memcpy_htod(d_bhArr, bhArr)
+        cuda.memcpy_htod(d_QArrList, QArrList)
+        cuda.memcpy_htod(d_MaterialMap, MaterialMap)
+        cuda.memcpy_htod(d_T0, initTemp)
+        cuda.memcpy_htod(d_T1, T1)
+        cuda.memcpy_htod(d_Dose0, Dose0)
+        cuda.memcpy_htod(d_Dose1, Dose1)
+
+        BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
+
+        for n in range(TotalDurationSteps):
+            mStep=n % NstepsPerCycle
+            QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
+            if mStep<TimingFields[QSegment,1]:
+                dUS=1
+            else:
+                assert(mStep>=TimingFields[QSegment,1])
+                dUS=0
+            StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+
+            if (n%2==0):
+                BHTEKernel(d_T1,
+                    d_Dose1,
+                    d_T0,
+                    d_Dose0,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_QArrList,
+                    np.float32(stableTemp),
+                    np.int32(dUS),
+                    N1,
+                    N2,
+                    N3,
+                    np.float32(dt),
+                    d_MonitorSlice,
+                    np.int32(TotalStepsMonitoring),
+                    np.int32(nFactorMonitoring),
+                    np.int32(n),
+                    np.int32(LocationMonitoring),
+                    np.uint32(StartIndexQ),
+                    block=dimBlockBHTE,
+                    grid=dimGridBHTE)
+
+            else:
+                BHTEKernel(d_T0,
+                    d_Dose0,
+                    d_T1,
+                    d_Dose1,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_QArrList,
+                    np.float32(stableTemp),
+                    np.int32(dUS),
+                    N1,
+                    N2,
+                    N3,
+                    np.float32(dt),
+                    d_MonitorSlice,
+                    np.int32(TotalStepsMonitoring),
+                    np.int32(nFactorMonitoring),
+                    np.int32(n),
+                    np.int32(LocationMonitoring),
+                    np.uint32(StartIndexQ),
+                    block=dimBlockBHTE,
+                    grid=dimGridBHTE)
+            pycuda.autoinit.context.synchronize()
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+        
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+        
+        cuda.memcpy_dtoh(T1,ResTemp) 
+        cuda.memcpy_dtoh(Dose1,ResDose) 
+        cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice)
+
     return T1,Dose1,MonitorSlice,QArrList
