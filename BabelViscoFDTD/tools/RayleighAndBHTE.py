@@ -1111,7 +1111,7 @@ def BHTEMultiplePressureFields(PressureFields,
 
         d_perfArr=cuda.mem_alloc(perfArr.nbytes)
         d_bhArr=cuda.mem_alloc(bhArr.nbytes)
-        d_QArrList=cuda.mem_alloc(d_QArrList.nbytes)
+        d_QArrList=cuda.mem_alloc(QArrList.nbytes)
         d_MaterialMap=cuda.mem_alloc(MaterialMap.nbytes)
         d_T0 = cuda.mem_alloc(initTemp.nbytes)
         d_T1 = cuda.mem_alloc(T1.nbytes)
