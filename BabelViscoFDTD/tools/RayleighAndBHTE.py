@@ -492,10 +492,10 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf):
     
     dimBlockGrid=(nBlockSizeX, nBlockSizeY,1)
                       
-    ForwardPropagationKernel = prg.get_function("ForwardPropagationKernel")
-    PartSource=prg.get_global("PartSource")
-    Part_a1pr=prg.get_global("Part_a1pr")
-    Part_u1complex=prg.get_global("Part_u1complex")
+    ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
+    PartSource=prgcuda.get_global("PartSource")
+    Part_a1pr=prgcuda.get_global("Part_a1pr")
+    Part_u1complex=prgcuda.get_global("Part_u1complex")
 
     while(mr1start < mr1):
         mr1stop = mr1start+MAX_ELEMS_IN_CONSTANT
@@ -549,7 +549,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
     
     
     
-    knl = prg.ForwardPropagationKernel  # Use this Kernel object for repeated calls
+    knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
     knl(queue, u2_real.shape, None,
         d_mr2pr,
         d_cwvnb_realpr,
