@@ -576,9 +576,10 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
 def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
     os.environ['__RayleighMetalDevice'] =deviceName
     bUseMappedMemory=0
-    if 'arm64' in platform.platform() and\
-        np.core.multiarray.get_handler_name(center)=="page_data_allocator":
-        bUseMappedMemory=1
+    if np.__version__ >="1.22.0":
+        if 'arm64' in platform.platform() and\
+            np.core.multiarray.get_handler_name(center)=="page_data_allocator":
+            bUseMappedMemory=1
         #We assume arrays were allocated with page_data_allocator to have aligned date
         
     
