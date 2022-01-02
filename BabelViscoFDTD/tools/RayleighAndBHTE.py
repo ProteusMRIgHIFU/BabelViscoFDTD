@@ -83,32 +83,31 @@ if sys.platform == "darwin":
     import pyopencl as cl
     
     RayleighOpenCLSource="""
-
     #define pi 3.141592653589793
+    #define ppCos &pCos
 
     typedef float FloatingType;
 
-    __kernel  void ForwardPropagationKernel(  __global const int *mr2,
-                                              __global const FloatingType *c_wvnb_real,
-                                              __global const FloatingType *c_wvnb_imag,
-                                              __global const int *mr1,
+    __kernel  void ForwardPropagationKernel(  const int mr2,
+                                              const FloatingType c_wvnb_real,
+                                              const FloatingType c_wvnb_imag,
+                                              const int mr1,
                                              __global const FloatingType *r2pr, 
                                              __global const FloatingType *r1pr, 
                                              __global const FloatingType *a1pr, 
                                              __global const FloatingType *u1_real, 
                                              __global const FloatingType *u1_imag,
                                              __global  FloatingType  *py_data_u2_real,
-                                             __global  FloatingType  *py_data_u2_imag
+                                             __global  FloatingType  *py_data_u2_imag,
+                                             const int mr1step
                                              )
         {
         int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
-
         FloatingType dx,dy,dz,R,r2x,r2y,r2z;
         FloatingType temp_r,tr ;
         FloatingType temp_i,ti,pCos,pSin ;
 
-
-        if ( si2 < *mr2)  
+        if ( si2 < mr2)  
         {
             temp_r = 0;
             temp_i = 0;
@@ -116,7 +115,7 @@ if sys.platform == "darwin":
             r2y=r2pr[si2*3+1];
             r2z=r2pr[si2*3+2];
 
-            for (int si1=0; si1<*mr1; si1++)
+            for (int si1=0; si1<mr1; si1++)
             {
                 // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
                 dx=r1pr[si1*3]-r2x;
@@ -125,12 +124,13 @@ if sys.platform == "darwin":
 
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
-                ti=(exp(R*c_wvnb_imag[0])*a1pr[si1]/R);
+                ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
 
                 tr=ti;
-                pSin=sincos(R*c_wvnb_real[0],&pCos);
-                tr*=(u1_real[si1]*pCos+u1_imag[si1]*pSin);
-                            ti*=(u1_imag[si1]*pCos-u1_real[si1]*pSin);
+                pSin=sincos(R*c_wvnb_real,ppCos);
+
+                tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
+                            ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
 
                 temp_r +=tr;
                 temp_i +=ti;	
@@ -138,8 +138,8 @@ if sys.platform == "darwin":
             
             R=temp_r;
 
-            temp_r = -temp_r*c_wvnb_imag[0]-temp_i*c_wvnb_real[0];
-            temp_i = R*c_wvnb_real[0]-temp_i*c_wvnb_imag[0];
+            temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
+            temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
 
             py_data_u2_real[si2]=temp_r/(2*pi);
             py_data_u2_imag[si2]=temp_i/(2*pi);
@@ -199,6 +199,7 @@ if sys.platform == "darwin":
         ctypes.POINTER(ctypes.c_char_p),
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)]
 
     swift_fun.PrintMetalDevices()
@@ -214,6 +215,7 @@ else:
     RayleighCUDASource="""
     #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
     #include <ndarrayobject.h>
+    #include <cuComplex.h>
 
     #define pi 3.141592653589793
 
@@ -222,75 +224,68 @@ else:
 
     #define MAX_ELEMS_IN_CONSTANT  2730 // the total constant memory can't be greater than 64k bytes
 
-    __constant__ float PartSource [MAX_ELEMS_IN_CONSTANT*3];
-    __constant__ float Part_a1pr [MAX_ELEMS_IN_CONSTANT];
-    __constant__ npy_cfloat Part_u1complex[MAX_ELEMS_IN_CONSTANT];
 
+    __device__ __forceinline__ cuComplex cuexpf (cuComplex z)
 
+        {
+            cuComplex res;
+            float t = expf (z.x);
+            sincosf (z.y, &res.y, &res.x);
+            res.x *= t;
+            res.y *= t;
+            return res;
+        }
     __global__ void ForwardPropagationKernel(int mr2,
-                                             npy_cfloat c_wvnb,
+                                             npy_cfloat n_c_wvnb,
                                              FloatingType *r2pr, 
+                                             FloatingType *r1pr, 
+                                             FloatingType *a1pr,
+                                             npy_cfloat * u1complex,
                                              npy_cfloat *py_data_u2, 
-                                             int mr1step,
-                                             int LastPart)
+                                             int mr1,
+                                             int mr1step)
         {
         const int si2 = (blockIdx.y*gridDim.x + blockIdx.x)*blockDim.x + threadIdx.x ;		// Grid is a "flatten" 1D, thread blocks are 1D
 
+        cuComplex c_wvnb= make_cuComplex(n_c_wvnb.real,n_c_wvnb.imag);
+        cuComplex cj=make_cuComplex(0.0,1);
+        cuComplex u0,temp,temp2;
+        
         FloatingType dx,dy,dz,R,r2x,r2y,r2z;
-        FloatingType temp_r,tr ;
-        FloatingType temp_i,ti,pCos,pSin ;
-
-
         if ( si2 < mr2)  
         {
-            temp_r = 0;
-            temp_i = 0;
+            temp.x=0;temp.y=0;
+
             r2x=r2pr[si2*3];
             r2y=r2pr[si2*3+1];
             r2z=r2pr[si2*3+2];
 
-            for (int si1=0; si1<mr1step; si1++)
+            for (int si1=0; si1<mr1; si1++)
             {
-                /*
-                dx=PartSource[si1]-r2pr[si2];
-                dy=PartSource[si1+mr1step]-r2pr[si2+mr2];
-                dz=PartSource[si1+2*mr1step]-r2pr[si2+2*mr2];
-                */
-                // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
-                dx=PartSource[si1*3]-r2x;
-                dy=PartSource[si1*3+1]-r2y;
-                dz=PartSource[si1*3+2]-r2z;
 
+                // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
+                dx=r1pr[si1*3]-r2x;
+                dy=r1pr[si1*3+1]-r2y;
+                dz=r1pr[si1*3+2]-r2z;
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
-                ti=(__expf(R*c_wvnb.imag)*Part_a1pr[si1]/R);
 
-                tr=ti;
-                __sincosf(R*c_wvnb.real,&pSin,&pCos);
-                tr*=(Part_u1complex[si1].real*pCos+Part_u1complex[si1].imag*pSin);
-                            ti*=(Part_u1complex[si1].imag*pCos-Part_u1complex[si1].real*pSin);
-
-                temp_r +=tr;
-                temp_i +=ti;	
+                u0=make_cuComplex(u1complex[si1+mr1step*si2].real,
+                                  u1complex[si1+mr1step*si2].imag);
+                temp2=cuCmulf(cj,c_wvnb);
+                temp2.x*=-R;temp2.y*=-R;
+                temp2=cuexpf(temp2);
+                temp2=cuCmulf(temp2,u0);
+                temp2.x*=a1pr[si1]/R;temp2.y*=a1pr[si1]/R;
+                temp=cuCaddf(temp,temp2);
             }
 
-                py_data_u2[si2].real+=temp_r;
-                py_data_u2[si2].imag+=temp_i;
+            temp2=cuCmulf(cj,c_wvnb);
+            temp=cuCmulf(temp,temp2);
 
-            if (LastPart==1)
-            {
-
-                temp_r=py_data_u2[si2].real;
-                temp_i=py_data_u2[si2].imag;
-
-                R=temp_r;
-
-                temp_r = -temp_r*c_wvnb.imag-temp_i*c_wvnb.real;
-                            temp_i = R*c_wvnb.real-temp_i*c_wvnb.imag;
-
-                py_data_u2[si2].real=temp_r/(2*pi);
-                py_data_u2[si2].imag=temp_i/(2*pi);
-            }
+            py_data_u2[si2].real=temp.x/(2*pi);
+            py_data_u2[si2].imag=temp.y/(2*pi);
+            
         }
         }
       """
@@ -464,19 +459,30 @@ def InitOpenCL(DeviceName='AMD'):
     prgcl = cl.Program(ctx, RayleighOpenCLSource+OpenCLKernelBHTE).build()
 
     
-def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf):
-    mr1=center.shape[0]
+def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
+    if u0step!=0:
+        mr1=u0step
+        assert(mr1*rf.shape[0]==u0.shape[0])
+        assert(mr1==center.shape[0])
+        assert(mr1==ds.shape[0])
+    else:
+        mr1=center.shape[0]
     mr2=rf.shape[0]
     u2=np.zeros(rf.shape[0],np.complex64)
     
     d_r2pr= cuda.mem_alloc(rf.nbytes)
+    d_centerpr= cuda.mem_alloc(center.nbytes)
+    d_dspr= cuda.mem_alloc(ds.nbytes)
+    d_u0complex= cuda.mem_alloc(u0.nbytes)
     d_u2complex= cuda.mem_alloc(u2.nbytes)
     
     cuda.memcpy_htod(d_r2pr, rf)
+    cuda.memcpy_htod(d_centerpr, center)
+    cuda.memcpy_htod(d_dspr, ds)
+    cuda.memcpy_htod(d_u0complex, u0)
     cuda.memcpy_htod(d_u2complex, u2)
 
-    mr1start = 0
-    LastPart = 0
+
     CUDA_THREADBLOCKLENGTH = 512 
     MAX_ELEMS_IN_CONSTANT = 2730
     dimThreadBlock=(CUDA_THREADBLOCKLENGTH, 1,1)
@@ -493,47 +499,40 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf):
     dimBlockGrid=(nBlockSizeX, nBlockSizeY,1)
                       
     ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
-    PartSource=prgcuda.get_global("PartSource")
-    Part_a1pr=prgcuda.get_global("Part_a1pr")
-    Part_u1complex=prgcuda.get_global("Part_u1complex")
-
-    while(mr1start < mr1):
-        mr1stop = mr1start+MAX_ELEMS_IN_CONSTANT
-
-        if (mr1stop >= mr1):
-            mr1stop =  mr1;
-            LastPart = 1
-        mr1step = mr1stop - mr1start
+    
         
-        cuda.memcpy_htod(PartSource[0], center[mr1start:mr1start+mr1step,:])
-        cuda.memcpy_htod(Part_a1pr[0], ds[mr1start:mr1start+mr1step])
-        cuda.memcpy_htod(Part_u1complex[0], u0[mr1start:mr1start+mr1step])
-        
-        ForwardPropagationKernel(np.int32(mr2), cwvnb, d_r2pr, d_u2complex, np.int32(mr1step), np.int32(LastPart),block=dimThreadBlock, grid=dimBlockGrid)
+    ForwardPropagationKernel(np.int32(mr2), 
+                             cwvnb,
+                             d_r2pr, 
+                             d_centerpr,
+                             d_dspr,
+                             d_u0complex, 
+                             d_u2complex, 
+                             np.int32(mr1),
+                             np.int32(u0step),
+                             block=dimThreadBlock, grid=dimBlockGrid)
 
-        pycuda.autoinit.context.synchronize()
-        mr1start += mr1step
+    pycuda.autoinit.context.synchronize()
+        
     
     cuda.memcpy_dtoh(u2,d_u2complex)  
     return u2
 
-def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
+def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
     global queue 
     global prg 
     global ctx
-    mr1=np.array([center.shape[0]])
-    mr2=np.array([rf.shape[0]])
-    cwvnb_real=np.array([np.real(cwvnb)])
-    cwvnb_imag=np.array([np.imag(cwvnb)])
-    
-    
     mf = cl.mem_flags
     
-    d_mr1pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=mr1)
-    d_mr2pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=mr2)
-    d_cwvnb_realpr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=cwvnb_real)
-    d_cwvnb_imagpr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=cwvnb_imag)
+    if u0step!=0:
+        mr1=u0step
+        assert(mr1*rf.shape[0]==u0.shape[0])
+        assert(mr1==center.shape[0])
+        assert(mr1==ds.shape[0])
+    else:
+        mr1=center.shape[0]
     
+     
     d_r2pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=rf)
     d_r1pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=center)
     d_u1realpr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.real(u0).copy())
@@ -550,18 +549,23 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
     
     
     knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
-    knl(queue, u2_real.shape, None,
-        d_mr2pr,
-        d_cwvnb_realpr,
-        d_cwvnb_imagpr,
-        d_mr1pr,
+    if u2_real.shape[0] % 64 ==0:
+        ks=[u2_real.shape[0]]
+    else:
+        ks=[int(u2_real.shape[0]/64)*64+64]
+    knl(queue, ks, [64],
+        np.int32(rf.shape[0]),
+        np.float32(np.real(cwvnb)),
+        np.float32(np.imag(cwvnb)),
+        np.int32(mr1),
         d_r2pr,
         d_r1pr,
         d_a1pr,
         d_u1realpr,
         d_u1imagpr,
         d_u2realpr,
-        d_u2imagpr)
+        d_u2imagpr,
+        np.int32(u0step))
     
     cl.enqueue_copy(queue, u2_real,d_u2realpr)
     cl.enqueue_copy(queue, u2_imag,d_u2imagpr)
@@ -569,7 +573,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf):
                                             
     return u2
 
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
     os.environ['__RayleighMetalDevice'] =deviceName
     bUseMappedMemory=0
     if 'arm64' in platform.platform() and\
@@ -577,14 +581,27 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
         bUseMappedMemory=1
         #We assume arrays were allocated with page_data_allocator to have aligned date
         
-    mr1=np.array([center.shape[0]])
+    
     mr2=np.array([rf.shape[0]])
+
+    if u0step!=0:
+        mr1=u0step
+        assert(mr1*rf.shape[0]==u0.shape[0])
+        assert(mr1==center.shape[0])
+        assert(mr1==ds.shape[0])
+    else:
+        mr1=center.shape[0]
+
+    mr1=np.array([mr1])
+    u0step_a=np.array([u0step])
+
     ibUseMappedMemory =np.array([bUseMappedMemory])
     cwvnb_real=np.array([np.real(cwvnb)])
     cwvnb_imag=np.array([np.imag(cwvnb)])
     
     mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+    u0step_ptr = u0step_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -612,12 +629,13 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName):
                                 deviceName_ptr,
                                 u2_real_ptr,
                                 u2_imag_ptr,
-                                bUseMappedMemory_ptr)
+                                bUseMappedMemory_ptr,
+                                u0step_ptr)
     if ret ==1:
         raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
     return u2_real+1j*u2_imag
 
-def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'):
+def ForwardSimple(cwvnb,center,ds,u0,rf,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
     '''
     MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
     cwvnb is the complex speed of sound
@@ -632,11 +650,11 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MacOsPlatform='Metal',deviceMetal='6800'
     global prgcuda 
     if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal)
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,u0step=u0step)
         else:
-            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf)
+            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=u0step)
     else:
-        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf)
+        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=u0step)
 
     
 

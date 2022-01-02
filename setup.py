@@ -32,11 +32,11 @@ def CompileRayleighMetal(build_temp,build_lib):
                     'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
             copyfile('src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
 
-        command=['xcrun','-sdk', 'macosx', 'metal', '-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
+        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
         command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
         subprocess.check_call(command,cwd=build_temp)
-        command=['swift','build', '-c', 'release']
+        command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
         for fn in ['libRayleighMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
@@ -280,6 +280,45 @@ else:
             super().build_extensions()
 
     from mmap import PAGESIZE
+    bIncludePagememory=np.__version__ >="1.22.0"
+    ext_modules=[Extension(c_module_name+'_single', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("SINGLE_PREC",None),
+                                ("USE_OPENMP",None)],
+                    extra_compile_args=['-Xclang','-fopenmp'],
+                    extra_link_args=['-lomp'],
+                    include_dirs=[npinc]),
+                Extension(c_module_name+'_double', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("USE_OPENMP",None)],
+                    extra_compile_args=['-Xclang','-fopenmp'],
+                    extra_link_args=['-lomp'],
+                    include_dirs=[npinc]),
+                Extension(c_module_name+'_METAL_single', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.cpp",
+                    "src/mtlpp/mtlpp.mm"],
+                    define_macros=[("SINGLE_PREC",None),
+                                ("METAL",None)],
+                    include_dirs=[npinc],
+                    extra_compile_args=['-std=c++11','-mmacosx-version-min=11.5'],
+                    extra_link_args=['-Wl',
+                                    '-framework',
+                                    'Metal',
+                                    '-Wl',
+                                    '-framework',
+                                    'MetalKit',
+                                    '-Wl',
+                                    '-framework',
+                                    'Cocoa',
+                                    '-Wl',
+                                    '-framework',
+                                    'CoreFoundation',
+                                    '-fobjc-link-runtime'])]
+    if bIncludePagememory:
+        ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory', 
+                            ["src/page_memory.c"],
+                            define_macros=[("PAGE_SIZE",str(PAGESIZE))],
+                            include_dirs=[npinc]))
 
     setup(name="BabelViscoFDTD",
             version=version,
@@ -291,43 +330,7 @@ else:
             long_description=open('README.md').read(),
             long_description_content_type='text/markdown',
             cmdclass={'build_ext': DarwinInteropBuildExt},
-            ext_modules=[Extension('BabelViscoFDTD.tools._page_memory', 
-                            ["src/page_memory.c"],
-                            define_macros=[("PAGE_SIZE",str(PAGESIZE))],
-                            include_dirs=[npinc]),
-                        Extension(c_module_name+'_single', 
-                            ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                            define_macros=[("SINGLE_PREC",None),
-                                        ("USE_OPENMP",None)],
-                            extra_compile_args=['-Xclang','-fopenmp'],
-                            extra_link_args=['-lomp'],
-                            include_dirs=[npinc]),
-                        Extension(c_module_name+'_double', 
-                            ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                            define_macros=[("USE_OPENMP",None)],
-                            extra_compile_args=['-Xclang','-fopenmp'],
-                            extra_link_args=['-lomp'],
-                            include_dirs=[npinc]),
-                        Extension(c_module_name+'_METAL_single', 
-                            ["src/FDTDStaggered3D_with_relaxation_python.cpp",
-                            "src/mtlpp/mtlpp.mm"],
-                            define_macros=[("SINGLE_PREC",None),
-                                        ("METAL",None)],
-                            include_dirs=[npinc],
-                            extra_compile_args=['-std=c++11','-mmacosx-version-min=11.5'],
-                            extra_link_args=['-Wl',
-                                            '-framework',
-                                            'Metal',
-                                            '-Wl',
-                                            '-framework',
-                                            'MetalKit',
-                                            '-Wl',
-                                            '-framework',
-                                            'Cocoa',
-                                            '-Wl',
-                                            '-framework',
-                                            'CoreFoundation',
-                                            '-fobjc-link-runtime'])],
+            ext_modules=ext_modules,
             zip_safe=False,
             classifiers=[
                 "Programming Language :: Python :: 3",
