@@ -640,7 +640,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
 
   struct cudaFuncAttributes funcAttrib;
-  checkCudaErrors(cudaFuncGetAttributes(&funcAttrib, StressKernel));
+  mxcheckGPUErrors(cudaFuncGetAttributes(&funcAttrib, StressKernel));
 
   int blockSizeStress;   // The launch configurator returned block size
   int minGridSizeStress; // The minimum grid size needed to achieve the

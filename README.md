@@ -137,20 +137,23 @@ Overall, Metal requires a bit more coding to prepare the pipelines for compute e
 While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
 
 ## Performance comparison
-Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps shows the following computing times with different backends:
+Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps shows the following computing times with different backends.
 
-* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 62 s
+CUDA execution was done in 128 GB Xeon W-2125 CPU @ 4.00GHz Dell system. AMD Vegad 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon 
+
+* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 57s
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 48s. OpenCL: 67s
 * AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s)  - Metal: 116s. OpenCL: 122s
 * M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 189s. OpenCL: 73s
 
 
+
 The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
-* The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 200% slower, which is very close to the theoretical difference of raw SP TFLOPS performance of 180%.
-* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being just 17% slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
-* The comparison of the AMD W6800 vs. M1 Max Pro (Metal vs. OpenCL) is much more aligned to the theoretical difference in TFLOPS (W6800 50% faster than M1 Max Pro, with a theoretical difference of 70% ) 
-* The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 eating dust. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
-* The fact that Metal shows better performance in AMD GPUs compared to Apple Silicon is also unexpected.
+* The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
+* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being just 28% slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
+* The comparison of the AMD W6800 (Metal) vs. M1 Max Pro (OpenCL) is much more aligned to the theoretical difference in TFLOPS (W6800 50% faster than M1 Max Pro, with a theoretical difference of 70% ) 
+* The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
+* The fact that Metal shows better performance than OpenCL in AMD GPUs compared to Apple Silicon is also surprising.
 
 
 # Supported platforms for Rayleigh integral
