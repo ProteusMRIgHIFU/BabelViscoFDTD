@@ -728,9 +728,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
 #ifdef OPENCL
-  const  size_t global_stress_particle[3] ={Find_GPU_Size(N1),
-                                            Find_GPU_Size(N2),
-                                            Find_GPU_Size(N3)};
+
+  const  size_t global_stress_particle[3] ={(size_t)ceil((float)(INHOST(N1)) / 4.0)*4,
+                                            (size_t)ceil((float)(INHOST(N2)) / 4.0)*4,
+                                            (size_t)ceil((float)(INHOST(N3)) / 4.0)*4};
   const  size_t global_stress_local[3] ={4,4,4};
   const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
@@ -792,9 +793,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(clSetKernelArg(StressKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
-        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, global_stress_particle, 0, NULL, NULL));
+        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, global_stress_local, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
-        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, global_stress_particle, 0, NULL, NULL));
+        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, global_stress_local, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
 
 #endif
@@ -819,9 +820,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
         commandEncoderStress.DispatchThreadgroups(
             mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
-              (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
-              (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
+              (unsigned int)ceil((float)(INHOST(N1)) / 4.0),
+              (unsigned int)ceil((float)(INHOST(N2)) / 4.0),
+              (unsigned int)ceil((float)(INHOST(N3)) / 4.0)),
             mtlpp::Size(4, 4, 4));
         commandEncoderStress.EndEncoding();
 

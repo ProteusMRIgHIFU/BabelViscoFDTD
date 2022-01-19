@@ -5,8 +5,10 @@ import sys
 from os import path
 from pprint import pprint
 from distutils import sysconfig
+from this import d
 from setuptools import setup, Extension, find_packages, Command
 from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
 import numpy as np
 import glob
 from distutils.unixccompiler import UnixCCompiler
@@ -14,12 +16,17 @@ from shutil import copyfile, copytree,rmtree
 
 from distutils.command.install_headers import install_headers
 
-version = '0.9.3'
+dir_path =path.dirname(os.path.realpath(__file__))+os.sep
+
+version = '0.9.4-5'
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
 
 bRayleighMetalCompiled=False
+
+if os.path.isdir(dir_path+"build"): #can't find a better way to ensure in-tree builds won't fail
+    rmtree(dir_path+"build")
 def CompileRayleighMetal(build_temp,build_lib):
     global bRayleighMetalCompiled
     if not bRayleighMetalCompiled:
@@ -27,10 +34,10 @@ def CompileRayleighMetal(build_temp,build_lib):
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
         print('Compiling Rayleigh Metal interface')
-        copytree('src/Metal',build_temp )
+        copytree(dir_path+'src/Metal',build_temp )
         for fn in ['Indexing.h','GPU_KERNELS.h','kernelparamsMetal.h','StressKernel.h',
                     'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
-            copyfile('src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
+            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
 
         command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
@@ -46,7 +53,7 @@ def CompileRayleighMetal(build_temp,build_lib):
 
 def PrepareOpenCLKernel():
     #this function merges the kernel code to be usable for opencl
-    with open('src'+os.sep+'GPU_KERNELS.h','r') as f:
+    with open(dir_path+'src'+os.sep+'GPU_KERNELS.h','r') as f:
         GPU_KERNELS=f.readlines()
 
     with open('BabelViscoFDTD'+os.sep+'_gpu_kernel.c','w') as f:
@@ -55,16 +62,17 @@ def PrepareOpenCLKernel():
                 f.write(l)
             else:
                 incfile = l.split('"')[1]
-                with open('src'+os.sep+incfile,'r') as g:
+                with open(dir_path+'src'+os.sep+incfile,'r') as g:
                     inclines=g.readlines()
                 f.writelines(inclines)
-    copyfile('src'+os.sep+'Indexing.h','BabelViscoFDTD'+os.sep+'_indexing.h')
+    copyfile(dir_path+'src'+os.sep+'Indexing.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing.h')
     
+install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0','pyopencl>=2020.1']
+
+PrepareOpenCLKernel()
+
 if 'arm64' not in platform.platform():
     CUDA_SAMPLES_LOCATION=os.environ.get('CUDA_SAMPLES_LOCATION',None)
-
-
-
     # Command line flags forwarded to CMake (for debug purpose)
     cmake_cmd_args = []
     for f in sys.argv:
@@ -165,53 +173,29 @@ if 'arm64' not in platform.platform():
 
     # The following line is parsed by Sphinx
     print('Adding  CPU')
-    modules=[CMakeExtension(c_module_name+'_single'),
+    ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
     if platform.system() in ['Linux','Windows']:
         print('Adding CUDA')
-        modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
+        ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
                 CMakeExtension(c_module_name+'_CUDA_double')]
+        install_requires.append('pycuda>=2020.1')
 
 
     if platform.system() in ['Darwin']:
-        modules.append(CMakeExtension(c_module_name+'_OPENCL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
-        modules.append(CMakeExtension(c_module_name+'_OPENCL_double',extra_compile_args = ["-mmacosx-version-min=11.3"]))
-        modules.append(CMakeExtension(c_module_name+'_METAL_single',extra_compile_args = ["-mmacosx-version-min=11.3"]))
-        modules.append(CMakeExtension('pi_ocl',cmake_lists_dir='pi_ocl'))
+        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_single',extra_compile_args = ["-mmacosx-version-min=11.0"]))
+        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_double',extra_compile_args = ["-mmacosx-version-min=11.0"]))
+        ext_modules.append(CMakeExtension(c_module_name+'_METAL_single',extra_compile_args = ["-mmacosx-version-min=11.0"]))
+        ext_modules.append(CMakeExtension('pi_ocl',cmake_lists_dir='pi_ocl'))
     else:
-        modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
-        modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
+        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
+        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
 
+    cmdclass={'build_ext': CMakeBuild}
+   
 
-
-    PrepareOpenCLKernel()
-
-    setup(name='BabelViscoFDTD',
-        packages=['BabelViscoFDTD','BabelViscoFDTD.tools','pi_ocl'],
-        include_package_data=True,
-        package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
-        version=version,
-        description='GPU/CPU 3D FDTD solution of viscoelastic equation',
-        author='Samuel Pichardo',
-        author_email='samuel.pichardo@ucalgary.ca',
-        keywords=['FDTD', 'CUDA', 'viscoelastic'],
-        long_description=open('README.md').read(),
-        long_description_content_type='text/markdown',
-        install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0','pyopencl>=2020.1'],
-        ext_modules=modules,
-        cmdclass={'build_ext': CMakeBuild},
-        zip_safe=False,
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: MacOS",
-            "Operating System :: Microsoft :: Windows",
-            "Operating System :: POSIX :: Linux",
-        ],
-        )
 else:
-    PrepareOpenCLKernel()
-
+    #specific building conditions for Apple Silicon systems
     class DarwinInteropBuildExt(build_ext):
         def initialize_options(self):
 
@@ -273,14 +257,62 @@ else:
             UnixCCompiler.link = patched_link
             super().initialize_options()
 
+        def build_extension(self, ext):
+            if ext.name =='pi_ocl':
+                try:
+                    out = subprocess.check_output(['cmake', '--version'])
+                except OSError:
+                    raise RuntimeError('Cannot find CMake executable')
+
+                cfg = 'Release'
+                extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+                cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
+                                '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir+os.sep+'BabelViscoFDTD')]
+                print('***\n\n\n\n\n\n\n\n\****')
+            # Config and build the extension
+
+                subprocess.check_call(['cmake', dir_path+os.sep+'pi_ocl'] + cmake_args,
+                                        cwd=self.build_temp)
+                subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
+                                    cwd=self.build_temp)
+            else:
+                super().build_extension(ext)
+
         def build_extensions(self):
             print('building extension')
-            if platform.system() in ['Darwin']:
-                CompileRayleighMetal(self.build_temp,self.build_lib)
+            CompileRayleighMetal(self.build_temp,self.build_lib)
+
             super().build_extensions()
+
+        
 
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
+
+    
+
+    class CustomInstall(install):
+        """Custom handler for the 'install' command."""
+        def run(self):
+            super().run()
+            try:
+                out = subprocess.check_output(['cmake', '--version'])
+            except OSError:
+                raise RuntimeError('Cannot find CMake executable')
+
+            cfg = 'Release'
+            cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
+                        '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), dir_path+os.sep+'BabelViscoFDTD')]
+            
+        # Config and build the extension
+            subprocess.check_call(['cmake', dir_path+os.sep+'pi_ocl'] + cmake_args,
+                                    cwd=dir_path+'build')
+            subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
+                                cwd=dir_path+'build')
+
+            
+            
+        
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
                     define_macros=[("SINGLE_PREC",None),
@@ -294,13 +326,25 @@ else:
                     extra_compile_args=['-Xclang','-fopenmp'],
                     extra_link_args=['-lomp'],
                     include_dirs=[npinc]),
+                Extension('pi_ocl',['pi_ocl/pi_ocl.c']),
+                Extension(c_module_name+'_OPENCL_single', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("SINGLE_PREC",None),
+                                ("OPENCL",None)],
+                    extra_link_args=['-Wl','-framework','OpenCL'],
+                    include_dirs=[npinc]),
+                Extension(c_module_name+'_OPENCL_double', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("OPENCL",None)],
+                    extra_link_args=['-Wl','-framework','OpenCL'],
+                    include_dirs=[npinc]),
                 Extension(c_module_name+'_METAL_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.cpp",
                     "src/mtlpp/mtlpp.mm"],
                     define_macros=[("SINGLE_PREC",None),
                                 ("METAL",None)],
                     include_dirs=[npinc],
-                    extra_compile_args=['-std=c++11','-mmacosx-version-min=11.5'],
+                    extra_compile_args=['-std=c++11','-mmacosx-version-min=11.0'],
                     extra_link_args=['-Wl',
                                     '-framework',
                                     'Metal',
@@ -319,24 +363,25 @@ else:
                             ["src/page_memory.c"],
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
+    cmdclass={'build_ext': DarwinInteropBuildExt}
 
-    setup(name="BabelViscoFDTD",
-            version=version,
-            packages=['BabelViscoFDTD','BabelViscoFDTD.tools'],
-            description='GPU/CPU 3D FDTD solution of viscoelastic equation',
-            package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
-            author_email='samuel.pichardo@ucalgary.ca',
-            keywords=['FDTD', 'CUDA', 'viscoelastic'],
-            long_description=open('README.md').read(),
-            long_description_content_type='text/markdown',
-            cmdclass={'build_ext': DarwinInteropBuildExt},
-            ext_modules=ext_modules,
-            zip_safe=False,
-            classifiers=[
-                "Programming Language :: Python :: 3",
-                "License :: OSI Approved :: MIT License",
-                "Operating System :: MacOS",
-                "Operating System :: Microsoft :: Windows",
-                "Operating System :: POSIX :: Linux",
-            ])
-
+setup(name="BabelViscoFDTD",
+        version=version,
+        packages=['BabelViscoFDTD','BabelViscoFDTD.tools'],
+        install_requires=install_requires,
+        description='GPU/CPU 3D FDTD solution of viscoelastic equation',
+        package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
+        author_email='samuel.pichardo@ucalgary.ca',
+        keywords=['FDTD', 'CUDA', 'OpenCL','Metal','viscoelastic'],
+        long_description=open('README.md').read(),
+        long_description_content_type='text/markdown',
+        cmdclass=cmdclass,
+        ext_modules=ext_modules,
+        zip_safe=False,
+        classifiers=[
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: MacOS",
+            "Operating System :: Microsoft :: Windows",
+            "Operating System :: POSIX :: Linux",
+        ])
