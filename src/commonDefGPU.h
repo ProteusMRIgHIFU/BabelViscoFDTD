@@ -1,8 +1,8 @@
 /*
 
 */
-#ifndef __3D_Staggered_CUDA
-#define __3D_Staggered_CUDA
+#ifndef __3D_Staggered_GPU
+#define __3D_Staggered_GPU
 
 #include <string.h>
 
@@ -16,7 +16,7 @@ enum CONSTANT_TYPES
 
 long Find_GPU_Size(const long m)
 {
-	//find higher dimension that is multilpe of 4
+	//find higher dimension that is multiple of 4
 	long n =m;
 	while(n%4!=0)
 		n++;
@@ -160,10 +160,6 @@ const char *opencl_err_code (cl_int err_in)
 }
 #endif
 
-#ifdef CUDA
-#include <helper_functions.h>
-#include <helper_cuda.h>
-#endif
 
 int mxcheck(int result, char const *const func, const char *const file, int const line)
 {

@@ -41,42 +41,6 @@ Please note that not every backend is available in a given combination of OS+Pyt
 
 OpenCL for Windows is operational via `pyopencl`. In Linux and MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
-### Multi-platform single code
-The underlying extension code (start at `FDTDStaggered3D_with_relaxation_python.c`) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless if using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
-
-Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled, and the macros help a lot to reduce the coding.
-
-Consult `setup.py` to review how all the potential modalities are generated.
-
-
-### MacOS notes
-MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
-
-
-**Important**: The OpenCL implementation with M1 processors seems to work only with native Python arm64 installation. See below details on how to install a Python enviroment native for Apple Silicon.
-
-### Performance comparison
-Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, espeically when comparing Metal and OpenCL backends. A simulation for a domain of  [165,165,280] grid size and over 1464 temporal steps shows the following computing times with different backends:
-
-* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 11 s
-* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 56s. OpenCL: 56s
-* M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 41s. OpenCL: 16s
-
-
-The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
-* The ratio of performance between M1 Max Pro and A6000 is about 220% slower, so more or less following the theoretical SP throughput ratios
-* The surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 eating dust. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
-
-### Metal support
-Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing lacks serious examples. Nevertheless, the support for Metal is desirable for Apple silicon. Once all toolchains including native Python becomes available, it will be interesting to see how well their devices stand compared to Nvidia or AMD based systems, which are still leading in performance by a significant margin. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processros with 32 or more GB of RAM.
-
-While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process frozens after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your exeuction in chunks that can be called in seperate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
-
-### Supported platforms for Rayleigh integral
-Since v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
-
-Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` and `pyopencl` to compile the kernel directly in the Python library. For Metal, a wrapper written in Swift language is compiled during the installation. 
-
 # Requirements
 ## Python 3.8 and up - x64
 Use of virtual environments is highly recommended. Anaconda Python is a great choice as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8 
@@ -154,6 +118,45 @@ from BabelViscoFDTD import PropagationModel
 Model=PropagationModel()
 ```
 
+### Multi-platform single code
+The underlying extension code (start at `FDTDStaggered3D_with_relaxation_python.c`) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless if using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
+
+Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled, and the macros help a lot to reduce the coding.
+
+Consult `setup.py` to review how all the potential modalities are generated.
+
+# Important information specific to the different environments for use
+### MacOS notes
+MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
+
+**Important**: The OpenCL implementation with M1 processors seems to work only with native Python arm64 installation. See below details on how to install a Python environment native for Apple Silicon.
+
+### Metal support
+Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems, which are still leading in performance. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processors with 32 or more GB of RAM.
+
+While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
+
+## Performance comparison
+Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps shows the following computing times with different backends:
+
+* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 62 s
+* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 48s. OpenCL: 67s
+* AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s)  - Metal: 116s. OpenCL: 122s
+* M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 189s. OpenCL: 73s
+
+
+The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
+* The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 200% slower, which is very close to the theoretical difference of raw SP TFLOPS performance of 180%.
+* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being just 17% slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
+* The comparison of the AMD W6800 vs. M1 Max Pro (Metal vs. OpenCL) is much more aligned to the theoretical difference in TFLOPS (W6800 50% faster than M1 Max Pro, with a theoretical difference of 70% ) 
+* The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 eating dust. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
+* The fact that Metal shows better performance in AMD GPUs compared to Apple Silicon is also unexpected.
+
+
+# Supported platforms for Rayleigh integral
+Since v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
+
+Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` and `pyopencl` to compile the kernel directly in the Python library. For Metal, a wrapper written in Swift language is compiled during the installation. 
 
 
 # Release notes
