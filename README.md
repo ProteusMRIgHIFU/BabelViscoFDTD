@@ -25,11 +25,11 @@ For the superposition method, users can consult the corresponding paper
 
 If you find this software useful for your research, please consider adding a citation to the above references in your publications and presentations.
 
-The software implementation supports multiple front-ends (Matlab and Python), OS environments (Windows, Linux, MacOS) and CPU/GPU execution. While the implementation supports CPU-based execution, a modern NVIDIA-based GPU or AMD in MacOS is highly recommended.
+The software implementation supports Python as the main high-end interface, OS environments (Windows, Linux, MacOS) and CPU/GPU execution. While the implementation supports CPU-based execution, a modern NVIDIA-based GPU, or Apple-Silicon/AMD in MacOS is highly recommended.
 
 ## Supported platforms
 
-Please note that Python and Linux are the preferred frontend and OS. Some of the advanced tutorial notebooks need libraries that are primarily available on Linux. Below there is a table with the backends supported by each OS
+Please note that not every backend is available in a given combination of OS+Python distribution; for example, Metal is not available under Windows, and CUDA is not available under MacOS. Some of the advanced tutorial notebooks need libraries that are primarily available on Linux. Below there is a table with the backends supported by each OS
 
 | OS \ Feature | CPU single | CPU double | CUDA single | CUDA double | OpenCL single | OpenCL double | Metal single |
 | --- | --- |  --- |  --- |  --- |  --- |  --- |  --- |
@@ -41,11 +41,23 @@ Please note that Python and Linux are the preferred frontend and OS. Some of the
 
 OpenCL for Windows is operational via `pyopencl`. In Linux and MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
+### Multi-platform single code
+The underlying extension code (start at `FDTDStaggered3D_with_relaxation_python.c`) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless if using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
+
+Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled, and the macros help a lot to reduce the coding.
+
+Consult `setup.py` to review how all the potential modalities are generated.
+
+
 ### MacOS limitations
-MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL is officially being out of support beyond Big Slur. For MacOS, Metal backend is recommended. Also, OpenCL in MacOS has other limitations such as the underlying driver may only support for 32 bits memory access, even if the card has more than 4 GB of RAM. If you need to access more than 4 GB of space for your simulation, only Metal can ensure it will support it.
+MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is running amazingly well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS has other limitations such as the underlying driver may only support for 32 bits memory access, even if the card has more than 4 GB of RAM. If you need to access more than 4 GB of space for your simulation, only Metal can ensure it will support it. 
+
+Latest results on M1 processors indicate that the 32 bits memory access is not applicable under Monterey; however, it seems it remains an issue for AMD processors.
+
+Strangely enough, the OpenCL implementation with M1 processors seems to work only with native arm64 installation.
 
 ### Performance comparison
-You can anticipate similar performance between modern AMD and NVIDIA GPUs, at least if using Metal backend. A simulation for a domain of  [237, 237, 469] grid size and over 2340 temporal steps shows the following computing times with different backends:
+Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, espeically when comparing Metal and OpenCL backends. A simulation for a domain of  [237, 237, 469] grid size and over 2340 temporal steps shows the following computing times with different backends:
 
 * Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 90 s
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 56s
@@ -67,10 +79,7 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 # Requirements
 ## Python 3.8 and up - x64
-Use of virtual environments is highly recommended. Anaconda Python is a great choice as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.7 
-
-Please note that the most advanced tutorial showing the Superposition method requires a library mainly available in Linux X64 and for Python 3.5 to 3.7. This library (`pymesh`) is constructive solid geometry (CSG) processing and is required to prepare the simulation domain. By saying this, any good CSG library that can perform intersection between meshes should do the job. If you know a more universal library that can run in any OS, please let me know via a new Github issue submission.
-
+Use of virtual environments is highly recommended. Anaconda Python is a great choice as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8 
 
 ### Basic dependencies:
 latest version of `pip`
@@ -116,35 +125,21 @@ You will need a VStudio installation that is compatible with your CUDA version (
 When installing CMAKE, be sure it is accessible in the Windows path.
 
 ## MacOS
-Any recent version of MacOS and XCode should be enough. Please note that the CPU version in MacOS does not support OpenMP (still working in a definitive solution via brew llvm or brew gcc). However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has only been tested in AMD-based systems.
+Any recent version of MacOS and XCode should be enough. The CPU version in MacOS supports OpenMP only in M1 processors. However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has been tested in AMD-based and M1-based systems.
+
+Best scenario for M1-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
 
 ## Installation
-If CUDA and supporting compiler are correctly installed, then it is straightforward to install using `pip install <directory>` or `pip3 install <directory>` depending on your installation. You need to specify the location where the CUDA samples are installed as those are required for the compilation.
-
-Below a few examples for both Linux and Windows; the command must be run in the directory where BabelViscoFDTD was cloned (i.e. /home/<user>/Github)
-
-Not every backend will be installed depending on your OS. For example, both Windows and Linux will install the CPU (OpenMP enabled) and CUDA backends, while MacOS will install the CPU and OpenCL backends.
-
-### Linux
+BabelViscoFDTD is available via `pip`
 ```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install  BabelViscoFDTD/
-```
-or
-```
-CUDA_SAMPLES_LOCATION=/usr/local/cuda/samples/common/inc pip3 install --user BabelViscoFDTD/
-```
-if you do not have write access to the global Python installation
-### Windows
-```
-set "CUDA_SAMPLES_LOCATION=C:\ProgramData\NVIDIA Corporation\CUDA Samples\v11.2\common\inc" && pip install  BabelViscoFDTD\
+ pip install  BabelViscoFDTD
 ```
 
-### MacOS
-Since CUDA is not supported anymore in MacOS, just install with:
-```
-pip install  BabelViscoFDTD/
-```
+If you prefer trying experimental versions, you can clone https://github.com/ProteusMRIgHIFU/BabelViscoFDTD.git and install with:
 
+```
+python setup.py install
+```
 # How to use
 After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
@@ -160,17 +155,11 @@ Model=PropagationModel()
 ```
 
 
-## Multi-platform single code
-The underlying extension code (start at `FDTDStaggered3D_with_relaxation_python.c`) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless if using a CPU or GPU backend. It supports via macro definitions compilation for Matlab and Python extensions; support for CUDA, X86_64 and OpenCL architectures; single or double precision.
-
-Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, the are a few implementation details that need to be handled, and the macros help a lot to reduce the coding.
-
-Consult `setup.py` to review how all the potential modalities are generated.
-
 
 # Release notes
-* 0.9.4  Jan 18, 2021.
+* 0.9.5  Jan 18, 2021.
     * Cleaning some minor bugs and add BHTE code using pycuda and pyopencl.
+    * Very first pip-based version
 * 0.9.3  Sep 29, 2021.
     * Improved support for both Metal and OpenCL. For Metal, stable operation is now feasible for large domains using all available memory in modern high-end GPUs. OpenCL is now supported in all OSs.
 * 0.9.2  June 13, 2021.
