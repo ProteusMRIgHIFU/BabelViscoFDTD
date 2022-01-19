@@ -49,19 +49,19 @@ Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very sim
 Consult `setup.py` to review how all the potential modalities are generated.
 
 
-### MacOS limitations
-MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is running amazingly well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS has other limitations such as the underlying driver may only support for 32 bits memory access, even if the card has more than 4 GB of RAM. If you need to access more than 4 GB of space for your simulation, only Metal can ensure it will support it. 
+### MacOS notes
+MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
 
-Latest results on M1 processors indicate that the 32 bits memory access is not applicable under Monterey; however, it seems it remains an issue for AMD processors.
 
-Strangely enough, the OpenCL implementation with M1 processors seems to work only with native arm64 installation.
+**Important**: The OpenCL implementation with M1 processors seems to work only with native Python arm64 installation. See below details on how to install a Python enviroment native for Apple Silicon.
 
 ### Performance comparison
-Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, espeically when comparing Metal and OpenCL backends. A simulation for a domain of  [237, 237, 469] grid size and over 2340 temporal steps shows the following computing times with different backends:
+Performance between modern AMD, NVIDIA and Apple-Silicon GPUs can show important differences, espeically when comparing Metal and OpenCL backends. A simulation for a domain of  [165,165,280] grid size and over 1464 temporal steps shows the following computing times with different backends:
 
-* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 90 s
-* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 56s
-* M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 221s
+* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 11 s
+* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 56s. OpenCL: 56s
+* M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 41s. OpenCL: 16s
+
 
 The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
 * The ratio of performance between M1 Max Pro and A6000 is about 220% slower, so more or less following the theoretical SP throughput ratios

@@ -100,7 +100,8 @@ namespace ns
     }
 
     Error::Error() :
-        Object(Handle{ (__bridge void*)[[NSError alloc] init] })
+       // Object(Handle{ (__bridge void*)[[NSError alloc] init] })
+       Object(Handle{ (__bridge void*) [NSError errorWithDomain:@"none" code:0 userInfo:nil]})
     {
 
     }
