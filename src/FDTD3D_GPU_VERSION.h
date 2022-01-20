@@ -670,7 +670,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   {
       dimBlockStress.x=(unsigned int)ManualLocalSize_pr[0];
       dimBlockStress.y=(unsigned int)ManualLocalSize_pr[1];
-      dimBlockStress.z=(unsigned int)ManualLocalSize_pr[2]);
+      dimBlockStress.z=(unsigned int)ManualLocalSize_pr[2];
   }
   else
   {
@@ -697,13 +697,31 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   cudaOccupancyMaxPotentialBlockSize( &minGridSizeParticle, &blockSizeParticle,
                                   ParticleKernel, 0, 0);
   PRINTF("minGridSize and Blocksize from API for Particle = %i and %i\n",minGridSizeParticle,blockSizeParticle);
-  dimBlockParticle.x=8;
-  dimBlockParticle.y=8;
-  dimBlockParticle.z=(unsigned int)floor(blockSizeParticle/(dimBlockParticle.y*dimBlockParticle.x));
-
-  dimGridParticle.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockParticle.x);
-  dimGridParticle.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockParticle.y);
-  dimGridParticle.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockParticle.z);
+  if (ManualLocalSize_pr[0] != -1)
+  {
+      dimBlockParticle.x=(unsigned int)ManualLocalSize_pr[0];
+      dimBlockParticle.y=(unsigned int)ManualLocalSize_pr[1];
+      dimBlockParticle.z=(unsigned int)ManualLocalSize_pr[2];
+  }
+  else
+  {
+      dimBlockParticle.x=8;
+      dimBlockParticle.y=8;
+      dimBlockParticle.z=(unsigned int)floor(blockSizeStress/(dimBlockStress.y*dimBlockStress.x));
+  }
+  if (ManualGroupSize_pr[0] != -1)
+  {
+      dimGridParticle.x  = (unsigned int)ManualGroupSize_pr[0];
+      dimGridParticle.y  = (unsigned int)ManualGroupSize_pr[1];
+      dimGridParticle.z  = (unsigned int)ManualGroupSize_pr[2];
+  }
+  else
+  {
+      dimGridParticle.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockParticle.x);
+      dimGridParticle.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockParticle.y);
+      dimGridParticle.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockParticle.z);
+  }
+  
   PRINTF(" Particle block size to %dx%dx%d\n", dimBlockParticle.x, dimBlockParticle.y,dimBlockParticle.z);
   PRINTF(" Particle grid size to %dx%dx%d\n", dimGridParticle.x, dimGridParticle.y,dimGridParticle.z);
 
