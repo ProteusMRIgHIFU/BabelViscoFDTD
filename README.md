@@ -39,7 +39,7 @@ Please note that not every backend is available in a given combination of OS+Pyt
 
 *Y\** Feature is enabled, but not yet fully tested. *Y\+* Feature may be limited to only 32-bits addressable memory independently of the GPU memory available.
 
-OpenCL for Windows is operational via `pyopencl`. In Linux and MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
+OpenCL for Windows and Apple Silicon systems is operational via `pyopencl`. In MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS for X86-64 systems, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
 # Requirements
 ## Python 3.8 and up - x64
@@ -84,12 +84,12 @@ Ubuntu 20.04 LTS is an excellent candidate to start with.
 ## Linux in Windows through WSL2
 Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
 ## Windows native
-You will need a VStudio installation that is compatible with your CUDA version (for example, CUDA 11.2 supports officially VS 2015 to 2019), and be sure of installing the CUDA samples and take note of the location where they were installed.
+You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
 
 When installing CMAKE, be sure it is accessible in the Windows path.
 
 ## MacOS
-Any recent version of MacOS and XCode should be enough. The CPU version in MacOS supports OpenMP only in M1 processors. However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has been tested in AMD-based and M1-based systems.
+Any recent version of MacOS and XCode with the command-line tools should be enough. The CPU version in MacOS supports OpenMP only in M1 processors. However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has been tested in AMD-based and M1-based systems.
 
 Best scenario for M1-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
 
@@ -127,12 +127,12 @@ Consult `setup.py` to review how all the potential modalities are generated.
 
 # Important information specific to the different environments for use
 ### MacOS notes
-MacOS support for HPC has shifted significantly in recent years. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
+MacOS support for HPC has shifted in recent years significantly. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
 
-**Important**: The OpenCL implementation with M1 processors seems to work only with native Python arm64 installation. See below details on how to install a Python environment native for Apple Silicon.
+**Important**: The OpenCL implementation with M1 processors seems to work only with the native Python arm64 installation mentioned above. 
 
 ### Metal support
-Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems, which are still leading in performance. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processors with 32 or more GB of RAM.
+Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processors with 32 or more GB of RAM.
 
 While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
 
@@ -144,7 +144,7 @@ Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important
 * AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s) 
 * M1 Max Pro  (64 GB RAM,10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
 
-RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon. The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. Both the Dell Xeon system and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. For the OpenCL test in 
+RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon. The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. Both the Dell Xeon system and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max Pro. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 tests.
 OpenCL and Metal code were compiled
 
 
@@ -153,13 +153,12 @@ OpenCL and Metal code were compiled
 | AMD W6800 | - | 67s | 48s | - |
 | AMD Vega 64 | - | 122s | 116s | - |
 | NVidia A6000 | 57s| 77s | -| - |
-| M1 Max Pro | - | 59s | 189s| 806s |
-
-
+| M1 Max Pro | - | 189s | 57s | 806s |
+| Xeon W-2125 | - | - | - | 2202s|
 
 The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
 * The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
-* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being marginally slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
+* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, matching the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
 * The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
 * The fact that Metal shows better performance than OpenCL in AMD GPUs compared to Apple Silicon is also surprising.
 * The OpenMP performance of the M1 Max Pro is simply excellent, showing a dramatic speedup compared to the Dell Xeon system that was clocked . Highly likely the tight integration of the CPU to the memory bank in the M1 system may have played a significant role.
