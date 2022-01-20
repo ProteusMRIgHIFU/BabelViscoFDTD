@@ -42,8 +42,8 @@ Please note that not every backend is available in a given combination of OS+Pyt
 OpenCL for Windows and Apple Silicon systems is operational via `pyopencl`. In MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS for X86-64 systems, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
 # Requirements
-## Python 3.8 and up - x64
-Use of virtual environments is highly recommended. Anaconda Python is a great choice as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8 
+## Python 3.8 and up 
+Use of virtual environments is highly recommended. Anaconda Python and Enthought EDM are great choices as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8. For Apple Silicon systems, it is highly recommended to use a native Python for arm64 (see below details).
 
 ### Basic dependencies:
 latest version of `pip`
@@ -54,6 +54,7 @@ latest version of `pip`
 * setuptools >=51.0.0
 * pyopencl>=2020
 * pycuda>=2020 (only in Linux and Windows)
+* mkl (obligatory for OpenMP support in X86-64 Apple systems)
 
 ### Extra dependencies required in some of the tutorials
 * scikit-image >= 0.17
@@ -89,7 +90,7 @@ You will need a VStudio installation that is compatible with your CUDA version; 
 When installing CMAKE, be sure it is accessible in the Windows path.
 
 ## MacOS
-Any recent version of MacOS and XCode with the command-line tools should be enough. The CPU version in MacOS supports OpenMP only in M1 processors. However, the OpenCL version works without a problem in Intel-based integrated GPUs and AMD GPUs. Metal has been tested in AMD-based and M1-based systems.
+Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP both in X86-64 and M1 processors. The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  M1-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).
 
 Best scenario for M1-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
 
@@ -102,16 +103,17 @@ Metal backend will be available for both X86-64 and Apple Silicon systems.
 ## Installation
 BabelViscoFDTD is available via `pip`
 ```
- pip install  BabelViscoFDTD
+ pip install BabelViscoFDTD
 ```
 
 If you prefer trying experimental versions, you can clone https://github.com/ProteusMRIgHIFU/BabelViscoFDTD.git and install with:
 
 ```
-python setup.py install
+pip install BabelViscoFDTD/
 ```
+run in the parent directory where you cloned the repository.
 # How to use
-After installation, you can consult the Jupyter Notebooks in `Tutorial Notebooks` to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
+After installation, you can download the Jupyter Notebooks in `Tutorial Notebooks` in the repository https://github.com/ProteusMRIgHIFU/BabelViscoFDTD to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
 # Structure of code
 The FDTD solution is accessed as a Python external function. The primary method to execute a simulation is via the class
@@ -148,26 +150,27 @@ Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important
 * Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
 * AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s) 
-* M1 Max Pro  (64 GB RAM,10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
+* M1 Max Pro  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
 
-RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon. The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. Both the Dell Xeon system and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max Pro. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 tests.
+RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system (10x2 Core Intel Xeon W). The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. The Dell Xeon system, iMac Pro and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max Pro. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 tests.
 OpenCL and Metal code were compiled
 
 
 | Device |  CUDA single | OpenCL single |  Metal single | OpenMP single|
 | --- | --- |  --- |  --- |  ---  |
-| AMD W6800 | - | 67s | 48s | - |
-| AMD Vega 64 | - | 122s | 116s | - |
-| NVidia A6000 | 57s| 77s | -| - |
-| M1 Max Pro | - | 189s | 57s | 806s |
-| Xeon W-2125 | - | - | - | 2202s|
+| AMD W6800 | - | 67 s | 48 s | - |
+| AMD Vega 64 | - | 122 s | 116 s | - |
+| NVidia A6000 | 57 s| 77 s | -| - |
+| M1 Max Pro | - |  57 s |189 s| 806 s |
+| Xeon W-2125 | - | - | - | 2202 s (8 threads)|
+| iMac Pro (Xeon W) | - | - | - | 1649 s  (20 threads)|
 
-The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
+The number of computing units is becoming a bit useless to compare. There are few interesting bits:
 * The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
 * *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, matching the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
-* The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
+* The other surprise was the W6800 with Metal that (after using the same block thread arrangements as in the M1) got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
 * The fact that Metal shows better performance than OpenCL in AMD GPUs compared to Apple Silicon is also surprising.
-* The OpenMP performance of the M1 Max Pro is simply excellent, showing a dramatic speedup compared to the Dell Xeon system that was clocked . Highly likely the tight integration of the CPU to the memory bank in the M1 system may have played a significant role.
+* The OpenMP performance of the M1 Max Pro is simply excellent, showing a dramatic speedup compared to the Dell Xeon and iMac Pro systems. Highly likely the tight integration of the CPU to the memory bank in the M1 system may play a significant role.
 
 
 # Supported platforms for Rayleigh integral
