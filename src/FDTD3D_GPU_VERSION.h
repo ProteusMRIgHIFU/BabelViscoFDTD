@@ -729,10 +729,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
 #ifdef OPENCL
 
-  const  size_t global_stress_particle[3] ={(size_t)ceil((float)(INHOST(N1)) / 4.0)*4,
-                                            (size_t)ceil((float)(INHOST(N2)) / 4.0)*4,
-                                            (size_t)ceil((float)(INHOST(N3)) / 4.0)*4};
-  const  size_t global_stress_local[3] ={4,4,4};
+  // const  size_t global_stress_particle[3] ={(size_t)ceil((float)(INHOST(N1)) / 4.0)*4,
+  //                                           (size_t)ceil((float)(INHOST(N2)) / 4.0)*4,
+  //                                           (size_t)ceil((float)(INHOST(N3)) / 4.0)*4};
+  // const  size_t global_stress_local[3] ={4,4,4};
+  const  size_t global_stress_particle[3] ={(size_t)INHOST(N1),(size_t)INHOST(N2),(size_t)INHOST(N3)};
+  const  size_t * global_stress_local = NULL;
   const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
   {

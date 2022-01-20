@@ -18,7 +18,7 @@ from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.4-5'
+version = '0.9.4-6'
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
