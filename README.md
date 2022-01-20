@@ -136,24 +136,33 @@ Overall, Metal requires a bit more coding to prepare the pipelines for compute e
 
 While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
 
-## Performance comparison
-Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps shows the following computing times with different backends.
+## SP performance comparison
+Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps was used to benchmark multiple backends and systems.
 
-CUDA execution was done in 128 GB Xeon W-2125 CPU @ 4.00GHz Dell system. AMD Vegad 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon 
+* Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
+* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
+* AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s) 
+* M1 Max Pro  (64 GB RAM,10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
 
-* Nvidia GTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s) - CUDA : 57s
-* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s)  - Metal: 48s. OpenCL: 67s
-* AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s)  - Metal: 116s. OpenCL: 122s
-* M1 Max Pro  (64 GB RAM, 32 Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)  - Metal: 189s. OpenCL: 73s
+RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system Xeon. The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. Both the Dell Xeon system and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. For the OpenCL test in 
+OpenCL and Metal code were compiled
+
+
+| Device |  CUDA single | OpenCL single |  Metal single | OpenMP single|
+| --- | --- |  --- |  --- |  ---  |
+| AMD W6800 | - | 67s | 48s | - |
+| AMD Vega 64 | - | 122s | 116s | - |
+| NVidia A6000 | 57s| 77s | -| - |
+| M1 Max Pro | - | 59s | 189s| 806s |
 
 
 
 The number of computing units is becoming a bit useless to compare. Anyway, there are few interesting bits:
 * The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
-* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being just 28% slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
-* The comparison of the AMD W6800 (Metal) vs. M1 Max Pro (OpenCL) is much more aligned to the theoretical difference in TFLOPS (W6800 50% faster than M1 Max Pro, with a theoretical difference of 70% ) 
+* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, being marginally slower than the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
 * The other surprise was the W6800 with Metal, after using the same block thread arrangements as in the M1 it got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
 * The fact that Metal shows better performance than OpenCL in AMD GPUs compared to Apple Silicon is also surprising.
+* The OpenMP performance of the M1 Max Pro is simply excellent, showing a dramatic speedup compared to the Dell Xeon system that was clocked . Highly likely the tight integration of the CPU to the memory bank in the M1 system may have played a significant role.
 
 
 # Supported platforms for Rayleigh integral

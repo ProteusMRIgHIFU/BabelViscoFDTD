@@ -290,28 +290,6 @@ else:
     bIncludePagememory=np.__version__ >="1.22.0"
 
     
-
-    class CustomInstall(install):
-        """Custom handler for the 'install' command."""
-        def run(self):
-            super().run()
-            try:
-                out = subprocess.check_output(['cmake', '--version'])
-            except OSError:
-                raise RuntimeError('Cannot find CMake executable')
-
-            cfg = 'Release'
-            cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
-                        '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), dir_path+os.sep+'BabelViscoFDTD')]
-            
-        # Config and build the extension
-            subprocess.check_call(['cmake', dir_path+os.sep+'pi_ocl'] + cmake_args,
-                                    cwd=dir_path+'build')
-            subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
-                                cwd=dir_path+'build')
-
-            
-            
         
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
