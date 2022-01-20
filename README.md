@@ -149,7 +149,7 @@ Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important
 
 * Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
-* AMD Vega 64 (8 GB RAM, 4096  stream processors, theoretical 12.6 SP TFLOP , memory bandwidth  483 GB/s) 
+* AMD Vega 56 (8 GB RAM, 3584  stream processors, theoretical 10.5 SP TFLOP , memory bandwidth  410 GB/s) 
 * M1 Max Pro  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
 
 RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system (10x2 Core Intel Xeon W). The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. The Dell Xeon system, iMac Pro and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max Pro. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 tests.
@@ -158,8 +158,8 @@ OpenCL and Metal code were compiled
 
 | Device |  CUDA single | OpenCL single |  Metal single | OpenMP single|
 | --- | --- |  --- |  --- |  ---  |
-| AMD W6800 | - | 67 s | 48 s | - |
-| AMD Vega 64 | - | 122 s | 116 s | - |
+| AMD W6800 | - | 45 s | 43 s | - |
+| AMD Vega 56 | - | 90 s | 144 s | - |
 | NVidia A6000 | 57 s| 77 s | -| - |
 | M1 Max Pro | - |  57 s |189 s| 806 s |
 | Xeon W-2125 | - | - | - | 2202 s (8 threads)|

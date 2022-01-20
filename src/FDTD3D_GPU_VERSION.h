@@ -665,13 +665,32 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   cudaOccupancyMaxPotentialBlockSize( &minGridSizeStress, &blockSizeStress,
                                   StressKernel, 0, 0);
   PRINTF("minGridSize and Blocksize from API for stress = %i and %i\n",minGridSizeStress,blockSizeStress);
-  dimBlockStress.x=8;
-  dimBlockStress.y=8;
-  dimBlockStress.z=(unsigned int)floor(blockSizeStress/(dimBlockStress.y*dimBlockStress.x));
+  //We handle the case the user wants to specify manually the computing grid sizes
+  if (ManualLocalSize_pr[0] != -1)
+  {
+      dimBlockStress.x=(unsigned int)ManualLocalSize_pr[0];
+      dimBlockStress.y=(unsigned int)ManualLocalSize_pr[1];
+      dimBlockStress.z=(unsigned int)ManualLocalSize_pr[2]);
+  }
+  else
+  {
+      dimBlockStress.x=8;
+      dimBlockStress.y=8;
+      dimBlockStress.z=(unsigned int)floor(blockSizeStress/(dimBlockStress.y*dimBlockStress.x));
+  }
+  if (ManualGroupSize_pr[0] != -1)
+  {
+      dimGridStress.x  = (unsigned int)ManualGroupSize_pr[0];
+      dimGridStress.y  = (unsigned int)ManualGroupSize_pr[1];
+      dimGridStress.z  = (unsigned int)ManualGroupSize_pr[2];
+  }
+  else
+  {
+      dimGridStress.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockStress.x);
+      dimGridStress.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockStress.y);
+      dimGridStress.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockStress.z);
+  }
 
-  dimGridStress.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockStress.x);
-  dimGridStress.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockStress.y);
-  dimGridStress.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockStress.z);
   PRINTF(" Stress block size to %dx%dx%d\n", dimBlockStress.x, dimBlockStress.y,dimBlockStress.z);
   PRINTF(" Stress grid size to %dx%dx%d\n", dimGridStress.x, dimGridStress.y,dimGridStress.z);
 
@@ -728,13 +747,41 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
 #ifdef OPENCL
+  //We handle the case the user wants to specify manually the computing grid sizes
+  size_t global_stress_particle[3];
+  if (ManualGroupSize_pr[0] != -1)
+  {
+      global_stress_particle[0]=(size_t)ManualGroupSize_pr[0];
+      global_stress_particle[1]=(size_t)ManualGroupSize_pr[1];
+      global_stress_particle[2]=(size_t)ManualGroupSize_pr[2];
+  }
+  else
+  {
+      global_stress_particle[0]=(size_t)INHOST(N1);
+      global_stress_particle[1]=(size_t)INHOST(N2);
+      global_stress_particle[2]=(size_t)INHOST(N3);
+  }
+  size_t * local_stress = NULL;
+  size_t local_stress_manual[3];
+  if (ManualLocalSize_pr[0] != -1)
+  {
+      local_stress_manual[0]=(size_t)ManualLocalSize_pr[0];
+      local_stress_manual[1]=(size_t)ManualLocalSize_pr[1];
+      local_stress_manual[2]=(size_t)ManualLocalSize_pr[2];
+      local_stress=local_stress_manual;
+  }
 
-  // const  size_t global_stress_particle[3] ={(size_t)ceil((float)(INHOST(N1)) / 4.0)*4,
-  //                                           (size_t)ceil((float)(INHOST(N2)) / 4.0)*4,
-  //                                           (size_t)ceil((float)(INHOST(N3)) / 4.0)*4};
-  // const  size_t global_stress_local[3] ={4,4,4};
-  const  size_t global_stress_particle[3] ={(size_t)INHOST(N1),(size_t)INHOST(N2),(size_t)INHOST(N3)};
-  const  size_t * global_stress_local = NULL;
+  PRINTF("global_stress_particle %i %i %i\n",
+        global_stress_particle[0],global_stress_particle[1],global_stress_particle[2]);
+  if (local_stress!=NULL)
+  {
+      PRINTF("local_stress %i %i %i\n",
+          local_stress[0],local_stress[1],local_stress[2]);
+  }
+  else{
+     PRINTF("local_stress is NULL\n");
+  }
+
   const  size_t global_sensors[1] ={INHOST(NumberSensors)};
   if (NumberSnapshots>0)
   {
@@ -746,6 +793,90 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 54, sizeof(cl_mem), &gpu_SensorOutput_pr));
   mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 55, sizeof(cl_mem), &gpu_IndexSensorMap_pr));
+#endif
+
+#ifdef METAL
+  unsigned int local_stress[3];
+  unsigned int local_particle[3];
+  if (ManualLocalSize_pr[0] != -1)
+  {
+      local_stress[0]=(size_t)ManualLocalSize_pr[0];
+      local_stress[1]=(size_t)ManualLocalSize_pr[1];
+      local_stress[2]=(size_t)ManualLocalSize_pr[2];
+      local_particle[0]=(size_t)ManualLocalSize_pr[0];
+      local_particle[1]=(size_t)ManualLocalSize_pr[1];
+      local_particle[2]=(size_t)ManualLocalSize_pr[2];
+  }
+  else
+  {
+      unsigned int w = computePipelineStateStress.GetThreadExecutionWidth();
+      unsigned int h = computePipelineStateStress.GetMaxTotalThreadsPerThreadgroup() / w;
+      unsigned int z =1;
+      if (h%2==0)
+      {
+        h=h/2;
+        z=2;
+      }
+      local_stress[0]=w;
+      local_stress[1]=h;
+      local_stress[2]=z;
+
+      w = computePipelineStateParticle.GetThreadExecutionWidth();
+      h = computePipelineStateParticle.GetMaxTotalThreadsPerThreadgroup() / w;
+      z =1;
+      if (h%2==0)
+      {
+        h=h/2;
+        z=2;
+      }
+      local_particle[0]=w;
+      local_particle[1]=h;
+      local_particle[2]=z;
+
+  }
+  unsigned int local_sensors[3];
+  local_sensors[0]=computePipelineStateSensors.GetMaxTotalThreadsPerThreadgroup();
+  local_sensors[1]=1;
+  local_sensors[2]=1;
+
+  unsigned int global_stress[3];
+  unsigned int global_particle[3];
+  if (ManualGroupSize_pr[0] != -1)
+  {
+      global_stress[0]=(unsigned int)ManualGroupSize_pr[0];
+      global_stress[1]=(unsigned int)ManualGroupSize_pr[1];
+      global_stress[2]=(unsigned int)ManualGroupSize_pr[2];
+
+      global_particle[0]=(unsigned int)ManualGroupSize_pr[0];
+      global_particle[1]=(unsigned int)ManualGroupSize_pr[1];
+      global_particle[2]=(unsigned int)ManualGroupSize_pr[2];
+  }
+  else
+  {
+      global_stress[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float)local_stress[0]);
+      global_stress[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float)local_stress[1]);
+      global_stress[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float)local_stress[2]);
+
+      global_particle[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float)local_particle[0]);
+      global_particle[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float)local_particle[1]);
+      global_particle[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float)local_particle[2]);
+  }
+
+  unsigned int global_sensors[3];
+  global_sensors[0]=(unsigned int)ceil((float)(INHOST(NumberSensors)) / (float)local_sensors[0]);
+  global_sensors[1]=1;
+  global_sensors[2]=1;
+
+  PRINTF("global_stress %i %i %i, local_stress %i %i %i\n",
+        global_stress[0],global_stress[1],global_stress[2],
+        local_stress[0],local_stress[1],local_stress[2]);
+  PRINTF("global_particle %i %i %i, local_particle %i %i %i\n",
+        global_particle[0],global_particle[1],global_particle[2],
+        local_particle[0],local_particle[1],local_particle[2]);
+  PRINTF("global_sensors %i %i %i, local_sensors %i %i %i\n",
+        global_sensors[0],global_sensors[1],global_sensors[2],
+        local_sensors[0],local_sensors[1],local_sensors[2]);
+  
 #endif
 
   LOCAL_CALLOC(Vx,GET_NUMBER_ELEMS(Vx_res));
@@ -795,9 +926,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(clSetKernelArg(StressKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 54, sizeof(unsigned int), &INHOST(nStep)));
         mxcheckGPUErrors(clSetKernelArg(ParticleKernel, 55, sizeof(unsigned int), &INHOST(TypeSource)));
-        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, global_stress_local, 0, NULL, NULL));
+        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, StressKernel, 3, NULL, global_stress_particle, local_stress, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
-        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, global_stress_local, 0, NULL, NULL));
+        mxcheckGPUErrors(clEnqueueNDRangeKernel(commands, ParticleKernel, 3, NULL, global_stress_particle, local_stress, 0, NULL, NULL));
         mxcheckGPUErrors(clFinish(commands));
 
 #endif
@@ -822,10 +953,13 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
         commandEncoderStress.DispatchThreadgroups(
             mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)) / 4.0),
-              (unsigned int)ceil((float)(INHOST(N2)) / 4.0),
-              (unsigned int)ceil((float)(INHOST(N3)) / 4.0)),
-            mtlpp::Size(4, 4, 4));
+              global_stress[0],
+              global_stress[1],
+              global_stress[2]),
+            mtlpp::Size(
+              local_stress[0], 
+              local_stress[1],
+              local_stress[2]));
         commandEncoderStress.EndEncoding();
 
         mtlpp::BlitCommandEncoder blitCommandEncoderStress = commandBufferStress.BlitCommandEncoder();
@@ -847,10 +981,13 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
         commandEncoderParticle.DispatchThreadgroups(
             mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)+1) / 4),
-              (unsigned int)ceil((float)(INHOST(N2)+1) / 4),
-              (unsigned int)ceil((float)(INHOST(N3)+1) / 4)),
-            mtlpp::Size(4, 4, 4));
+              global_particle[0],
+              global_particle[1],
+              global_particle[2]),
+            mtlpp::Size(
+              local_particle[0], 
+              local_particle[1],
+              local_particle[2]));
         commandEncoderParticle.EndEncoding();
 
         mtlpp::BlitCommandEncoder blitCommandEncoderParticle = commandBufferParticle.BlitCommandEncoder();
@@ -937,10 +1074,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
       commandEncoderSensors.DispatchThreadgroups(
           mtlpp::Size(
-            (unsigned int)ceil((float)(INHOST(NumberSensors)) / 32),
-            1,
-            1),
-          mtlpp::Size(32, 1, 1));
+            global_sensors[0],
+            global_sensors[1],
+            global_sensors[2]),
+          mtlpp::Size(local_sensors[0],
+                      local_sensors[1],
+                      local_sensors[2]));
       commandEncoderSensors.EndEncoding();
       commandBufferSensors.Commit();
       commandBufferSensors.WaitUntilCompleted();

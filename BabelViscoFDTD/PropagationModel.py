@@ -70,7 +70,9 @@ class PropagationModel:
                                          SensorStart=0,
                                          DefaultGPUDeviceName='TITAN',
                                          DefaultGPUDeviceNumber=0,
-                                         SILENT=0):
+                                         SILENT=0,
+                                         ManualGroupSize=np.array([-1,-1,-1]).astype(np.int32),
+                                         ManualLocalSize=np.array([-1,-1,-1]).astype(np.int32)):
         '''
         Samuel Pichardo, Ph.D.
         2020
@@ -363,6 +365,8 @@ class PropagationModel:
         InputParam['LengthSource']=np.uint32(LengthSource); #%we need now to provided a limit how much the source lasts
         InputParam['DefaultGPUDeviceName']=DefaultGPUDeviceName
         InputParam['DefaultGPUDeviceNumber']=np.uint32(DefaultGPUDeviceNumber)
+        InputParam['ManualGroupSize']=ManualGroupSize
+        InputParam['ManualLocalSize']=ManualLocalSize
 
         SolidFraction=None
         if SPP_ZONES>1:

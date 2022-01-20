@@ -433,14 +433,25 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     SensorsKernel.set_arg(54,ArraysGPUOp['SensorOutput'])
     SensorsKernel.set_arg(55,ArraysGPUOp['IndexSensorMap'])
 
+    if arguments['ManualGroupSize'][0]!=-1:
+        GroupSize=(arguments['ManualGroupSize'][0],arguments['ManualGroupSize'][1],arguments['ManualGroupSize'][2])
+    else:
+        GroupSize=(N1,N2,N3)
+    
+
+    if arguments['ManualLocalSize'][0]!=-1:
+        LocalSize=(arguments['ManualLocalSize'][0],arguments['ManualLocalSize'][1],arguments['ManualLocalSize'][2])
+    else:
+        LocalSize=None
+
     for nStep in range(TimeSteps):
         StressKernel.set_arg(54,np.uint32(nStep))
         StressKernel.set_arg(55,arguments['TypeSource'])
         ParticleKernel.set_arg(54,np.uint32(nStep))
         ParticleKernel.set_arg(55,arguments['TypeSource'])
-        ev = cl.enqueue_nd_range_kernel(queue, StressKernel, (N1,N2,N3), None)
+        ev = cl.enqueue_nd_range_kernel(queue, StressKernel, GroupSize, LocalSize)
         queue.finish()
-        ev = cl.enqueue_nd_range_kernel(queue, ParticleKernel, (N1,N2,N3), None)
+        ev = cl.enqueue_nd_range_kernel(queue, ParticleKernel, GroupSize, LocalSize)
         queue.finish()
         if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
             SensorsKernel.set_arg(56,np.uint32(nStep))

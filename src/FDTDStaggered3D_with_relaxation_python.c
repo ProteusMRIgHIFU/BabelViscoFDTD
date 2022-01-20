@@ -211,6 +211,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(SensorSubSampling);
 	GET_FIELD(SensorStart);
 	GET_FIELD(DefaultGPUDeviceNumber);
+	GET_FIELD(ManualGroupSize);
+	GET_FIELD(ManualLocalSize);
 	GET_FIELD_GENERIC(PI_OCL_PATH);
 
 	GET_FIELD(SPP_ZONES);
@@ -254,6 +256,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(SensorStart);
 	VALIDATE_FIELD_UINT32(DefaultGPUDeviceNumber);
 	VALIDATE_FIELD_STRING(PI_OCL_PATH);
+	VALIDATE_FIELD_INT32(ManualGroupSize);
+	VALIDATE_FIELD_INT32(ManualLocalSize);
 
 
 	INHOST(TimeSteps)=*GET_DATA_UINT32_PR(TimeSteps);
@@ -283,6 +287,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA_UINT32(SourceMap);
 	GET_DATA_UINT32(SnapshotsPos);
 	GET_DATA_UINT32(MaterialMap);
+	GET_DATA_INT32(ManualGroupSize);
+	GET_DATA_INT32(ManualLocalSize);
 
 	INHOST(ZoneCount)=*GET_DATA_UINT32_PR(SPP_ZONES);
 
@@ -331,7 +337,11 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	if ( !((INHOST(SelRMSorPeak))& SEL_PEAK) && !((INHOST(SelRMSorPeak))&SEL_RMS))
 			ERROR_STRING("SelRMSorPeak must be either 1 (RMS), 2 (Peak) or 3 (Both RMS and Peak)");
 
+	if (GET_NUMBER_ELEMS(ManualGroupSize)!=3)
+		ERROR_STRING("ManualGroupSize must be an array of 3 values");
 
+	if (GET_NUMBER_ELEMS(ManualLocalSize)!=3)
+		ERROR_STRING("ManualGroupSize must be an array of 3 values");
 
     COUNT_SELECTIONS(INHOST(NumberSelRMSPeakMaps),INHOST(SelMapsRMSPeak));
 	if (INHOST(NumberSelRMSPeakMaps)==0)

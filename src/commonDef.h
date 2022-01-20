@@ -62,6 +62,8 @@ typedef double mexType;
 										ERROR_STRING("The variable " #_VarName " is not the right type!");
 	#define VALIDATE_FIELD_UINT32(_VarName) if(!mxIsUint32(_VarName ##_mx)) \
 										ERROR_STRING("The variable " #_VarName " is not uint32");
+	#define VALIDATE_FIELD_INT32(_VarName) if(!mxIsInt32(_VarName ##_mx)) \
+										ERROR_STRING("The variable " #_VarName " is not int32");
 	#define VALIDATE_FIELD_STRING(_VarName) if(!mxIsClass(_VarName ##_mx,"char")) \
 										ERROR_STRING("The variable " #_VarName " is not char/string");
 	#define GET_FIELD(_VarName) mxArray * _VarName ## _mx = mxGetField(InputStruct,0,#_VarName); \
@@ -73,6 +75,7 @@ typedef double mexType;
 	#define GET_DATA_PR(_VarName) (mexType *)mxGetData (_VarName ##_mx)
 	#define GET_DATA(_VarName) mexType * _VarName ##_pr = GET_DATA_PR(_VarName)
 	#define GET_DATA_UINT32_PR(_VarName) (unsigned int *)mxGetData(_VarName ##_mx)
+	#define GET_DATA_INT32_PR(_VarName) (int *)mxGetData(_VarName ##_mx)
 	#define GET_DATA_STRING(_VarName)	char * _VarName ##_pr;\
 	{\
 		mwSize buflen; \
@@ -115,6 +118,8 @@ typedef double mexType;
 												ERROR_STRING("The variable " #_VarName " is not the right type!");
 	#define VALIDATE_FIELD_UINT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=PyArray_UINT32) \
 										ERROR_STRING("The variable " #_VarName " is not uint32");
+	#define VALIDATE_FIELD_INT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=PyArray_INT32) \
+										ERROR_STRING("The variable " #_VarName " is not int32");
 
 	#define GET_FIELD_GENERIC(_VarName) PyObject * _VarName ##_mx = (PyObject *)PyDict_GetItemString((PyObject*)py_argDict, #_VarName);\
 									if (_VarName ## _mx ==NULL)\
@@ -126,6 +131,7 @@ typedef double mexType;
 	#define ERROR_STRING(_Msg,...)  {PyErr_SetString(PyExc_ValueError, _Msg ); return 0L;}
 	#define GET_DATA_PR(_VarName) (mexType *)PyArray_DATA(_VarName ##_mx)
 	#define GET_DATA_UINT32_PR(_VarName) (unsigned int *)PyArray_DATA(_VarName ##_mx)
+	#define GET_DATA_INT32_PR(_VarName) (int *)PyArray_DATA(_VarName ##_mx)
 
 	#if (PY_MAJOR_VERSION ==3)
 			#define GET_DATA_STRING(_VarName)\
@@ -160,6 +166,7 @@ typedef double mexType;
 #endif
 #define GET_DATA(_VarName) mexType * _VarName ##_pr = GET_DATA_PR(_VarName)
 #define GET_DATA_UINT32(_VarName) unsigned int * _VarName ##_pr =GET_DATA_UINT32_PR(_VarName)
+#define GET_DATA_INT32(_VarName)  int * _VarName ##_pr =GET_DATA_INT32_PR(_VarName)
 #define CREATE_ARRAY_AND_INIT(_VarName,_n1,_n2,_n3)  ndim=3;\
 	dims[0]=_n1; dims[1]=_n2;  dims[2]=_n3;  \
 	CREATE_ARRAY(_VarName);\
