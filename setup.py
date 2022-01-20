@@ -71,8 +71,7 @@ install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0
 
 PrepareOpenCLKernel()
 
-if 'arm64' not in platform.platform():
-    CUDA_SAMPLES_LOCATION=os.environ.get('CUDA_SAMPLES_LOCATION',None)
+if 'Darwin' not in platform.system():
     # Command line flags forwarded to CMake (for debug purpose)
     cmake_cmd_args = []
     for f in sys.argv:
@@ -119,14 +118,13 @@ if 'arm64' not in platform.platform():
                     cmake_args =[
                         '-DSTAGGERED_DEBUG=%s' % ('ON' if cfg == 'Debug' else 'OFF'),
                         '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
-                        '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF') ,
-                        '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON') ,
+                        '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
+                        '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
                         '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
                         '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
                         '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
                         '-DSTAGGERED_PYTHON_SUPPORT=ON',
                         '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
-                        '-DCUDA_SAMPLES_LOCATION=%s' %(CUDA_SAMPLES_LOCATION),
                         '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sysconfig.get_config_var('EXT_SUFFIX'))[0]),
                         '-DCMAKE_BUILD_TYPE=%s' % cfg,
                         '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
@@ -170,8 +168,6 @@ if 'arm64' not in platform.platform():
                                     cwd=self.build_temp)
 
 
-
-    # The following line is parsed by Sphinx
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
@@ -195,7 +191,7 @@ if 'arm64' not in platform.platform():
    
 
 else:
-    #specific building conditions for Apple Silicon systems
+    #specific building conditions for Apple  systems
     class DarwinInteropBuildExt(build_ext):
         def initialize_options(self):
 
@@ -275,13 +271,12 @@ else:
                                         cwd=self.build_temp)
                 subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
                                     cwd=self.build_temp)
-            else:
+            else:       
                 super().build_extension(ext)
 
         def build_extensions(self):
             print('building extension')
             CompileRayleighMetal(self.build_temp,self.build_lib)
-
             super().build_extensions()
 
         
@@ -289,20 +284,26 @@ else:
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
 
-    
-        
+    if 'arm64'  in platform.platform():
+        extra_compile_args_omp=['-Xclang','-fopenmp']
+        extra_link_args_omp=['-lomp']
+        define_macros_omp=[("USE_OPENMP",None)]
+    else:
+        extra_compile_args_omp=['-Xclang','-fopenmp']
+        extra_link_args_omp=[]
+        define_macros_omp=[("USE_OPENMP",None)]
+
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("USE_OPENMP",None)],
-                    extra_compile_args=['-Xclang','-fopenmp'],
-                    extra_link_args=['-lomp'],
+                    define_macros=[("SINGLE_PREC",None)]+define_macros_omp,
+                    extra_compile_args=extra_compile_args_omp,
+                    extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc]),
                 Extension(c_module_name+'_double', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("USE_OPENMP",None)],
-                    extra_compile_args=['-Xclang','-fopenmp'],
-                    extra_link_args=['-lomp'],
+                    define_macros=define_macros_omp,
+                    extra_compile_args=extra_compile_args_omp,
+                    extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc]),
                 Extension('pi_ocl',['pi_ocl/pi_ocl.c']),
                 Extension(c_module_name+'_OPENCL_single', 

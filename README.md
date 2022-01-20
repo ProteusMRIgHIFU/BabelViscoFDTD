@@ -93,6 +93,12 @@ Any recent version of MacOS and XCode with the command-line tools should be enou
 
 Best scenario for M1-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
 
+For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation for OpenMP support will fail.
+* Install `libomp` with `brew install libomp`  
+* Install `mkl` with `pip install mkl` or `conda install mkl`
+
+Metal backend will be available for both X86-64 and Apple Silicon systems.  
+
 ## Installation
 BabelViscoFDTD is available via `pip`
 ```
