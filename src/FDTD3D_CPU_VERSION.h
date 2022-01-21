@@ -83,8 +83,6 @@
 		if ((nStep % 200)==0)
 		{
 			PRINTF("Doing step %i of %i\n",nStep,INHOST(TimeSteps));
-			fprintf(FDEBUG,"Doing step %i of %i\n",nStep,INHOST(TimeSteps));
-			fflush(FDEBUG);
 		}
 		//********************************
 		//First we do the constrains tensors
@@ -236,10 +234,6 @@
 	}
 	//DONE, it looks easy but it took a couple weeks taking it to this simple implementation
 
-
-	fprintf(FDEBUG,"after main loop\n");
-	fflush(FDEBUG);
-
 	{
 	#pragma omp parallel for private(jj,ii,CurZone)
 	for(kk=0; kk<N3; kk++)
@@ -265,8 +259,6 @@
 		}
 	}
 	}
-fprintf(FDEBUG,"After finnishing assigning results\n");
-fflush(FDEBUG);
 free(Vx_pr);
 free(Vy_pr);
 free(Vz_pr);
@@ -309,6 +301,3 @@ free(Rzz_pr);
 free(Rxy_pr);
 free(Rxz_pr);
 free(Ryz_pr);
-
-fprintf(FDEBUG,"After releasing all memory\n");
-fflush(FDEBUG);

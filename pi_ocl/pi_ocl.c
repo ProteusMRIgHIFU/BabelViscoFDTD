@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     size_t max_size, work_group_size = 8;
     float pi_res;
 
-    char *kernelsource = getKernelSource("kernel.cu");             // Kernel source
+    char *kernelsource = getKernelSource("__kernel.cu");             // Kernel source
 
     cl_int err;
     cl_device_id        device;     // compute device id
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
    binary = malloc(binary_size+1);
    clGetProgramInfo(program, CL_PROGRAM_BINARIES, binary_size, &binary, NULL);
    printf("after getting binaries\n");
-   f = fopen("KERNEL.BIN", "w");
+   f = fopen("__KERNEL.BIN", "w");
    fwrite(binary, binary_size, 1, f);
    fclose(f);
 

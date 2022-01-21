@@ -507,9 +507,6 @@ INHOST(SelK)=INHOST(N3)/2;
   #include "FDTD3D_GPU_VERSION.h"
 #else
 	//////////BEGIN CPU SPECIFC
-  FILE * FDEBUG =fopen("DEBUG.OUT","w");
-	fprintf(FDEBUG,"Starting execution\n");
-	fflush(FDEBUG);
   #include "FDTD3D_CPU_VERSION.h"
 #endif
 
@@ -518,18 +515,6 @@ INHOST(SelK)=INHOST(N3)/2;
    double diff_t = difftime(end_t, start_t);
    PRINTF("Execution time = %f\n", diff_t);
 
- #if defined(CUDA) || defined(OPENCL) || defined(METAL)
-
- #else
- 	  fprintf(FDEBUG,"Execution time = %f\n", diff_t);
-		fflush(FDEBUG);
- #endif
-
- #if defined(CUDA) || defined(OPENCL) || defined(METAL)
-
- #else
-	 fclose(FDEBUG);
- #endif
 
  // #ifndef MATLAB_MEX
  // 	Py_END_ALLOW_THREADS;

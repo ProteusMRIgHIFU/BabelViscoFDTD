@@ -13,8 +13,8 @@ from distutils.sysconfig import get_python_inc
 
 def StaggeredFDTD_3D_METAL(arguments):
     IncludeDir=str(Path(__file__).parent.absolute())+os.sep
-    copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'_gpu_kernel.c')
-    copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'_indexing.h')
+    copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'__gpu_kernel.c')
+    copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'__indexing.h')
 
     if (type(arguments)!=dict):
         raise TypeError( "The input parameter must be a dictionary")
@@ -34,4 +34,6 @@ def StaggeredFDTD_3D_METAL(arguments):
         raise SystemError("Metal backend only supports single precision")
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)
+    os.remove(os.getcwd()+os.sep+'__gpu_kernel.c')
+    os.remove(os.getcwd()+os.sep+'__indexing.h')
     return Results

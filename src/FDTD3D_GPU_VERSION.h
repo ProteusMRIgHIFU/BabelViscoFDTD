@@ -199,19 +199,19 @@ int NumberAlloc=0;
     sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n"
                                 "#include <metal_stdlib>\nusing namespace metal;\n"
                                 "#define MAX_SIZE_PML %i\n",MEX_STR,MAX_SIZE_PML);
-    char * indexingSource = load_file("_indexing.h");
+    char * indexingSource = load_file("__indexing.h");
     if (indexingSource==0)
     {
-      ERROR_STRING("Unable to read _indexing.h file!!")
+      ERROR_STRING("Unable to read __indexing.h file!!")
     }
     strncat(BUFFER_FOR_GPU_CODE,indexingSource,MAXP_BUFFER_GPU_CODE);
     strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
     free(indexingSource);
 
-    char * KernelSource = load_file("_gpu_kernel.c");
+    char * KernelSource = load_file("__gpu_kernel.c");
     if (KernelSource==0)
     {
-      ERROR_STRING("Unable to read _gpu_kernel.c file!!")
+      ERROR_STRING("Unable to read __gpu_kernel.c file!!")
     }
     strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
     strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
@@ -365,7 +365,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     size_t binary_size;
     long l_szie;
     cl_int binary_status;
-    binary = common_read_file("KERNEL.BIN", &l_szie);
+    binary = common_read_file("__KERNEL.BIN", &l_szie);
     binary_size=l_szie;
     program = clCreateProgramWithBinary(
           context, 1, &device_id[SelDevice], &binary_size,
