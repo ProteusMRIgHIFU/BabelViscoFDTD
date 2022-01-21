@@ -214,6 +214,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(ManualGroupSize);
 	GET_FIELD(ManualLocalSize);
 	GET_FIELD_GENERIC(PI_OCL_PATH);
+	GET_FIELD_GENERIC(kernelfile);
+	GET_FIELD_GENERIC(kernbinfile);
 
 	GET_FIELD(SPP_ZONES);
 
@@ -256,6 +258,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(SensorStart);
 	VALIDATE_FIELD_UINT32(DefaultGPUDeviceNumber);
 	VALIDATE_FIELD_STRING(PI_OCL_PATH);
+	VALIDATE_FIELD_STRING(kernelfile);
+	VALIDATE_FIELD_STRING(kernbinfile);
 	VALIDATE_FIELD_INT32(ManualGroupSize);
 	VALIDATE_FIELD_INT32(ManualLocalSize);
 
@@ -321,6 +325,8 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA_STRING(DefaultGPUDeviceName);
 	INHOST(DefaultGPUDeviceNumber)=*GET_DATA_UINT32_PR(DefaultGPUDeviceNumber);
 	GET_DATA_STRING(PI_OCL_PATH);
+	GET_DATA_STRING(kernelfile);
+	GET_DATA_STRING(kernbinfile);
 
 	if (TimeStepsSource!=INHOST(LengthSource))
 		ERROR_STRING("The limit for time steps in source is different from N-dimension in SourceFunctions ");
@@ -542,6 +548,8 @@ PRINTF("Done\n");
 
 	 RELEASE_STRING_OBJ(DefaultGPUDeviceName);
 	 RELEASE_STRING_OBJ(PI_OCL_PATH);
+	 RELEASE_STRING_OBJ(kernelfile);
+	 RELEASE_STRING_OBJ(kernbinfile);
 
 	//return Py_BuildValue("OOOOOOO", SensorOutput_mx,Vx_mx,Vy_mx,Sigma_xx_mx,Sigma_yy_mx,Sigma_xy_mx,Snapshots_mx);
 

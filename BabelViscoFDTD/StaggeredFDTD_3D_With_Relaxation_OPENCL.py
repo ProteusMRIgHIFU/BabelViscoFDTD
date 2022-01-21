@@ -7,6 +7,7 @@ import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
 import pyopencl as cl
 import time
 from shutil import copyfile
+import tempfile
 
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc
@@ -208,19 +209,25 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     if platform.system() != 'Windows':
         arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl'
     
+    
     t0 = time.time()
     if platform.system() == 'Windows' or 'arm64' in platform.platform():     
         Results=_StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
     else:
-        with open('__kernel.cu', 'w') as f:
-            f.write(AllC)
+        handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
+        with os.fdopen(handle,'w') as ft:
+            ft.write(AllC)
+        handle, kernbinfile = tempfile.mkstemp(suffix='.BIN',dir=os.getcwd())
+        os.close(handle)
+        arguments['kernelfile']=kernelfile
+        arguments['kernbinfile']=kernbinfile
         if arguments['DT'].dtype==np.dtype('float32'):
             Results= FDTD_single.FDTDStaggered_3D(arguments)
         else:
             Results= FDTD_double.FDTDStaggered_3D(arguments)
-        os.remove("__kernel.cu") 
-        if os.path.isfile('__KERNEL.BIN'):
-            os.remove("__KERNEL.BIN") 
+        os.remove(kernelfile) 
+        if os.path.isfile(kernbinfile):
+            os.remove(kernbinfile) 
         
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)

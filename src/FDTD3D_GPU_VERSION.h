@@ -199,22 +199,12 @@ int NumberAlloc=0;
     sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n"
                                 "#include <metal_stdlib>\nusing namespace metal;\n"
                                 "#define MAX_SIZE_PML %i\n",MEX_STR,MAX_SIZE_PML);
-    char * indexingSource = load_file("__indexing.h");
-    if (indexingSource==0)
-    {
-      ERROR_STRING("Unable to read __indexing.h file!!")
-    }
-    strncat(BUFFER_FOR_GPU_CODE,indexingSource,MAXP_BUFFER_GPU_CODE);
-    strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
-    free(indexingSource);
-
-    char * KernelSource = load_file("__gpu_kernel.c");
+    char * KernelSource = load_file(kernelfile_pr);
     if (KernelSource==0)
     {
       ERROR_STRING("Unable to read __gpu_kernel.c file!!")
     }
     strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
-    strncat(BUFFER_FOR_GPU_CODE,"\n",MAXP_BUFFER_GPU_CODE);
     free(KernelSource);
 
     PRINTF("After reading files\n");
@@ -353,8 +343,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   //   program = clCreateProgramWithSource(context, 1, (const char **) & BUFFER_FOR_GPU_CODE, &szKernelLength, &err);
   //   mxcheckGPUErrors(err);
 
-    char scmd [800];
-    snprintf(scmd,800,"\"%s\" --device %i",PI_OCL_PATH_pr,SelDevice);
+    char scmd [8000];
+    snprintf(scmd,8000,"\"%s\" --input \"%s\" --output \"%s\" --device %i",PI_OCL_PATH_pr,
+                    kernelfile_pr,kernbinfile_pr,
+                    SelDevice);
     PRINTF("compiling kernel with \"%s\"\n",scmd)
     if (system(scmd)!=0)
     {

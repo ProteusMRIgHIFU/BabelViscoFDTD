@@ -4,6 +4,7 @@ from pathlib import Path
 import _FDTDStaggered3D_with_relaxation_METAL_single as FDTD_single;
 
 import time
+import tempfile
 from shutil import copyfile
 
 #we will generate the _kernel-opencl.c file when importing
@@ -13,8 +14,16 @@ from distutils.sysconfig import get_python_inc
 
 def StaggeredFDTD_3D_METAL(arguments):
     IncludeDir=str(Path(__file__).parent.absolute())+os.sep
-    copyfile(IncludeDir+'_gpu_kernel.c', os.getcwd()+os.sep+'__gpu_kernel.c')
-    copyfile(IncludeDir+'_indexing.h', os.getcwd()+os.sep+'__indexing.h')
+
+    filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c']
+    
+    handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
+    with os.fdopen(handle,'w') as ft:
+        for names in filenames:
+            with open(names) as infile:
+                ft.write(infile.read())
+            ft.write("\n")
+    
 
     if (type(arguments)!=dict):
         raise TypeError( "The input parameter must be a dictionary")
@@ -28,12 +37,14 @@ def StaggeredFDTD_3D_METAL(arguments):
             arguments[key]=np.array((arguments[key]))
     t0 = time.time()
     arguments['PI_OCL_PATH']='' #unused in METAL but needed in the low level function for completeness
+    arguments['kernelfile']=kernelfile 
+    arguments['kernbinfile']='' #these are unused in METAL but passed for completeness
+    
     if arguments['DT'].dtype==np.dtype('float32'):
         Results= FDTD_single.FDTDStaggered_3D(arguments)
     else:
         raise SystemError("Metal backend only supports single precision")
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)
-    os.remove(os.getcwd()+os.sep+'__gpu_kernel.c')
-    os.remove(os.getcwd()+os.sep+'__indexing.h')
+    os.remove(kernelfile)
     return Results

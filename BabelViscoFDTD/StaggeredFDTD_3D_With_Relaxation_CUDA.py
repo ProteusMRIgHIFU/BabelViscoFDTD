@@ -17,7 +17,9 @@ def StaggeredFDTD_3D_CUDA(arguments):
         elif type(arguments[key])!=str:
             arguments[key]=np.array((arguments[key]))
     t0 = time.time()
-    arguments['PI_OCL_PATH']='' #unused in METAL but needed in the low level function for completeness
+    arguments['PI_OCL_PATH']='' #these are unused in CUDA but passed for completeness
+    arguments['kernelfile']='' #these are unused in CUDA but passed for completeness
+    arguments['kernbinfile']='' #these are unused in CUDA but passed for completeness
     if arguments['DT'].dtype==np.dtype('float32'):
         Results= FDTD_single.FDTDStaggered_3D(arguments)
     else:

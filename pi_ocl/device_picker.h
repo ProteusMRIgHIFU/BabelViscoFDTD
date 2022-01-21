@@ -67,7 +67,7 @@ int parseUInt(const char *str, cl_uint *output)
   return !strlen(next);
 }
 
-void parseArguments(int argc, char *argv[], cl_uint *deviceIndex)
+void parseArguments(int argc, char *argv[], cl_uint *deviceIndex, char ** inputname, char ** outputname)
 {
   for (int i = 1; i < argc; i++)
   {
@@ -96,6 +96,14 @@ void parseArguments(int argc, char *argv[], cl_uint *deviceIndex)
       }
       exit(0);
     }
+    else if (!strcmp(argv[i], "--input"))
+    {
+        *inputname = argv[++i];
+    }
+    else if (!strcmp(argv[i], "--output"))
+    {
+        *outputname = argv[++i];
+    }
     else if (!strcmp(argv[i], "--device"))
     {
       if (++i >= argc || !parseUInt(argv[i], deviceIndex))
@@ -111,6 +119,8 @@ void parseArguments(int argc, char *argv[], cl_uint *deviceIndex)
       printf("Options:\n");
       printf("  -h  --help               Print the message\n");
       printf("      --list               List available devices\n");
+      printf("      --input              input file name of kernel code\n");
+      printf("      --output             output file name of kernel binary\n");
       printf("      --device     INDEX   Select device at INDEX\n");
       printf("\n");
       exit(0);

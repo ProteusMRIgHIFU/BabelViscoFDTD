@@ -69,8 +69,6 @@ int main(int argc, char *argv[])
     size_t max_size, work_group_size = 8;
     float pi_res;
 
-    char *kernelsource = getKernelSource("__kernel.cu");             // Kernel source
-
     cl_int err;
     cl_device_id        device;     // compute device id
     cl_context       context;       // compute context
@@ -79,10 +77,12 @@ int main(int argc, char *argv[])
     cl_kernel        kernel_stress,kernel_particle,kernel_sensor,kernel_snapshot;     // compute kernel
     size_t binary_size;
     char * binary;
+    char * inputname =0;
+    char * outputname =0;
     FILE * f;
     // Set up OpenCL context, queue, kernel, etc.
     cl_uint deviceIndex = 0;
-    parseArguments(argc, argv, &deviceIndex);
+    parseArguments(argc, argv, &deviceIndex,&inputname,&outputname);
 
     // Get list of devices
     cl_device_id devices[MAX_DEVICES];
@@ -94,6 +94,21 @@ int main(int argc, char *argv[])
       printf("Invalid device index (try '--list')\n");
       return EXIT_FAILURE;
     }
+
+    if (inputname==0)
+    {
+        printf("need to specify input file with --input\n");
+      return EXIT_FAILURE;
+    }
+
+    if (outputname==0)
+    {
+        printf("need to specify output file with --output\n");
+      return EXIT_FAILURE;
+    }
+
+    char *kernelsource = getKernelSource(inputname);             // Kernel source
+
 
     device = devices[deviceIndex];
 
@@ -146,7 +161,7 @@ int main(int argc, char *argv[])
    binary = malloc(binary_size+1);
    clGetProgramInfo(program, CL_PROGRAM_BINARIES, binary_size, &binary, NULL);
    printf("after getting binaries\n");
-   f = fopen("__KERNEL.BIN", "w");
+   f = fopen(outputname, "w");
    fwrite(binary, binary_size, 1, f);
    fclose(f);
 
