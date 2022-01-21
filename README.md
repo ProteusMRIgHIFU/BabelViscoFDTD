@@ -113,7 +113,7 @@ pip install BabelViscoFDTD/
 ```
 run in the parent directory where you cloned the repository.
 # How to use
-After installation, you can download the Jupyter Notebooks in `Tutorial Notebooks` in the repository https://github.com/ProteusMRIgHIFU/BabelViscoFDTD to learn how to run the simulation. The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
+After installation, please consult the Jupyter Notebooks in `Tutorial Notebooks` in the repository https://github.com/ProteusMRIgHIFU/BabelViscoFDTD to learn how to run the simulation and get familiar with the input parameters The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
 # Structure of code
 The FDTD solution is accessed as a Python external function. The primary method to execute a simulation is via the class
@@ -142,36 +142,45 @@ MacOS support for HPC has shifted in recent years significantly. In modern MacOS
 ### Metal support
 Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processors with 32 or more GB of RAM.
 
-While Metal offers better performance overall over OpenCL, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process; I haven't yet found a mechanism to unblock/avoid this. 
+While Metal offers better performance overall over OpenCL in AMD processors, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process.
 
-## SP performance comparison
-Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [1249,249,426] grid size and over 2262 temporal steps was used to benchmark multiple backends and systems.
+## Single precision performance comparison
+Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [249,249,426] grid size and over 2262 temporal steps was used to benchmark multiple backends and systems.
 
 * Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
 * AMD Vega 56 (8 GB RAM, 3584  stream processors, theoretical 10.5 SP TFLOP , memory bandwidth  410 GB/s) 
-* M1 Max Pro  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
+* M1 Max  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
 
-RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system (10x2 Core Intel Xeon W). The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max Pro was in a 64 GB MacBook Pro system. The Dell Xeon system, iMac Pro and M1 Max Pro were also used for OpenMP benchmarks. Python 3.8 was used in all systems. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max Pro. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 tests.
-OpenCL and Metal code were compiled
+RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system (10x2 Core Intel Xeon W). The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max was configured with 64 GB and installed in a 2021 MacBook Pro system. The Dell system, iMac Pro and MacBook Pro were also used for OpenMP benchmarks. Python 3.9 was used in the Dell and MacBook Pro systems, while Python 3.8 was used in the iMac Pro. CUDA code was compiled with CUDA 11.2 and VStudio 2019 under Windows 11. MacOS Monterey 12.1 with XCode 13.1 were used for both iMac Pro and MacBook Pro. Pyopencl 2021.2 was used as the OpenCL wrapper for the tests for the A6000 and M1 Max. The mini wrapper `pi_ocl` mentioned above was used for the W6800 and Vega 64 OpenCL tests. 
 
+Wall-time was measured from the moment preparations to run GPU code started (initiate device operation) to the end of the memory transfer of results, with no access to main drives involved. Memory transfer between CPU and GPU occurred only at the beginning and end of GPU execution. Numerical difference among difference backends were in the order of single precision resolution.
 
+### Summary of wall-time results for each device
 | Device |  CUDA single | OpenCL single |  Metal single | OpenMP single|
 | --- | --- |  --- |  --- |  ---  |
 | AMD W6800 | - | 45 s | 43 s | - |
 | AMD Vega 56 | - | 90 s | 144 s | - |
 | NVidia A6000 | 57 s| 77 s | -| - |
-| M1 Max Pro | - |  57 s |189 s| 806 s |
+| M1 Max | - |  57 s |189 s| 806 s (10 threads) |
 | Xeon W-2125 | - | - | - | 2202 s (8 threads)|
 | iMac Pro (Xeon W) | - | - | - | 1649 s  (20 threads)|
 
+#### Discussion of results
 The number of computing units is becoming a bit useless to compare. There are few interesting bits:
-* The ratio of performance between M1 Max Pro and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
-* *BUT*, the OpenCL performance of the M1 Max Pro is dramatically better than Metal, matching the A6000, way far from the theoretical difference of raw SP TFLOPS that was expected. 
-* The other surprise was the W6800 with Metal that (after using the same block thread arrangements as in the M1) got a significant increase in performance, leaving the A6000 behind. The CUDA code is (in principle) optimized for maximal occupancy, but I know this may require a little more investigation to understand why the big difference.
-* The fact that Metal shows better performance than OpenCL in AMD GPUs compared to Apple Silicon is also surprising.
-* The OpenMP performance of the M1 Max Pro is simply excellent, showing a dramatic speedup compared to the Dell Xeon and iMac Pro systems. Highly likely the tight integration of the CPU to the memory bank in the M1 system may play a significant role.
+* The ratio of performance between M1 Max and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
+* *BUT*, the OpenCL performance of the M1 Max is dramatically better than Metal, matching the A6000 performance, way far from the theoretical difference of raw SP TFLOPS that was expected. 
+* Tests with larger domains indicated that the M1 Max performs even better. For example, for a domain size of [315, 315, 523] and 2808 temporal steps, the M1 Max showed a wall-time of 131 s while the A6000 took 139 s. 
+* Multiple tryouts on the CUDA code to adjust grid and block sizes didn't improve performance in the A6000. On the contrary, wall-time was increased, indicating that the recommended method by NVidia to calculate maximal occupancy used by default in BabelViscoFDTD provided the best performance with the A6000.
+* The other surprise was the W6800 with Metal and OpenCL that outperformed by a significant margin the A6000. 
+* Contrary to the W6800, the Vega 56 GPU showed worse performance when using Metal, similar as for the M1 Max.
+* The fact that Metal shows better performance than OpenCL in the W6800 compared to Apple Silicon is also surprising.
+* The OpenMP performance of the M1 Max is simply excellent, showing a dramatic speedup compared to the Dell Xeon and iMac Pro systems. Highly likely the tight integration of the CPU to the memory bank in the M1 system may play a significant role.
 
+## Possibility of manual adjustments to improve performance
+All three GPU backends have analogous control to split the calculations in the GPU multiprocessors. BabelViscoFDTD uses the methods that are recommended for each backend to ensure maximal GPU occupancy. However, manual adjustments can provide improvement to the performance. You can specify manually the grid and thread block dimensions with the optional parameters `ManualGroupSize` and `ManualLocalSize`, respectively. 
+ 
+ Please consult guidelines of each backend (CUDA, OpenCL and Metal) on how to calculate this correctly, otherwise there is a risk of specifying a too large or too short grid and thread size dimensions. For example, for both CUDA and Metal, the multiplication of `ManualGroupSize` and `ManualLocalSize` must be equal or larger than the domain size ([N1,N2,N3]) to ensure all the domain is covered; for example for a domain of size [231,220,450], `ManualGroupSize=[60,60,115]` with `ManualLocalSize=[4,4,4]` will ensure covering the domain size. For `OpenCL` each entry in `ManualGroupSize` must be equal or larger than [N1,N2,N3] and each entry must be a multiple of its corresponding entry in `ManualLocalSize`; for example for a domain of size [231,220,450], `ManualGroupSize=[240,240,460]` with `ManualLocalSize=[4,4,4]`. Be sure of specifying these parameters as an np.array of type np.int32, such as `ManualLocalSize=np.array([4,4,4]).astype(np.int32)`. 
 
 # Supported platforms for Rayleigh integral
 Since v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
@@ -181,8 +190,10 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 # Release notes
 * 0.9.5  Jan 18, 2021.
+    * Very first pip-registered version
+    * Possibility of user-specified dimensions of blocks for computations for fine-tuning of performance
     * Cleaning some minor bugs and add BHTE code using pycuda and pyopencl.
-    * Very first pip-based version
+    
 * 0.9.3  Sep 29, 2021.
     * Improved support for both Metal and OpenCL. For Metal, stable operation is now feasible for large domains using all available memory in modern high-end GPUs. OpenCL is now supported in all OSs.
 * 0.9.2  June 13, 2021.
