@@ -31,6 +31,8 @@ char* common_read_file(const char *path, long *length_out)
     long length;
 
     f = fopen(path, "r");
+	if (f==NULL)
+		return NULL;
     //assert(NULL != f);
     fseek(f, 0, SEEK_END);
     length = ftell(f);

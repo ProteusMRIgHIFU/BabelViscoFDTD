@@ -357,7 +357,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     size_t binary_size;
     long l_szie;
     cl_int binary_status;
-    binary = common_read_file("__KERNEL.BIN", &l_szie);
+    binary = common_read_file(kernbinfile_pr, &l_szie);
+    if (binary==NULL)
+    {
+         PRINTF("problem when trying to open kernel binary [%s]\n",kernbinfile_pr);
+         ERROR_STRING("Stopping execution")
+    }
     binary_size=l_szie;
     program = clCreateProgramWithBinary(
           context, 1, &device_id[SelDevice], &binary_size,
