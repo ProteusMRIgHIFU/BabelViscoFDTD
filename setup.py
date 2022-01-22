@@ -18,7 +18,7 @@ from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.4-14'
+version = '0.9.5'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -351,9 +351,11 @@ setup(name="BabelViscoFDTD",
         cmdclass=cmdclass,
         ext_modules=ext_modules,
         zip_safe=False,
+        license='BSD License',
+        license_files=('LICENSE'),
         classifiers=[
             "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
+            "License :: OSI Approved :: BSD License",
             "Operating System :: MacOS",
             "Operating System :: Microsoft :: Windows",
             "Operating System :: POSIX :: Linux",
