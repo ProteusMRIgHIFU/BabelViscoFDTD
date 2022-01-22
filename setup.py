@@ -18,7 +18,8 @@ from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.4-10'
+version = '0.9.4-14'
+
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
@@ -67,7 +68,12 @@ def PrepareOpenCLKernel():
                 f.writelines(inclines)
     copyfile(dir_path+'src'+os.sep+'Indexing.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing.h')
     
-install_requires=['numpy>=1.15.1', 'scipy>=1.1.0', 'h5py>=2.9.0','pydicom>=1.3.0','pyopencl>=2020.1']
+install_requires=['numpy>=1.15.1', 
+                'scipy>=1.1.0', 
+                'h5py>=2.9.0',
+                'hdf5plugin>=3.2', 
+                'pydicom>=1.3.0',
+                'pyopencl>=2020.1']
 
 PrepareOpenCLKernel()
 
@@ -111,25 +117,21 @@ if 'Darwin' not in platform.system():
                 print('ext',ext.name)
                 extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
                 cfg = 'Debug' if _get_env_variable('STAGGERED_DEBUG') == 'ON' else 'Release'
-                if ext.name =='pi_ocl':
-                    cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
-                                '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir+os.sep+'BabelViscoFDTD')]
-                else:
-                    cmake_args =[
-                        '-DSTAGGERED_DEBUG=%s' % ('ON' if cfg == 'Debug' else 'OFF'),
-                        '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
-                        '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
-                        '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
-                        '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
-                        '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
-                        '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
-                        '-DSTAGGERED_PYTHON_SUPPORT=ON',
-                        '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
-                        '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sysconfig.get_config_var('EXT_SUFFIX'))[0]),
-                        '-DCMAKE_BUILD_TYPE=%s' % cfg,
-                        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
-                        '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
-                        '-DPYTHON_EXECUTABLE={}'.format(sys.executable)]
+                cmake_args =[
+                    '-DSTAGGERED_DEBUG=%s' % ('ON' if cfg == 'Debug' else 'OFF'),
+                    '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
+                    '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
+                    '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
+                    '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
+                    '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
+                    '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
+                    '-DSTAGGERED_PYTHON_SUPPORT=ON',
+                    '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
+                    '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sysconfig.get_config_var('EXT_SUFFIX'))[0]),
+                    '-DCMAKE_BUILD_TYPE=%s' % cfg,
+                    '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
+                    '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
+                    '-DPYTHON_EXECUTABLE={}'.format(sys.executable)]
 
 
                 if platform.system() == 'Windows':
@@ -171,21 +173,10 @@ if 'Darwin' not in platform.system():
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
-    if platform.system() in ['Linux','Windows']:
-        print('Adding CUDA')
-        ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
-                CMakeExtension(c_module_name+'_CUDA_double')]
-        install_requires.append('pycuda>=2020.1')
-
-
-    if platform.system() in ['Darwin']:
-        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_single',extra_compile_args = ["-mmacosx-version-min=11.0"]))
-        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_double',extra_compile_args = ["-mmacosx-version-min=11.0"]))
-        ext_modules.append(CMakeExtension(c_module_name+'_METAL_single',extra_compile_args = ["-mmacosx-version-min=11.0"]))
-        ext_modules.append(CMakeExtension('pi_ocl',cmake_lists_dir='pi_ocl'))
-    else:
-        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_single'))
-        ext_modules.append(CMakeExtension(c_module_name+'_OPENCL_double'))
+    print('Adding CUDA')
+    ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
+            CMakeExtension(c_module_name+'_CUDA_double')]
+    install_requires.append('pycuda>=2020.1')
 
     cmdclass={'build_ext': CMakeBuild}
    
@@ -305,18 +296,6 @@ else:
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc]),
-                Extension('pi_ocl',['pi_ocl/pi_ocl.c']),
-                Extension(c_module_name+'_OPENCL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]),
-                Extension(c_module_name+'_OPENCL_double', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]),
                 Extension(c_module_name+'_METAL_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.cpp",
                     "src/mtlpp/mtlpp.mm"],
@@ -337,6 +316,21 @@ else:
                                     '-framework',
                                     'CoreFoundation',
                                     '-fobjc-link-runtime'])]
+
+    if 'arm64' not in platform.platform():
+        ext_modules.append(Extension('pi_ocl',['pi_ocl/pi_ocl.c']))
+        ext_modules.append(Extension(c_module_name+'_OPENCL_single', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("SINGLE_PREC",None),
+                                ("OPENCL",None)],
+                    extra_link_args=['-Wl','-framework','OpenCL'],
+                    include_dirs=[npinc]))
+        ext_modules.append(Extension(c_module_name+'_OPENCL_double', 
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
+                    define_macros=[("OPENCL",None)],
+                    extra_link_args=['-Wl','-framework','OpenCL'],
+                    include_dirs=[npinc]))
+
     if bIncludePagememory:
         ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory', 
                             ["src/page_memory.c"],

@@ -2,8 +2,7 @@ import numpy as np
 import os
 os.environ['GPU_FORCE_64BIT_PTR'] ="1"
 from pathlib import Path
-import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
-import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
+
 import pyopencl as cl
 import time
 from shutil import copyfile
@@ -12,6 +11,10 @@ import tempfile
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc
 import platform
+
+if platform.system() =='Darwin' and 'arm64' not in platform.platform():
+    import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
+    import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
 
 MASKID={}
 MASKID['ALLV']=0x0000000001
@@ -106,6 +109,7 @@ def _InitSymbolArray(IP,_NameVar,td,SCode):
     SCode.append(res)
     
 AllC=''
+
 def StaggeredFDTD_3D_OPENCL(arguments):
     global NumberSelRMSPeakMaps
     global NumberSelSensorMaps
@@ -211,9 +215,9 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     
     
     t0 = time.time()
-    if platform.system() == 'Windows' or 'arm64' in platform.platform():     
-        Results=_StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
-    else:
+        
+    if platform.system() =='Darwin' and 'arm64' not in platform.platform():
+        # we use old wrapper and pi_ocl (this is only required for MacOS X86-64)
         handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
         with os.fdopen(handle,'w') as ft:
             ft.write(AllC)
@@ -228,6 +232,9 @@ def StaggeredFDTD_3D_OPENCL(arguments):
         os.remove(kernelfile) 
         if os.path.isfile(kernbinfile):
             os.remove(kernbinfile) 
+    else:
+        # we use pyopencl
+        Results=_StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
         
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)

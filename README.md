@@ -39,24 +39,35 @@ Please note that not every backend is available in a given combination of OS+Pyt
 
 *Y\** Feature is enabled, but not yet fully tested. *Y\+* Feature may be limited to only 32-bits addressable memory independently of the GPU memory available.
 
-OpenCL for Windows and Apple Silicon systems is operational via `pyopencl`. In MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS for X86-64 systems, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
 
 # Requirements
 ## Python 3.8 and up 
 Use of virtual environments is highly recommended. Anaconda Python and Enthought EDM are great choices as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8. For Apple Silicon systems, it is highly recommended to use a native Python for arm64 (see below details).
 
-### Basic dependencies:
+## CUDA (For Windows and Linux)
+The code has been verified to work from CUDA 9 to CUDA 11. Highly likely older versions of CUDA (7, 8) should work without a problem. Be sure of installing the CUDA samples and take note of the location where they were installed.
+
+## CMAKE
+CMAKE version 3.16.3 and up should be good. In Windows, be sure CMAKE is accessible in the Windows path.
+
+## OpenCL
+OpenCL for Windows and Apple Silicon systems is operational via `pyopencl`. In MacOS, you can install pyopencl with `pip install pyopencl`. In Windows, use one of the precompiled wheels in https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl. In MacOS for X86-64 systems, an standalone OpenCL compiler (`pi_ocl`) is also included in BabelViscoFDTD. The FDTD kernels code is OpenCL >= 1.2 compliant.
+
+### Basic Python dependencies:
 latest version of `pip`
-* numpy>=1.15.1
-* scipy>=1.1.0
-* h5py>=2.9.0
+* numpy>=1.15.1 (have this already installed if starting from a clean environment)
+* scipy>=1.1.0 (have this already installed if starting from a clean environment)
+* h5py>=2.9.0 (in native arm64 Python for Apple Silicon, install this via `conda install h5py`)
+* hdf5plugin>=3.2.0
 * pydicom>=1.3.0
 * setuptools >=51.0.0
-* pyopencl>=2020
+* pyopencl>=2020 (if in Windows, install manually a wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl)
 * pycuda>=2020 (only in Linux and Windows)
-* mkl (obligatory for OpenMP support in X86-64 Apple systems)
+* mkl (obligatory for OpenMP support in X86-64 Apple systems; mkl is not available for arm6
 
 ### Extra dependencies required in some of the tutorials
+* matplotlib
+* jupyter
 * scikit-image >= 0.17
 * pyvista >= 0.27.0
 * pyvistaqt >= 0.2.0
@@ -70,24 +81,20 @@ latest version of `pip`
 
 All those packages (excepting `pymesh`) are installable via `pip`.  For `pymesh`, see tutorial 6 for more details.
 
-
-## CUDA
-The code has been verified to work from CUDA 9 to CUDA 11. Highly likely older versions of CUDA (7, 8) should work without a problem. Be sure of installing the CUDA samples and take note of the location where they were installed.
-
-
-## CMAKE
-CMAKE version 3.16.3 and up should be good
 ## Linux
 Overall, any LTS-type distribution is recommended to be sure CUDA compiler supports your default GCC installation. If your installation can run the default examples of CUDA, then you should be good.
 
 Ubuntu 20.04 LTS is an excellent candidate to start with.
 
-## Linux in Windows through WSL2
+You will also need to install OpenCL headers and libraries such as `opencl-headers`, `ocl-icd-opencl-dev`, `intel-opencl-icd` and other libraries required by you GPU manufacturer to support OpenCL. You can verify you have a healthy OpenCL installation with the tool `clinfo`.
+
+### Linux in Windows through WSL2
 Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
+Please note that OpenCL is not supported under WSL2. You will still need to install the packages  `opencl-headers` and `ocl-icd-opencl-dev` to ensure all compilation is completed.
+
 ## Windows native
 You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
-
-When installing CMAKE, be sure it is accessible in the Windows path.
 
 ## MacOS
 Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP both in X86-64 and M1 processors. The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  M1-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).
@@ -100,7 +107,7 @@ For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation fo
 
 Metal backend will be available for both X86-64 and Apple Silicon systems.  
 
-## Installation
+# Installation
 BabelViscoFDTD is available via `pip`
 ```
  pip install BabelViscoFDTD

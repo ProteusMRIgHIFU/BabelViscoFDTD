@@ -1,7 +1,6 @@
 import os
 from glob import glob
 
-from future.utils import iteritems
 import sys
 if sys.version_info > (3, 2):
     def bCheckIfStr(v):
@@ -102,7 +101,7 @@ def SaveToH5py(MyDict,f,compatibility="blosc",complevel=9,group=None):
 
     if type(MyDict) not in [dict,OrderedDict] or type(MyDict) is list:
         raise TypeError("Only dictionaries are supported to be saved")
-    for (k, v )in iteritems(MyDict):
+    for (k, v )in MyDict.items():
         ProcType(k,v,fileobj,compatibility,complevel,group)
     if bCheckIfStr(f):
         fileobj.close() #if we receive a string, that means that we open and close the file
@@ -122,7 +121,7 @@ def ReadFromH5py(f,group=None,typeattr=None):
             MyDict=OrderedDict()
         else:
             MyDict={}
-    for (namevar,val) in iteritems(group):
+    for (namevar,val) in group.items():
 
         NameList=None
         typeattr=cStr(val.attrs["type"])
