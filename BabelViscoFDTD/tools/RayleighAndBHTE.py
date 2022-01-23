@@ -767,9 +767,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             local=[l1[0],l1[0],1]
         else:
             local=None
-
-        #this will calculate the optimal global size to make it multiple of [4,4,4]
-
+            
         gl=[]
         for n in range(3):
             m=MaterialMap.shape[n]
@@ -783,7 +781,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             else:
                 dUS=0
             if (n%2==0):
-                knl(queue,gl , [4,4,4],
+                knl(queue,gl , None,
                     d_T1,
                     d_Dose1,
                     d_T0,
@@ -806,7 +804,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     np.uint32(0))
 
             else:
-                knl(queue, gl , [4,4,4],
+                knl(queue, gl , None,
                     d_T0,
                     d_Dose0,
                     d_T1,
@@ -1039,7 +1037,6 @@ def BHTEMultiplePressureFields(PressureFields,
         else:
             local=None
 
-        #this will calculate the optimal global size to make it multiple of [4,4,4]
 
         gl=[]
         for n in range(3):
@@ -1058,7 +1055,7 @@ def BHTEMultiplePressureFields(PressureFields,
                 dUS=0
             StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
             if (n%2==0):
-                knl(queue,gl , [4,4,4],
+                knl(queue,gl , None,
                     d_T1,
                     d_Dose1,
                     d_T0,
@@ -1081,7 +1078,7 @@ def BHTEMultiplePressureFields(PressureFields,
                     np.uint32(StartIndexQ))
 
             else:
-                knl(queue, gl , [4,4,4],
+                knl(queue, gl , None,
                     d_T0,
                     d_Dose0,
                     d_T1,
