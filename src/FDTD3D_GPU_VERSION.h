@@ -907,10 +907,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   unsigned int INHOST(nStep)=0;
   unsigned int SensorEntry=0;
+
+
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
     // if (INHOST(nStep)%100==0)
     //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+  #ifdef METAL
+  mtlpp::CommandBuffer MaincommandBuffer = commandQueue.CommandBuffer();
+  mxcheckGPUErrors(((int)MaincommandBuffer));
+  #endif
 #if defined(CUDA)
         unsigned int nCurStream=0;
         unsigned int maxStream=TOTAL_streams;
@@ -948,25 +954,23 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
 #endif
 #ifdef METAL
+
         InitSymbol(nStep,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
 
 
-        mtlpp::CommandBuffer commandBufferStress = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)commandBufferStress));
-
-        mtlpp::ComputeCommandEncoder commandEncoderStress = commandBufferStress.ComputeCommandEncoder();
-        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        commandEncoderStress.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        commandEncoderStress.SetBuffer(_INDEX_MEX, 0, 2);
-        commandEncoderStress.SetBuffer(_INDEX_UINT, 0, 3);
-        commandEncoderStress.SetBuffer(_UINT_BUFFER, 0, 4);
+        mtlpp::ComputeCommandEncoder MainEncoder = MaincommandBuffer.ComputeCommandEncoder();
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
+        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
+        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
         for (_PT ii=0;ii<12;ii++)
-            commandEncoderStress.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
         
-        commandEncoderStress.SetComputePipelineState(computePipelineStateStress);
-        commandEncoderStress.DispatchThreadgroups(
+        MainEncoder.SetComputePipelineState(computePipelineStateStress);
+        MainEncoder.DispatchThreadgroups(
             mtlpp::Size(
               global_stress[0],
               global_stress[1],
@@ -975,26 +979,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               local_stress[0], 
               local_stress[1],
               local_stress[2]));
-        commandEncoderStress.EndEncoding();
-
-        mtlpp::BlitCommandEncoder blitCommandEncoderStress = commandBufferStress.BlitCommandEncoder();
-        blitCommandEncoderStress.EndEncoding();
-        commandBufferStress.Commit();
-        commandBufferStress.WaitUntilCompleted();
-
-        mtlpp::CommandBuffer commandBufferParticle = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)commandBufferParticle));
-
-        mtlpp::ComputeCommandEncoder commandEncoderParticle = commandBufferParticle.ComputeCommandEncoder();
-        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        commandEncoderParticle.SetBuffer(_INDEX_MEX, 0, 2);
-        commandEncoderParticle.SetBuffer(_INDEX_UINT, 0, 3);
-        commandEncoderParticle.SetBuffer(_UINT_BUFFER, 0, 4);
+        
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
+        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
+        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
         for (_PT ii=0;ii<12;ii++)
-            commandEncoderParticle.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-        commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
-        commandEncoderParticle.DispatchThreadgroups(
+            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        MainEncoder.SetComputePipelineState(computePipelineStateParticle);
+        MainEncoder.DispatchThreadgroups(
             mtlpp::Size(
               global_particle[0],
               global_particle[1],
@@ -1003,12 +997,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               local_particle[0], 
               local_particle[1],
               local_particle[2]));
-        commandEncoderParticle.EndEncoding();
+        
 
-        mtlpp::BlitCommandEncoder blitCommandEncoderParticle = commandBufferParticle.BlitCommandEncoder();
-        blitCommandEncoderParticle.EndEncoding();
-        commandBufferParticle.Commit();
-        commandBufferParticle.WaitUntilCompleted();
 
 #endif
 
@@ -1030,31 +1020,23 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   #endif
   #if defined(METAL)
         InitSymbol(CurrSnap,unsigned int,G_INT);
-        mtlpp::CommandBuffer commandBufferSnapShot = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)commandBufferSnapShot));
-
-        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = commandBufferSnapShot.ComputeCommandEncoder();
-        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
-        commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
-        commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
+        
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
+        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
+        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
         for (_PT ii=0;ii<12;ii++)
-            commandEncoderSnapShot.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-        commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 17);
-        commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
-        commandEncoderSnapShot.DispatchThreadgroups(
+            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        MainEncoder.SetBuffer(gpu_Snapshots_pr, 0, 17);
+        MainEncoder.SetComputePipelineState(computePipelineStateSnapShot);
+        MainEncoder.DispatchThreadgroups(
             mtlpp::Size(
               (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
               (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
               1),
             mtlpp::Size(8, 8,1));
-        commandEncoderSnapShot.EndEncoding();
-
-        mtlpp::BlitCommandEncoder blitCommandEncoderSnapShot = commandBufferSnapShot.BlitCommandEncoder();
-        blitCommandEncoderSnapShot.EndEncoding();
-        commandBufferSnapShot.Commit();
-        commandBufferSnapShot.WaitUntilCompleted();
+        
   #endif
 
 				INHOST(CurrSnap)++;
@@ -1075,19 +1057,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       mxcheckGPUErrors(clFinish(commands));
 #endif
 #if defined(METAL)
-      mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
-      mxcheckGPUErrors(((int)commandBufferSensors));
-
-      mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
-      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-      commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
-      commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
-      commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
+      
+      MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+      MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+      MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
+      MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
+      MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
       for (_PT ii=0;ii<12;ii++)
-            commandEncoderSensors.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-      commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
-      commandEncoderSensors.DispatchThreadgroups(
+            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+      MainEncoder.SetComputePipelineState(computePipelineStateSensors);
+      MainEncoder.DispatchThreadgroups(
           mtlpp::Size(
             global_sensors[0],
             global_sensors[1],
@@ -1095,11 +1074,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           mtlpp::Size(local_sensors[0],
                       local_sensors[1],
                       local_sensors[2]));
-      commandEncoderSensors.EndEncoding();
-      commandBufferSensors.Commit();
-      commandBufferSensors.WaitUntilCompleted();
 #endif
     }
+#if defined(METAL)
+    MainEncoder.EndEncoding();
+    MaincommandBuffer.Commit();
+    if (INHOST(nStep)==INHOST(TimeSteps)-1)
+        MaincommandBuffer.WaitUntilCompleted();
+#endif
+      
+
     INHOST(nStep)++;
   #if defined(CUDA)
       nCurStream++;
@@ -1108,7 +1092,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         cudaStreamSynchronize(streams[nSyncStream]);
    #endif
 	}
+ 
   #if defined(METAL)
+   
       //#we just synchronize before transferring data back to CPU
       mtlpp::CommandBuffer commandBufferSync = commandQueue.CommandBuffer();
       mxcheckGPUErrors(((int)commandBufferSync));

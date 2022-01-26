@@ -23,6 +23,63 @@ public func PrintMetalDevices() -> Int {
 }
 //SWIFT wrapper for METAL function for Rayleigh Integral
 
+var captureManager : MTLCaptureManager!
+var deviceCapture : MTLDevice!
+@available(macOS 10.13, *)
+@_cdecl("StartCapture")
+public func StartCapture() -> Int {
+
+    let deviceName : String = ProcessInfo.processInfo.environment["__RayleighMetalDevice"]!
+
+    // print("deviceName =" + deviceName)
+
+    var bFound = false
+    for dev in MTLCopyAllDevices() {
+        if dev.name.contains(deviceName)
+        {
+            bFound = true
+            deviceCapture = dev
+        }
+        
+    }
+
+    if bFound == false {
+        return -1
+    }
+
+	captureManager = MTLCaptureManager.shared()
+		
+	guard captureManager.supportsDestination(.gpuTraceDocument) else {
+		print("Capture to a GPU tracefile is not supported")
+		return -1
+	}
+	
+	// Write file to tmp folder
+	let destURL = URL(string: "./frameCapture.gputrace")
+	
+	// Set up the capture destiptor
+	let captureDescriptor = MTLCaptureDescriptor()
+	captureDescriptor.captureObject = deviceCapture
+	captureDescriptor.destination = .gpuTraceDocument
+	captureDescriptor.outputURL = destURL
+		
+	do {
+		try captureManager.startCapture(with: captureDescriptor)
+	}  catch let e {
+		print("Failed to capture frame for debug: \(e.localizedDescription)")
+		return -1
+	}
+    return 0
+}
+
+@available(macOS 10.13, *)
+@_cdecl("Stopcapture")
+public func Stopcapture() -> Int {
+
+	captureManager.stopCapture()
+    return 0
+}
+
 @available(macOS 10.13, *)
 @_cdecl("ForwardSimpleMetal")
 public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,

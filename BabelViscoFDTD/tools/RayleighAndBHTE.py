@@ -183,7 +183,7 @@ if sys.platform == "darwin":
 
     # Loads METAL interface
     os.environ['__RayleighMetal'] =os.path.dirname(os.path.abspath(__file__))
-    
+    print('loading',os.path.dirname(os.path.abspath(__file__))+"/libRayleighMetal.dylib")
     swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libRayleighMetal.dylib")
 
     swift_fun.ForwardSimpleMetal.argtypes = [
@@ -204,6 +204,13 @@ if sys.platform == "darwin":
 
     swift_fun.PrintMetalDevices()
     print("loaded Metal",str(swift_fun))
+
+    def StartMetaCapture(deviceName='M1'):
+        os.environ['__RayleighMetalDevice'] =deviceName
+        swift_fun.StartCapture()
+
+    def Stopcapture():
+        swift_fun.Stopcapture()
 
 else:
 
