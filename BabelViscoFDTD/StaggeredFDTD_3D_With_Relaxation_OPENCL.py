@@ -386,7 +386,11 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,NumberSelSensorMaps),dtype,order='F')
 
     prg = cl.Program(ctx,AllC).build()
-    StressKernel=prg.StressKernel
+    PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1','MAIN_2','MAIN_3','MAIN_4']
+    AllStressKernels={}
+    for k in PartsStress:
+        AllStressKernels[k]=getattr(prg,k+"_StressKernel");
+    
     ParticleKernel=prg.ParticleKernel
     SensorsKernel=prg.SensorsKernel
     
@@ -413,7 +417,8 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
         _ownGpuCalloc(k,ctx,td,ArrayResCPU[k].size,ArraysGPUOp)
         
     for n,k in enumerate(_IndexDataKernel):
-        StressKernel.set_arg(n,ArraysGPUOp[k])
+        for k2 in PartsStress:
+            AllStressKernels[k2].set_arg(n,ArraysGPUOp[k])
         ParticleKernel.set_arg(n,ArraysGPUOp[k])
         SensorsKernel.set_arg(n,ArraysGPUOp[k])
     SensorsKernel.set_arg(54,ArraysGPUOp['SensorOutput'])
@@ -431,11 +436,13 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
         LocalSize=None
 
     for nStep in range(TimeSteps):
-        StressKernel.set_arg(54,np.uint32(nStep))
-        StressKernel.set_arg(55,arguments['TypeSource'])
+        for k in AllStressKernels:
+            AllStressKernels[k].set_arg(54,np.uint32(nStep))
+            AllStressKernels[k].set_arg(55,arguments['TypeSource'])
         ParticleKernel.set_arg(54,np.uint32(nStep))
         ParticleKernel.set_arg(55,arguments['TypeSource'])
-        ev = cl.enqueue_nd_range_kernel(queue, StressKernel, GroupSize, LocalSize)
+        for k in AllStressKernels:
+            ev = cl.enqueue_nd_range_kernel(queue, AllStressKernels[k], GroupSize, LocalSize)
         queue.finish()
         ev = cl.enqueue_nd_range_kernel(queue, ParticleKernel, GroupSize, LocalSize)
         queue.finish()

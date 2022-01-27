@@ -2,15 +2,16 @@
 #include"kernelparamsMetal.h"
 #endif
 
-#if defined(CUDA)
-__global__ void StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+#define _ST_PML_1
+#ifdef CUDA
+__global__ void PML_1_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
 {
 	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
     const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
-__kernel void StressKernel(
+__kernel void PML_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
@@ -19,7 +20,7 @@ __kernel void StressKernel(
   const _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
-kernel void StressKernel(
+kernel void PML_1_StressKernel(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
 	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
@@ -43,13 +44,443 @@ kernel void StressKernel(
   const _PT j = (_PT) gid.y;
   const _PT k = (_PT) gid.z;
 #endif
-
-
     if (i>N1 || j >N2  || k>N3)
 		return;
-
-    #include "StressKernel.h"
+    #include "StressKernel.h" 
 }
+#undef _ST_PML_1
+
+#define _ST_PML_2
+#ifdef CUDA
+__global__ void PML_2_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void PML_2_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void PML_2_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_PML_2
+
+#define _ST_PML_3
+#ifdef CUDA
+__global__ void PML_3_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void PML_3_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void PML_3_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_PML_3
+
+#define _ST_PML_4
+#ifdef CUDA
+__global__ void PML_4_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void PML_4_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void PML_4_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_PML_4
+
+#define _ST_PML_5
+#ifdef CUDA
+__global__ void PML_5_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void PML_5_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void PML_5_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_PML_5
+
+#define _ST_PML_6
+#ifdef CUDA
+__global__ void PML_6_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void PML_6_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void PML_6_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_PML_6
+
+#define _ST_MAIN_1
+#ifdef CUDA
+__global__ void MAIN_1_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void MAIN_1_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void MAIN_1_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_MAIN_1
+
+#define _ST_MAIN_2
+#ifdef CUDA
+__global__ void MAIN_2_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void MAIN_2_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void MAIN_2_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_MAIN_2
+
+#define _ST_MAIN_3
+#ifdef CUDA
+__global__ void MAIN_3_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void MAIN_3_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void MAIN_3_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_MAIN_3
+
+#define _ST_MAIN_4
+#ifdef CUDA
+__global__ void MAIN_4_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+{
+	const _PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    const _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+    const _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+#endif
+#ifdef OPENCL
+__kernel void MAIN_4_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	, unsigned int nStep, unsigned int TypeSource)
+{
+  const _PT i = (_PT) get_global_id(0);
+  const _PT j = (_PT) get_global_id(1);
+  const _PT k = (_PT) get_global_id(2);
+#endif
+#ifdef METAL
+kernel void MAIN_4_StressKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
+	const device unsigned int *p_INDEX_MEX [[ buffer(2) ]],
+	const device unsigned int *p_INDEX_UINT [[ buffer(3) ]],
+	const device unsigned int *p_UINT_BUFFER [[ buffer(4) ]],
+	device mexType * p_MEX_BUFFER_0 [[ buffer(5) ]],
+	device mexType * p_MEX_BUFFER_1 [[ buffer(6) ]],
+	device mexType * p_MEX_BUFFER_2 [[ buffer(7) ]],
+	device mexType * p_MEX_BUFFER_3 [[ buffer(8) ]],
+	device mexType * p_MEX_BUFFER_4 [[ buffer(9) ]],
+	device mexType * p_MEX_BUFFER_5 [[ buffer(10) ]],
+	device mexType * p_MEX_BUFFER_6 [[ buffer(11) ]],
+	device mexType * p_MEX_BUFFER_7 [[ buffer(12) ]],
+	device mexType * p_MEX_BUFFER_8 [[ buffer(13) ]],
+	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
+	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
+	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
+	uint3 gid[[thread_position_in_grid]])
+{
+  const _PT i = (_PT) gid.x;
+  const _PT j = (_PT) gid.y;
+  const _PT k = (_PT) gid.z;
+#endif
+    if (i>N1 || j >N2  || k>N3)
+		return;
+    #include "StressKernel.h" 
+}
+#undef _ST_MAIN_4
 
 #if defined(CUDA)
 __global__ void ParticleKernel(InputDataKernel * p,
