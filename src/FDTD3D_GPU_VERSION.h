@@ -196,47 +196,55 @@ int NumberAlloc=0;
 
     mtlpp::Device device= AllDev[SelDevice];
 
-    sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n"
-                                "#include <metal_stdlib>\nusing namespace metal;\n"
-                                "#define MAX_SIZE_PML %i\n",MEX_STR,MAX_SIZE_PML);
-    char * KernelSource = load_file(kernelfile_pr);
-    if (KernelSource==0)
-    {
-      ERROR_STRING("Unable to read __gpu_kernel.c file!!")
-    }
-    strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
-    free(KernelSource);
+    // sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n"
+    //                             "#include <metal_stdlib>\nusing namespace metal;\n"
+    //                             "#define MAX_SIZE_PML %i\n",MEX_STR,MAX_SIZE_PML);
+    // char * KernelSource = load_file(kernelfile_pr);
+    // if (KernelSource==0)
+    // {
+    //   ERROR_STRING("Unable to read __gpu_kernel.c file!!")
+    // }
+    // strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
+    // free(KernelSource);
 
-    PRINTF("After reading files\n");
+    // PRINTF("After reading files\n");
 
     ns::Error error;
-    mtlpp::Library library = device.NewLibrary(BUFFER_FOR_GPU_CODE, mtlpp::CompileOptions(), &error);
-    if (((int)library)==0)
+    ns::String PathToLib("/opt/homebrew/Caskroom/miniforge/base/envs/main/lib/python3.9/site-packages/BabelViscoFDTD/tools/Rayleigh.metallib");
+    //mtlpp::Library library = device.NewLibrary(BUFFER_FOR_GPU_CODE, mtlpp::CompileOptions(), &error);
+    mtlpp::Library library = device.NewLibrary(PathToLib, &error);
+    if (((int)library)==0 )
     {
-      FILE * TempKernel;
-      TempKernel=fopen("__For_Analysis_kernel.m", "w");
-      fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
-      fclose(TempKernel);
+      // FILE * TempKernel;
+      // TempKernel=fopen("__For_Analysis_kernel.m", "w");
+      // fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
+      // fclose(TempKernel);
         PRINTF("GetLocalizedDescription = %s\n",error.GetLocalizedDescription().GetCStr());
         PRINTF("GetLocalizedFailureReason = %s\n",error.GetLocalizedFailureReason().GetCStr());
         PRINTF("GetLocalizedRecoverySuggestion = %s\n",error.GetLocalizedRecoverySuggestion().GetCStr());
         PRINTF("GetLocalizedRecoveryOptions = %s\n",error.GetLocalizedRecoveryOptions().GetCStr());
         PRINTF("GetHelpAnchor = %s\n",error.GetHelpAnchor().GetCStr());
+        PRINTF("GetCode = %i\n",error.GetCode());
         ERROR_STRING("Error in compilation, see also file __For_Analysis_kernel.m that was generated with the metal code in the current directory")
     }
     mxcheckGPUErrors(((int)library));
 
     PRINTF("After compiling code \n");
 
+
     mtlpp::Function ParticleKernelFunc = library.NewFunction("ParticleKernel");
     mxcheckGPUErrors(((int)ParticleKernelFunc));
     mtlpp::ComputePipelineState computePipelineStateParticle = device.NewComputePipelineState(ParticleKernelFunc, nullptr);
     mxcheckGPUErrors(((int)computePipelineStateParticle));
 
-    mtlpp::Function StressKernelFunc = library.NewFunction("StressKernel");
-    mxcheckGPUErrors(((int)StressKernelFunc));
-    mtlpp::ComputePipelineState computePipelineStateStress = device.NewComputePipelineState(StressKernelFunc, nullptr);
-    mxcheckGPUErrors(((int)computePipelineStateStress));
+
+
+#define GET_KERNEL_FUNCTION(__ID__)\
+    mtlpp::Function __ID__ ##_StressKernelFunc = library.NewFunction(#__ID__ "_StressKernel");\
+    mxcheckGPUErrors(((int)__ID__ ##_StressKernelFunc));\
+    mtlpp::ComputePipelineState __ID__ ##_computePipelineStateStress = device.NewComputePipelineState(__ID__ ##_StressKernelFunc, nullptr);\
+    mxcheckGPUErrors(((int)__ID__ ##_computePipelineStateStress));\
+    PRINTF("After getting function " #__ID__ "_StressKernel\n" );
 
     mtlpp::Function SnapShotFunc = library.NewFunction("SnapShot");
     mxcheckGPUErrors(((int)SnapShotFunc));
@@ -247,6 +255,17 @@ int NumberAlloc=0;
     mxcheckGPUErrors(((int)SensorsKernelFunc));
     mtlpp::ComputePipelineState computePipelineStateSensors = device.NewComputePipelineState(SensorsKernelFunc, nullptr);
     mxcheckGPUErrors(((int)computePipelineStateSensors));
+
+    GET_KERNEL_FUNCTION(PML_1)    
+    GET_KERNEL_FUNCTION(PML_2)    
+    GET_KERNEL_FUNCTION(PML_3)    
+    GET_KERNEL_FUNCTION(PML_4)    
+    GET_KERNEL_FUNCTION(PML_5)    
+    GET_KERNEL_FUNCTION(PML_6) 
+    GET_KERNEL_FUNCTION(MAIN_1)    
+    GET_KERNEL_FUNCTION(MAIN_2)    
+    GET_KERNEL_FUNCTION(MAIN_3)    
+    GET_KERNEL_FUNCTION(MAIN_4)     
 
     PRINTF("After getting all functions code \n");
 
@@ -471,8 +490,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #ifdef METAL
    mtlpp::Buffer gpu_Snapshots_pr;
 #endif
-
-
 
   CreateAndCopyFromMXVarOnGPU2(Snapshots,mexType);
   CreateAndCopyFromMXVarOnGPU(SensorOutput,mexType);
@@ -811,34 +828,83 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 
 #ifdef METAL
-  unsigned int local_stress[3];
+  unsigned int PML_1_local_stress[3];
+  unsigned int PML_1_global_stress[3];
+  unsigned int PML_2_local_stress[3];
+  unsigned int PML_2_global_stress[3];
+  unsigned int PML_3_local_stress[3];
+  unsigned int PML_3_global_stress[3];
+  unsigned int PML_4_local_stress[3];
+  unsigned int PML_4_global_stress[3];
+  unsigned int PML_5_local_stress[3];
+  unsigned int PML_5_global_stress[3];
+  unsigned int PML_6_local_stress[3];
+  unsigned int PML_6_global_stress[3];
+  unsigned int MAIN_1_local_stress[3];
+  unsigned int MAIN_1_global_stress[3];
+  unsigned int MAIN_2_local_stress[3];
+  unsigned int MAIN_2_global_stress[3];
+  unsigned int MAIN_3_local_stress[3];
+  unsigned int MAIN_3_global_stress[3];
+  unsigned int MAIN_4_local_stress[3];
+  unsigned int MAIN_4_global_stress[3];
   unsigned int local_particle[3];
+  unsigned int global_particle[3];
+
+#define SET_USER_LOCAL_STRESS(__ID__)\
+      __ID__ ##_local_stress[0]=(size_t)ManualLocalSize_pr[0];\
+      __ID__ ##_local_stress[1]=(size_t)ManualLocalSize_pr[1];\
+      __ID__ ##_local_stress[2]=(size_t)ManualLocalSize_pr[2];
+
+#define CALC_USER_LOCAL_STRESS(__ID__)\
+{\
+      unsigned int w = __ID__ ##_computePipelineStateStress.GetThreadExecutionWidth();\
+      unsigned int h = __ID__ ##_computePipelineStateStress.GetMaxTotalThreadsPerThreadgroup() / w;\
+      unsigned int z =1;\
+      if (h%2==0)\
+      {\
+        h=h/2;\
+        z=2;\
+      }\
+      __ID__ ##_local_stress[0]=w;\
+      __ID__ ##_local_stress[1]=h;\
+      __ID__ ##_local_stress[2]=z;\
+}
+
   if (ManualLocalSize_pr[0] != -1)
   {
-      local_stress[0]=(size_t)ManualLocalSize_pr[0];
-      local_stress[1]=(size_t)ManualLocalSize_pr[1];
-      local_stress[2]=(size_t)ManualLocalSize_pr[2];
+      SET_USER_LOCAL_STRESS(PML_1)
+      SET_USER_LOCAL_STRESS(PML_2)
+      SET_USER_LOCAL_STRESS(PML_3)
+      SET_USER_LOCAL_STRESS(PML_4)
+      SET_USER_LOCAL_STRESS(PML_5)
+      SET_USER_LOCAL_STRESS(PML_6)
+      SET_USER_LOCAL_STRESS(MAIN_1)
+      SET_USER_LOCAL_STRESS(MAIN_2)
+      SET_USER_LOCAL_STRESS(MAIN_3)
+      SET_USER_LOCAL_STRESS(MAIN_4)
+
+
       local_particle[0]=(size_t)ManualLocalSize_pr[0];
       local_particle[1]=(size_t)ManualLocalSize_pr[1];
       local_particle[2]=(size_t)ManualLocalSize_pr[2];
   }
   else
   {
-      unsigned int w = computePipelineStateStress.GetThreadExecutionWidth();
-      unsigned int h = computePipelineStateStress.GetMaxTotalThreadsPerThreadgroup() / w;
+      CALC_USER_LOCAL_STRESS(PML_1)
+      CALC_USER_LOCAL_STRESS(PML_2)
+      CALC_USER_LOCAL_STRESS(PML_3)
+      CALC_USER_LOCAL_STRESS(PML_4)
+      CALC_USER_LOCAL_STRESS(PML_5)
+      CALC_USER_LOCAL_STRESS(PML_6)
+      CALC_USER_LOCAL_STRESS(MAIN_1)
+      CALC_USER_LOCAL_STRESS(MAIN_2)
+      CALC_USER_LOCAL_STRESS(MAIN_3)
+      CALC_USER_LOCAL_STRESS(MAIN_4)
+  
+      unsigned int w = computePipelineStateParticle.GetThreadExecutionWidth();
+      unsigned int h = computePipelineStateParticle.GetMaxTotalThreadsPerThreadgroup() / w;
       unsigned int z =1;
-      if (h%2==0)
-      {
-        h=h/2;
-        z=2;
-      }
-      local_stress[0]=w;
-      local_stress[1]=h;
-      local_stress[2]=z;
-
-      w = computePipelineStateParticle.GetThreadExecutionWidth();
-      h = computePipelineStateParticle.GetMaxTotalThreadsPerThreadgroup() / w;
-      z =1;
       if (h%2==0)
       {
         h=h/2;
@@ -854,13 +920,28 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   local_sensors[1]=1;
   local_sensors[2]=1;
 
-  unsigned int global_stress[3];
-  unsigned int global_particle[3];
+#define SET_USER_GROUP_STRESS(__ID__)\
+      __ID__ ##_global_stress[0]=(size_t)ManualGroupSize_pr[0];\
+      __ID__ ##_global_stress[1]=(size_t)ManualGroupSize_pr[1];\
+      __ID__ ##_global_stress[2]=(size_t)ManualGroupSize_pr[2];
+
+#define CALC_USER_GROUP_STRESS(__ID__)\
+      __ID__ ##_global_stress[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float) __ID__ ##_local_stress[0]);\
+      __ID__ ##_global_stress[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float) __ID__ ##_local_stress[1]);\
+      __ID__ ##_global_stress[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float) __ID__ ##_local_stress[2]);
+
   if (ManualGroupSize_pr[0] != -1)
   {
-      global_stress[0]=(unsigned int)ManualGroupSize_pr[0];
-      global_stress[1]=(unsigned int)ManualGroupSize_pr[1];
-      global_stress[2]=(unsigned int)ManualGroupSize_pr[2];
+      SET_USER_GROUP_STRESS(PML_1)
+      SET_USER_GROUP_STRESS(PML_2)
+      SET_USER_GROUP_STRESS(PML_3)
+      SET_USER_GROUP_STRESS(PML_4)
+      SET_USER_GROUP_STRESS(PML_5)
+      SET_USER_GROUP_STRESS(PML_6)
+      SET_USER_GROUP_STRESS(MAIN_1)
+      SET_USER_GROUP_STRESS(MAIN_2)
+      SET_USER_GROUP_STRESS(MAIN_3)
+      SET_USER_GROUP_STRESS(MAIN_4)
 
       global_particle[0]=(unsigned int)ManualGroupSize_pr[0];
       global_particle[1]=(unsigned int)ManualGroupSize_pr[1];
@@ -868,9 +949,17 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   }
   else
   {
-      global_stress[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float)local_stress[0]);
-      global_stress[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float)local_stress[1]);
-      global_stress[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float)local_stress[2]);
+      CALC_USER_GROUP_STRESS(PML_1)
+      CALC_USER_GROUP_STRESS(PML_2)
+      CALC_USER_GROUP_STRESS(PML_3)
+      CALC_USER_GROUP_STRESS(PML_4)
+      CALC_USER_GROUP_STRESS(PML_5)
+      CALC_USER_GROUP_STRESS(PML_6)
+      CALC_USER_GROUP_STRESS(MAIN_1)
+      CALC_USER_GROUP_STRESS(MAIN_2)
+      CALC_USER_GROUP_STRESS(MAIN_3)
+      CALC_USER_GROUP_STRESS(MAIN_4)
+
 
       global_particle[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float)local_particle[0]);
       global_particle[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float)local_particle[1]);
@@ -882,15 +971,15 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   global_sensors[1]=1;
   global_sensors[2]=1;
 
-  PRINTF("global_stress %i %i %i, local_stress %i %i %i\n",
-        global_stress[0],global_stress[1],global_stress[2],
-        local_stress[0],local_stress[1],local_stress[2]);
-  PRINTF("global_particle %i %i %i, local_particle %i %i %i\n",
-        global_particle[0],global_particle[1],global_particle[2],
-        local_particle[0],local_particle[1],local_particle[2]);
-  PRINTF("global_sensors %i %i %i, local_sensors %i %i %i\n",
-        global_sensors[0],global_sensors[1],global_sensors[2],
-        local_sensors[0],local_sensors[1],local_sensors[2]);
+  // PRINTF("global_stress %i %i %i, local_stress %i %i %i\n",
+  //       global_stress[0],global_stress[1],global_stress[2],
+  //       local_stress[0],local_stress[1],local_stress[2]);
+  // PRINTF("global_particle %i %i %i, local_particle %i %i %i\n",
+  //       global_particle[0],global_particle[1],global_particle[2],
+  //       local_particle[0],local_particle[1],local_particle[2]);
+  // PRINTF("global_sensors %i %i %i, local_sensors %i %i %i\n",
+  //       global_sensors[0],global_sensors[1],global_sensors[2],
+  //       local_sensors[0],local_sensors[1],local_sensors[2]);
   
 #endif
 
@@ -911,10 +1000,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-      #ifdef METAL
-  mtlpp::CommandBuffer MaincommandBuffer = commandQueue.CommandBuffer();
-  mxcheckGPUErrors(((int)MaincommandBuffer));
-  #endif
     // if (INHOST(nStep)%100==0)
     //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
 
@@ -960,36 +1045,59 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
 
+        mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)StresscommandBuffer));
 
-        mtlpp::ComputeCommandEncoder MainEncoder = MaincommandBuffer.ComputeCommandEncoder();
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
-        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
-        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
-        for (_PT ii=0;ii<12;ii++)
-            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
         
-        MainEncoder.SetComputePipelineState(computePipelineStateStress);
-        MainEncoder.DispatchThreadgroups(
-            mtlpp::Size(
-              global_stress[0],
-              global_stress[1],
-              global_stress[2]),
-            mtlpp::Size(
-              local_stress[0], 
-              local_stress[1],
-              local_stress[2]));
+#define ENCODE_STRESS(__ID__)\
+        mtlpp::ComputeCommandEncoder __ID__ ##StressEncoder = StresscommandBuffer.ComputeCommandEncoder();\
+        mxcheckGPUErrors(((int)__ID__ ##StressEncoder));\
+        __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
+        __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
+        __ID__ ##StressEncoder.SetBuffer(_INDEX_MEX, 0, 2);\
+        __ID__ ##StressEncoder.SetBuffer(_INDEX_UINT, 0, 3);\
+        __ID__ ##StressEncoder.SetBuffer(_UINT_BUFFER, 0, 4);\
+        for (_PT ii=0;ii<12;ii++)\
+            __ID__ ##StressEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);\
+        __ID__ ##StressEncoder.SetComputePipelineState(__ID__ ##_computePipelineStateStress);\
+        __ID__ ##StressEncoder.DispatchThreadgroups(\
+            mtlpp::Size(\
+              __ID__ ##_global_stress[0],\
+              __ID__ ##_global_stress[1],\
+              __ID__ ##_global_stress[2]),\
+            mtlpp::Size(\
+              __ID__ ##_local_stress[0],\
+              __ID__ ##_local_stress[1],\
+              __ID__ ##_local_stress[2]));\
+        __ID__ ##StressEncoder.EndEncoding();\
+       
+        ENCODE_STRESS(PML_1)
+        ENCODE_STRESS(PML_2)
+        ENCODE_STRESS(PML_3)
+        ENCODE_STRESS(PML_4)
+        ENCODE_STRESS(PML_5)
+        ENCODE_STRESS(PML_6)
+        ENCODE_STRESS(MAIN_1)
+        ENCODE_STRESS(MAIN_2)
+        ENCODE_STRESS(MAIN_3)
+        ENCODE_STRESS(MAIN_4)
+
         
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
-        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
-        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
+        StresscommandBuffer.Commit();
+        StresscommandBuffer.WaitUntilCompleted();
+  
+         mtlpp::CommandBuffer commandBufferParticle = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)commandBufferParticle));
+        mtlpp::ComputeCommandEncoder commandEncoderParticle = commandBufferParticle.ComputeCommandEncoder();
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderParticle.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderParticle.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderParticle.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderParticle.SetBuffer(_UINT_BUFFER, 0, 4);
         for (_PT ii=0;ii<12;ii++)
-            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-        MainEncoder.SetComputePipelineState(computePipelineStateParticle);
-        MainEncoder.DispatchThreadgroups(
+            commandEncoderParticle.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        commandEncoderParticle.SetComputePipelineState(computePipelineStateParticle);
+        commandEncoderParticle.DispatchThreadgroups(
             mtlpp::Size(
               global_particle[0],
               global_particle[1],
@@ -998,9 +1106,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               local_particle[0], 
               local_particle[1],
               local_particle[2]));
+        commandEncoderParticle.EndEncoding();
+        commandBufferParticle.Commit();
+        commandBufferParticle.WaitUntilCompleted();
         
-
-
 #endif
 
    // Snapshots
@@ -1022,21 +1131,23 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   #if defined(METAL)
         InitSymbol(CurrSnap,unsigned int,G_INT);
         
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-        MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
-        MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
-        MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
+        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = StresscommandBuffer.ComputeCommandEncoder();
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+        commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
+        commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
+        commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
         for (_PT ii=0;ii<12;ii++)
-            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-        MainEncoder.SetBuffer(gpu_Snapshots_pr, 0, 17);
-        MainEncoder.SetComputePipelineState(computePipelineStateSnapShot);
-        MainEncoder.DispatchThreadgroups(
+            commandEncoderSnapShot.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+        commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 17);
+        commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
+        commandEncoderSnapShot.DispatchThreadgroups(
             mtlpp::Size(
               (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
               (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
               1),
             mtlpp::Size(8, 8,1));
+        commandEncoderSnapShot.EndEncoding();
         
   #endif
 
@@ -1058,16 +1169,18 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       mxcheckGPUErrors(clFinish(commands));
 #endif
 #if defined(METAL)
-      
-      MainEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-      MainEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-      MainEncoder.SetBuffer(_INDEX_MEX, 0, 2);
-      MainEncoder.SetBuffer(_INDEX_UINT, 0, 3);
-      MainEncoder.SetBuffer(_UINT_BUFFER, 0, 4);
+      mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
+      mxcheckGPUErrors(((int)commandBufferSensors));
+      mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
+      commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
+      commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
+      commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
       for (_PT ii=0;ii<12;ii++)
-            MainEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-      MainEncoder.SetComputePipelineState(computePipelineStateSensors);
-      MainEncoder.DispatchThreadgroups(
+            commandEncoderSensors.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
+      commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
+      commandEncoderSensors.DispatchThreadgroups(
           mtlpp::Size(
             global_sensors[0],
             global_sensors[1],
@@ -1075,13 +1188,13 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           mtlpp::Size(local_sensors[0],
                       local_sensors[1],
                       local_sensors[2]));
+      commandEncoderSensors.EndEncoding();
+      commandBufferSensors.Commit();
+      commandBufferSensors.WaitUntilCompleted();
 #endif
     }
 #if defined(METAL)
-    MainEncoder.EndEncoding();
-    MaincommandBuffer.Commit();
-    // if (INHOST(nStep)==INHOST(TimeSteps)-1)
-        MaincommandBuffer.WaitUntilCompleted();
+
 #endif
       
 
