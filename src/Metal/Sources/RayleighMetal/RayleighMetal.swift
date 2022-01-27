@@ -55,7 +55,7 @@ public func StartCapture() -> Int {
 	}
 	
 	// Write file to tmp folder
-	let destURL = URL(string: "./frameCapture.gputrace")
+	let destURL = URL(fileURLWithPath: "./frameCapture.gputrace")
 	
 	// Set up the capture destiptor
 	let captureDescriptor = MTLCaptureDescriptor()

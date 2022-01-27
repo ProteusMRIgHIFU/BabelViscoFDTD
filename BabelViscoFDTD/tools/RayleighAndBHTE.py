@@ -206,7 +206,7 @@ if sys.platform == "darwin":
     print("loaded Metal",str(swift_fun))
 
     def StartMetaCapture(deviceName='M1'):
-        os.environ['__RayleighMetalDevice'] =deviceName
+        
         swift_fun.StartCapture()
 
     def Stopcapture():

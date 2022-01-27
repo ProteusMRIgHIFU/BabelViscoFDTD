@@ -911,12 +911,13 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-    // if (INHOST(nStep)%100==0)
-    //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
-  #ifdef METAL
+      #ifdef METAL
   mtlpp::CommandBuffer MaincommandBuffer = commandQueue.CommandBuffer();
   mxcheckGPUErrors(((int)MaincommandBuffer));
   #endif
+    // if (INHOST(nStep)%100==0)
+    //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+
 #if defined(CUDA)
         unsigned int nCurStream=0;
         unsigned int maxStream=TOTAL_streams;
@@ -1079,7 +1080,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #if defined(METAL)
     MainEncoder.EndEncoding();
     MaincommandBuffer.Commit();
-    if (INHOST(nStep)==INHOST(TimeSteps)-1)
+    // if (INHOST(nStep)==INHOST(TimeSteps)-1)
         MaincommandBuffer.WaitUntilCompleted();
 #endif
       
