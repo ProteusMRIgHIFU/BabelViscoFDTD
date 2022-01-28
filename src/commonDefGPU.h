@@ -201,8 +201,6 @@ int mxcheck(int result, char const *const func, const char *const file, int cons
 }
 
 
-
-
 #if defined(CUDA)
 //declaration of constant values for FDTD solution
 __constant__ mexType DT;

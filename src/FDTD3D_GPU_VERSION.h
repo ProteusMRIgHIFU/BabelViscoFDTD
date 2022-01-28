@@ -254,24 +254,21 @@ int NumberAlloc=0;
     mtlpp::ComputePipelineState computePipelineStateSensors = device.NewComputePipelineState(SensorsKernelFunc, nullptr);
     mxcheckGPUErrors(((int)computePipelineStateSensors));
 
-    GET_KERNEL_STRESS_FUNCTION(PML_1)    
-    GET_KERNEL_STRESS_FUNCTION(PML_2)    
-    GET_KERNEL_STRESS_FUNCTION(PML_3)    
-    GET_KERNEL_STRESS_FUNCTION(PML_4)    
-    GET_KERNEL_STRESS_FUNCTION(PML_5)    
-    GET_KERNEL_STRESS_FUNCTION(PML_6) 
-    GET_KERNEL_STRESS_FUNCTION(MAIN_1)    
-    GET_KERNEL_STRESS_FUNCTION(MAIN_2)    
-    GET_KERNEL_STRESS_FUNCTION(MAIN_3)    
-    GET_KERNEL_STRESS_FUNCTION(MAIN_4)     
+    GET_KERNEL_STRESS_FUNCTION(PML_1) 
+    GET_KERNEL_STRESS_FUNCTION(PML_2) 
+    GET_KERNEL_STRESS_FUNCTION(PML_3) 
+    GET_KERNEL_STRESS_FUNCTION(PML_4) 
+    GET_KERNEL_STRESS_FUNCTION(PML_5) 
+    GET_KERNEL_STRESS_FUNCTION(PML_6)    
+    GET_KERNEL_STRESS_FUNCTION(MAIN_1)     
 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_1)    
-    GET_KERNEL_PARTICLE_FUNCTION(PML_2)    
-    GET_KERNEL_PARTICLE_FUNCTION(PML_3)    
+    GET_KERNEL_PARTICLE_FUNCTION(PML_1) 
+    GET_KERNEL_PARTICLE_FUNCTION(PML_2) 
+    GET_KERNEL_PARTICLE_FUNCTION(PML_3) 
+    GET_KERNEL_PARTICLE_FUNCTION(PML_4) 
+    GET_KERNEL_PARTICLE_FUNCTION(PML_5) 
+    GET_KERNEL_PARTICLE_FUNCTION(PML_6)    
     GET_KERNEL_PARTICLE_FUNCTION(MAIN_1)    
-    GET_KERNEL_PARTICLE_FUNCTION(MAIN_2)    
-    GET_KERNEL_PARTICLE_FUNCTION(MAIN_3)    
-
 
     PRINTF("After getting all functions code \n");
 
@@ -531,8 +528,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
             LENGTH_INDEX_UINT*2,
             mtlpp::ResourceOptions::StorageModeManaged);
   mxcheckGPUErrors(((int)_INDEX_UINT));
-
-
 
   {
       unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
@@ -848,12 +843,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int PML_6_global_stress[3];
   unsigned int MAIN_1_local_stress[3];
   unsigned int MAIN_1_global_stress[3];
-  unsigned int MAIN_2_local_stress[3];
-  unsigned int MAIN_2_global_stress[3];
-  unsigned int MAIN_3_local_stress[3];
-  unsigned int MAIN_3_global_stress[3];
-  unsigned int MAIN_4_local_stress[3];
-  unsigned int MAIN_4_global_stress[3];
 
   unsigned int PML_1_local_particle[3];
   unsigned int PML_1_global_particle[3];
@@ -861,12 +850,15 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int PML_2_global_particle[3];
   unsigned int PML_3_local_particle[3];
   unsigned int PML_3_global_particle[3];
+  unsigned int PML_4_local_particle[3];
+  unsigned int PML_4_global_particle[3];
+  unsigned int PML_5_local_particle[3];
+  unsigned int PML_5_global_particle[3];
+  unsigned int PML_6_local_particle[3];
+  unsigned int PML_6_global_particle[3];
   unsigned int MAIN_1_local_particle[3];
   unsigned int MAIN_1_global_particle[3];
-  unsigned int MAIN_2_local_particle[3];
-  unsigned int MAIN_2_global_particle[3];
-  unsigned int MAIN_3_local_particle[3];
-  unsigned int MAIN_3_global_particle[3];
+  
 
 
 #define SET_USER_LOCAL_STRESS(__ID__)\
@@ -887,6 +879,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       __ID__ ##_local_stress[0]=w;\
       __ID__ ##_local_stress[1]=h;\
       __ID__ ##_local_stress[2]=z;\
+      PRINTF(#__ID__ "_local_stress =[%i,%i,%i]\n",__ID__ ##_local_stress[0],__ID__ ##_local_stress[1],__ID__ ##_local_stress[2]);\
 }
 
 #define SET_USER_LOCAL_PARTICLE(__ID__)\
@@ -907,54 +900,37 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       __ID__ ##_local_particle[0]=w;\
       __ID__ ##_local_particle[1]=h;\
       __ID__ ##_local_particle[2]=z;\
+      PRINTF(#__ID__ "_local_particle =[%i,%i,%i]\n",__ID__ ##_local_particle[0],__ID__ ##_local_particle[1],__ID__ ##_local_particle[2]);\
 }
 
 
   if (ManualLocalSize_pr[0] != -1)
   {
-      SET_USER_LOCAL_STRESS(PML_1)
-      SET_USER_LOCAL_STRESS(PML_2)
-      SET_USER_LOCAL_STRESS(PML_3)
-      SET_USER_LOCAL_STRESS(PML_4)
-      SET_USER_LOCAL_STRESS(PML_5)
-      SET_USER_LOCAL_STRESS(PML_6)
+      
       SET_USER_LOCAL_STRESS(MAIN_1)
-      SET_USER_LOCAL_STRESS(MAIN_2)
-      SET_USER_LOCAL_STRESS(MAIN_3)
-      SET_USER_LOCAL_STRESS(MAIN_4)
-
-      SET_USER_LOCAL_PARTICLE(PML_1)
-      SET_USER_LOCAL_PARTICLE(PML_2)
-      SET_USER_LOCAL_PARTICLE(PML_3)
       SET_USER_LOCAL_PARTICLE(MAIN_1)
-      SET_USER_LOCAL_PARTICLE(MAIN_2)
-      SET_USER_LOCAL_PARTICLE(MAIN_3)
-
+      
   }
   else
   {
-      CALC_USER_LOCAL_STRESS(PML_1)
-      CALC_USER_LOCAL_STRESS(PML_2)
-      CALC_USER_LOCAL_STRESS(PML_3)
-      CALC_USER_LOCAL_STRESS(PML_4)
-      CALC_USER_LOCAL_STRESS(PML_5)
-      CALC_USER_LOCAL_STRESS(PML_6)
-      CALC_USER_LOCAL_STRESS(MAIN_1)
-      CALC_USER_LOCAL_STRESS(MAIN_2)
-      CALC_USER_LOCAL_STRESS(MAIN_3)
-      CALC_USER_LOCAL_STRESS(MAIN_4)
-
-      CALC_USER_LOCAL_PARTICLE(PML_1)
-      CALC_USER_LOCAL_PARTICLE(PML_2)
-      CALC_USER_LOCAL_PARTICLE(PML_3)
-      CALC_USER_LOCAL_PARTICLE(MAIN_1)
-      CALC_USER_LOCAL_PARTICLE(MAIN_2)
-      CALC_USER_LOCAL_PARTICLE(MAIN_3)
-
-  
       
-
+      CALC_USER_LOCAL_STRESS(MAIN_1)
+      CALC_USER_LOCAL_PARTICLE(MAIN_1)
   }
+
+  CALC_USER_LOCAL_STRESS(PML_1)  
+  CALC_USER_LOCAL_STRESS(PML_2)  
+  CALC_USER_LOCAL_STRESS(PML_3)   
+  CALC_USER_LOCAL_STRESS(PML_4)  
+  CALC_USER_LOCAL_STRESS(PML_5)  
+  CALC_USER_LOCAL_STRESS(PML_6) 
+  CALC_USER_LOCAL_PARTICLE(PML_1)
+  CALC_USER_LOCAL_PARTICLE(PML_2)
+  CALC_USER_LOCAL_PARTICLE(PML_3)
+  CALC_USER_LOCAL_PARTICLE(PML_4)
+  CALC_USER_LOCAL_PARTICLE(PML_5)
+  CALC_USER_LOCAL_PARTICLE(PML_6)
+  
   unsigned int local_sensors[3];
   local_sensors[0]=computePipelineStateSensors.GetMaxTotalThreadsPerThreadgroup();
   local_sensors[1]=1;
@@ -970,58 +946,72 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       __ID__ ##_global_particle[1]=(size_t)ManualGroupSize_pr[1];\
       __ID__ ##_global_particle[2]=(size_t)ManualGroupSize_pr[2];
 
-#define CALC_USER_GROUP_STRESS(__ID__)\
-      __ID__ ##_global_stress[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float) __ID__ ##_local_stress[0]);\
-      __ID__ ##_global_stress[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float) __ID__ ##_local_stress[1]);\
-      __ID__ ##_global_stress[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float) __ID__ ##_local_stress[2]);
+#define CALC_USER_GROUP_STRESS_MAIN(__ID__)\
+      __ID__ ##_global_stress[0]=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_stress[0]);\
+      __ID__ ##_global_stress[1]=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_stress[1]);\
+      __ID__ ##_global_stress[2]=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_stress[2]);\
+      PRINTF(#__ID__ "_global_stress =[%i,%i,%i]\n",__ID__ ##_global_stress[0],__ID__ ##_global_stress[1],__ID__ ##_global_stress[2]);
 
-#define CALC_USER_GROUP_PARTICLE(__ID__)\
-      __ID__ ##_global_particle[0]=(unsigned int)ceil((float)(INHOST(N1)) / (float) __ID__ ##_local_particle[0]);\
-      __ID__ ##_global_particle[1]=(unsigned int)ceil((float)(INHOST(N2)) / (float) __ID__ ##_local_particle[1]);\
-      __ID__ ##_global_particle[2]=(unsigned int)ceil((float)(INHOST(N3)) / (float) __ID__ ##_local_particle[2]);
+
+#define CALC_USER_GROUP_PARTICLE_MAIN(__ID__)\
+      __ID__ ##_global_particle[0]=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_particle[0]);\
+      __ID__ ##_global_particle[1]=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_particle[1]);\
+      __ID__ ##_global_particle[2]=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) __ID__ ##_local_particle[2]);\
+      PRINTF(#__ID__ "_global_particle =[%i,%i,%i]\n",__ID__ ##_global_particle[0],__ID__ ##_global_particle[1],__ID__ ##_global_particle[2]);
 
   if (ManualGroupSize_pr[0] != -1)
   {
-      SET_USER_GROUP_STRESS(PML_1)
-      SET_USER_GROUP_STRESS(PML_2)
-      SET_USER_GROUP_STRESS(PML_3)
-      SET_USER_GROUP_STRESS(PML_4)
-      SET_USER_GROUP_STRESS(PML_5)
-      SET_USER_GROUP_STRESS(PML_6)
       SET_USER_GROUP_STRESS(MAIN_1)
-      SET_USER_GROUP_STRESS(MAIN_2)
-      SET_USER_GROUP_STRESS(MAIN_3)
-      SET_USER_GROUP_STRESS(MAIN_4)
-
-      SET_USER_GROUP_PARTICLE(PML_1)
-      SET_USER_GROUP_PARTICLE(PML_2)
-      SET_USER_GROUP_PARTICLE(PML_3)
       SET_USER_GROUP_PARTICLE(MAIN_1)
-      SET_USER_GROUP_PARTICLE(MAIN_2)
-      SET_USER_GROUP_PARTICLE(MAIN_3)
-
   }
   else
   {
-      CALC_USER_GROUP_STRESS(PML_1)
-      CALC_USER_GROUP_STRESS(PML_2)
-      CALC_USER_GROUP_STRESS(PML_3)
-      CALC_USER_GROUP_STRESS(PML_4)
-      CALC_USER_GROUP_STRESS(PML_5)
-      CALC_USER_GROUP_STRESS(PML_6)
-      CALC_USER_GROUP_STRESS(MAIN_1)
-      CALC_USER_GROUP_STRESS(MAIN_2)
-      CALC_USER_GROUP_STRESS(MAIN_3)
-      CALC_USER_GROUP_STRESS(MAIN_4)
 
-      CALC_USER_GROUP_PARTICLE(PML_1)
-      CALC_USER_GROUP_PARTICLE(PML_2)
-      CALC_USER_GROUP_PARTICLE(PML_3)
-      CALC_USER_GROUP_PARTICLE(MAIN_1)
-      CALC_USER_GROUP_PARTICLE(MAIN_2)
-      CALC_USER_GROUP_PARTICLE(MAIN_3)
+      CALC_USER_GROUP_STRESS_MAIN(MAIN_1)
+      CALC_USER_GROUP_PARTICLE_MAIN(MAIN_1)
 
   }
+
+  #define CALC_USER_GROUP_PML(__TYPE__)\
+  PML_1_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_1_local_## __TYPE__[0]);\
+  PML_1_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_1_local_## __TYPE__[1]);\
+  PML_1_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_1_local_## __TYPE__[2]);\
+  \
+  PML_2_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_2_local_## __TYPE__[0]);\
+  PML_2_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) PML_2_local_## __TYPE__[1]);\
+  PML_2_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) PML_2_local_## __TYPE__[2]);\
+  \
+  PML_3_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) PML_3_local_## __TYPE__[0]);\
+  PML_3_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_3_local_## __TYPE__[1]);\
+  PML_3_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) PML_3_local_## __TYPE__[2]);\
+  \
+  PML_4_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) PML_4_local_## __TYPE__[0]);\
+  PML_4_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) PML_4_local_## __TYPE__[1]);\
+  PML_4_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_4_local_## __TYPE__[2]);\
+  \
+  PML_5_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_5_local_## __TYPE__[0]);\
+  PML_5_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_5_local_## __TYPE__[1]);\
+  PML_5_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) PML_5_local_## __TYPE__[2]);\
+  \
+  PML_6_global_## __TYPE__[0]=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) PML_6_local_## __TYPE__[0]);\
+  PML_6_global_## __TYPE__[1]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_6_local_## __TYPE__[1]);\
+  PML_6_global_## __TYPE__[2]=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) PML_6_local_## __TYPE__[2]);\
+  \
+  PRINTF("PML_1_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_1_global_## __TYPE__[0],PML_1_global_## __TYPE__[1],PML_1_global_## __TYPE__[2],\
+    PML_1_global_## __TYPE__[0]*PML_1_local_## __TYPE__[0],PML_1_global_## __TYPE__[1]*PML_1_local_## __TYPE__[1],PML_1_global_## __TYPE__[2]*PML_1_local_## __TYPE__[2]);\
+  PRINTF("PML_2_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_2_global_## __TYPE__[0],PML_2_global_## __TYPE__[1],PML_2_global_## __TYPE__[2],\
+    PML_2_global_## __TYPE__[0]*PML_2_local_## __TYPE__[0],PML_2_global_## __TYPE__[1]*PML_2_local_## __TYPE__[1],PML_2_global_## __TYPE__[2]*PML_2_local_## __TYPE__[2]);\
+  PRINTF("PML_3_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_3_global_## __TYPE__[0],PML_3_global_## __TYPE__[1],PML_3_global_## __TYPE__[2],\
+    PML_3_global_## __TYPE__[0]*PML_3_local_## __TYPE__[0],PML_3_global_## __TYPE__[1]*PML_3_local_## __TYPE__[1],PML_3_global_## __TYPE__[2]*PML_3_local_## __TYPE__[2]);\
+  PRINTF("PML_4_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_4_global_## __TYPE__[0],PML_4_global_## __TYPE__[1],PML_4_global_## __TYPE__[2],\
+    PML_4_global_## __TYPE__[0]*PML_4_local_## __TYPE__[0],PML_4_global_## __TYPE__[1]*PML_4_local_## __TYPE__[1],PML_4_global_## __TYPE__[2]*PML_4_local_## __TYPE__[2]);\
+  PRINTF("PML_5_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_5_global_## __TYPE__[0],PML_5_global_## __TYPE__[1],PML_5_global_## __TYPE__[2],\
+    PML_5_global_## __TYPE__[0]*PML_5_local_## __TYPE__[0],PML_5_global_## __TYPE__[1]*PML_5_local_## __TYPE__[1],PML_5_global_## __TYPE__[2]*PML_5_local_## __TYPE__[2]);\
+  PRINTF("PML_6_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_6_global_## __TYPE__[0],PML_6_global_## __TYPE__[1],PML_6_global_## __TYPE__[2],\
+    PML_6_global_## __TYPE__[0]*PML_6_local_## __TYPE__[0],PML_6_global_## __TYPE__[1]*PML_6_local_## __TYPE__[1],PML_6_global_## __TYPE__[2]*PML_6_local_## __TYPE__[2]);
+  
+  CALC_USER_GROUP_PML(stress);
+  CALC_USER_GROUP_PML(particle);
 
   unsigned int global_sensors[3];
   global_sensors[0]=(unsigned int)ceil((float)(INHOST(NumberSensors)) / (float)local_sensors[0]);
@@ -1102,9 +1092,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
 
-        mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)StresscommandBuffer));
-
         
 #define ENCODE_STRESS(__ID__)\
         mtlpp::ComputeCommandEncoder __ID__ ##StressEncoder = StresscommandBuffer.ComputeCommandEncoder();\
@@ -1127,23 +1114,32 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               __ID__ ##_local_stress[1],\
               __ID__ ##_local_stress[2]));\
         __ID__ ##StressEncoder.EndEncoding();
-       
-        ENCODE_STRESS(PML_1)
-        ENCODE_STRESS(PML_2)
-        ENCODE_STRESS(PML_3)
-        ENCODE_STRESS(PML_4)
-        ENCODE_STRESS(PML_5)
-        ENCODE_STRESS(PML_6)
-        ENCODE_STRESS(MAIN_1)
-        ENCODE_STRESS(MAIN_2)
-        ENCODE_STRESS(MAIN_3)
-        ENCODE_STRESS(MAIN_4)
-
-        StresscommandBuffer.Commit();
-        StresscommandBuffer.WaitUntilCompleted();
+        
+          {
+            mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
+            mxcheckGPUErrors(((int)StresscommandBuffer));
+            ENCODE_STRESS(PML_1)
+            ENCODE_STRESS(PML_2)
+            ENCODE_STRESS(PML_3)
+            StresscommandBuffer.Commit();
+            StresscommandBuffer.WaitUntilCompleted();
+          }
+          {
+            mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
+            mxcheckGPUErrors(((int)StresscommandBuffer));
+            ENCODE_STRESS(PML_4)
+            ENCODE_STRESS(PML_5)
+            ENCODE_STRESS(PML_6)
+            StresscommandBuffer.Commit();
+            StresscommandBuffer.WaitUntilCompleted();
+          }
+          mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
+          mxcheckGPUErrors(((int)StresscommandBuffer));
+          ENCODE_STRESS(MAIN_1)
+          StresscommandBuffer.Commit();
+          StresscommandBuffer.WaitUntilCompleted();
   
-        mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)ParticlecommandBuffer));
+
 #define ENCODE_PARTICLE(__ID__)\
         mtlpp::ComputeCommandEncoder __ID__ ##ParticleEncoder = ParticlecommandBuffer.ComputeCommandEncoder();\
         mxcheckGPUErrors(((int)__ID__ ##ParticleEncoder));\
@@ -1166,12 +1162,29 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               __ID__ ##_local_particle[2]));\
         __ID__ ##ParticleEncoder.EndEncoding();
 
-        ENCODE_PARTICLE(PML_1)
-        ENCODE_PARTICLE(PML_2)
-        ENCODE_PARTICLE(PML_3)
+        {
+          mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+          mxcheckGPUErrors(((int)ParticlecommandBuffer));
+          ENCODE_PARTICLE(PML_1)
+          ENCODE_PARTICLE(PML_2)
+          ENCODE_PARTICLE(PML_3)
+          ParticlecommandBuffer.Commit();
+          ParticlecommandBuffer.WaitUntilCompleted();
+        }
+        {
+          mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+          mxcheckGPUErrors(((int)ParticlecommandBuffer));
+          ENCODE_PARTICLE(PML_4)
+          ENCODE_PARTICLE(PML_5)
+          ENCODE_PARTICLE(PML_6)
+          ParticlecommandBuffer.Commit();
+          ParticlecommandBuffer.WaitUntilCompleted();
+        }
+      
+        mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+        mxcheckGPUErrors(((int)ParticlecommandBuffer));
+
         ENCODE_PARTICLE(MAIN_1)
-        ENCODE_PARTICLE(MAIN_2)
-        ENCODE_PARTICLE(MAIN_3)
         
         ParticlecommandBuffer.Commit();
         ParticlecommandBuffer.WaitUntilCompleted();
@@ -1196,7 +1209,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   #endif
   #if defined(METAL)
         InitSymbol(CurrSnap,unsigned int,G_INT);
-        
+        mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
         mtlpp::ComputeCommandEncoder commandEncoderSnapShot = StresscommandBuffer.ComputeCommandEncoder();
         commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
         commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
@@ -1259,9 +1272,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       commandBufferSensors.WaitUntilCompleted();
 #endif
     }
-#if defined(METAL)
-
-#endif
       
 
     INHOST(nStep)++;

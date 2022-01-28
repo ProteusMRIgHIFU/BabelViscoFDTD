@@ -1,12 +1,76 @@
+#if defined(_PML_KERNEL_CORNER) 
+	i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
+	j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
+	k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
+	// Each i,j,k go from 0 -> 2 x PML size
+#endif
+#if defined(_PML_KERNEL_LEFT_RIGHT)
+j+=PML_Thickness;
+k+=PML_Thickness;
+if (IsOnPML_J(j)==1 ||  IsOnPML_K(k)==1)
+	return;
+i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
+//  i go from 0 -> 2 x PML size
+//  j go from  PML size to N2 - PML
+//  k go from  PML size to N3 - PML
+#endif
 
-    _PT index;
-	_PT index2;
-	_PT  CurZone;
+#if defined(_PML_KERNEL_TOP_BOTTOM)
+i+=PML_Thickness;
+k+=PML_Thickness;
+if (IsOnPML_I(i)==1 ||  IsOnPML_K(k)==1)
+	return;
+j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
+//  i go from  PML size to N1 - PML
+//  j go from 0 -> 2 x PML size
+//  k go from  PML size to N3 - PML
+#endif
+
+#if defined(_PML_KERNEL_FRONT_BACK)
+i+=PML_Thickness;
+j+=PML_Thickness;
+if (IsOnPML_I(i)==1 ||  IsOnPML_J(j)==1)
+	return;
+k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
+//  i go from  PML size to N1 - PML
+//  j go from  PML size to N2 - PML
+//  K go from 0 -> 2 x PML size
+#endif
+
+#if defined(_PML_KERNEL_LEFT_RIGHT_RODS)
+k+=PML_Thickness;
+if (IsOnPML_K(k)==1)
+	return;
+i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
+j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
+//  i go from 0 -> 2 x PML size
+//  j go from  0 -> 2 x PML size
+//  k go from  PML size to N3 - PML
+#endif
+
+#if defined(_PML_KERNEL_BOTTOM_TOP_RODS)
+i+=PML_Thickness;
+if (IsOnPML_I(i)==1)
+	return;
+j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
+k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
+//  i go from PML size to N3 - PML
+//  j go from  0 -> 2 x PML size
+//  k go from  0 -> 2 x PML size
+#endif
+
+#if defined(_MAIN_KERNEL)
+i+=PML_Thickness;
+j+=PML_Thickness;
+k+=PML_Thickness;
+
+#endif
+
 #if defined(_PR_MAIN_1) || defined(_PR_MAIN_2) ||  defined(_PR_MAIN_3)
 	_PT source;
 	mexType value;
 #endif
-#if defined(_PR_PML_1) || defined(_PR_PML_2) ||  defined(_PR_PML_3) 
+#if defined(_PR_PML_1) || defined(_PR_PML_2) ||  defined(_PR_PML_3) || defined(_PR_MAIN_1) 
 	mexType AvgInvRhoI;
 #endif
 
@@ -15,7 +79,6 @@
 #endif
 #if defined(_PR_MAIN_1) 
 	mexType accum_x=0.0;
-	mexType AvgInvRhoI;
 	mexType Dx;
 #endif
 #if defined(_PR_MAIN_2)
@@ -28,11 +91,11 @@
 	mexType AvgInvRhoK;
 	mexType Dz;
 #endif
-
+_PT index;
+_PT index2;
+_PT  CurZone;
 	for (   CurZone=0;CurZone<ZoneCount;CurZone++)
-		if (i<N1 && j<N2 && k<N3)
-			{
-
+		{
 		  if (IsOnPML_I(i)==1 || IsOnPML_J(j)==1 || IsOnPML_K(k)==1)
 			{
 	#if defined(_PR_PML_1) || defined(_PR_PML_2) ||  defined(_PR_PML_3)
