@@ -389,9 +389,13 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1','MAIN_2','MAIN_3','MAIN_4']
     AllStressKernels={}
     for k in PartsStress:
-        AllStressKernels[k]=getattr(prg,k+"_StressKernel");
+        AllStressKernels[k]=getattr(prg,k+"_StressKernel")
+
+    PartsParticle=['PML_1','PML_2','PML_3','MAIN_1','MAIN_2','MAIN_3']
+    AllParticleKernels={}
+    for k in PartsParticle:
+        AllParticleKernels[k]=getattr(prg,k+"_ParticleKernel")
     
-    ParticleKernel=prg.ParticleKernel
     SensorsKernel=prg.SensorsKernel
     
     ArraysGPUOp={}
@@ -417,9 +421,11 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
         _ownGpuCalloc(k,ctx,td,ArrayResCPU[k].size,ArraysGPUOp)
         
     for n,k in enumerate(_IndexDataKernel):
-        for k2 in PartsStress:
+        for k2 in AllStressKernels:
             AllStressKernels[k2].set_arg(n,ArraysGPUOp[k])
-        ParticleKernel.set_arg(n,ArraysGPUOp[k])
+        for k2 in AllParticleKernels:
+            AllParticleKernels[k2].set_arg(n,ArraysGPUOp[k])
+
         SensorsKernel.set_arg(n,ArraysGPUOp[k])
     SensorsKernel.set_arg(54,ArraysGPUOp['SensorOutput'])
     SensorsKernel.set_arg(55,ArraysGPUOp['IndexSensorMap'])
@@ -439,12 +445,14 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
         for k in AllStressKernels:
             AllStressKernels[k].set_arg(54,np.uint32(nStep))
             AllStressKernels[k].set_arg(55,arguments['TypeSource'])
-        ParticleKernel.set_arg(54,np.uint32(nStep))
-        ParticleKernel.set_arg(55,arguments['TypeSource'])
+        for k in AllParticleKernels:
+            AllParticleKernels[k].set_arg(54,np.uint32(nStep))
+            AllParticleKernels[k].set_arg(55,arguments['TypeSource'])
         for k in AllStressKernels:
             ev = cl.enqueue_nd_range_kernel(queue, AllStressKernels[k], GroupSize, LocalSize)
         queue.finish()
-        ev = cl.enqueue_nd_range_kernel(queue, ParticleKernel, GroupSize, LocalSize)
+        for k in AllParticleKernels:
+            ev = cl.enqueue_nd_range_kernel(queue, AllParticleKernels[k], GroupSize, LocalSize)
         queue.finish()
         if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
             SensorsKernel.set_arg(56,np.uint32(nStep))
