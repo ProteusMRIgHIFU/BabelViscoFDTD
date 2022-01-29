@@ -1115,33 +1115,28 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               __ID__ ##_local_stress[2]));\
         __ID__ ##StressEncoder.EndEncoding();
         
-          {
+          
             mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
             mxcheckGPUErrors(((int)StresscommandBuffer));
+
             ENCODE_STRESS(PML_1)
             ENCODE_STRESS(PML_2)
             ENCODE_STRESS(PML_3)
-            StresscommandBuffer.Commit();
-            StresscommandBuffer.WaitUntilCompleted();
-          }
-          {
-            mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-            mxcheckGPUErrors(((int)StresscommandBuffer));
             ENCODE_STRESS(PML_4)
             ENCODE_STRESS(PML_5)
             ENCODE_STRESS(PML_6)
-            StresscommandBuffer.Commit();
-            StresscommandBuffer.WaitUntilCompleted();
-          }
-          mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-          mxcheckGPUErrors(((int)StresscommandBuffer));
+          //   StresscommandBuffer.Commit();
+          //   StresscommandBuffer.WaitUntilCompleted();
+          // }
+          // mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
+          // mxcheckGPUErrors(((int)StresscommandBuffer));
           ENCODE_STRESS(MAIN_1)
-          StresscommandBuffer.Commit();
-          StresscommandBuffer.WaitUntilCompleted();
+          // StresscommandBuffer.Commit();
+          // StresscommandBuffer.WaitUntilCompleted();
   
 
 #define ENCODE_PARTICLE(__ID__)\
-        mtlpp::ComputeCommandEncoder __ID__ ##ParticleEncoder = ParticlecommandBuffer.ComputeCommandEncoder();\
+        mtlpp::ComputeCommandEncoder __ID__ ##ParticleEncoder = StresscommandBuffer.ComputeCommandEncoder();\
         mxcheckGPUErrors(((int)__ID__ ##ParticleEncoder));\
         __ID__ ##ParticleEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
         __ID__ ##ParticleEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
@@ -1162,32 +1157,33 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               __ID__ ##_local_particle[2]));\
         __ID__ ##ParticleEncoder.EndEncoding();
 
-        {
-          mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
-          mxcheckGPUErrors(((int)ParticlecommandBuffer));
+        // {
+        //   mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+        //   mxcheckGPUErrors(((int)ParticlecommandBuffer));
           ENCODE_PARTICLE(PML_1)
           ENCODE_PARTICLE(PML_2)
           ENCODE_PARTICLE(PML_3)
-          ParticlecommandBuffer.Commit();
-          ParticlecommandBuffer.WaitUntilCompleted();
-        }
-        {
-          mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
-          mxcheckGPUErrors(((int)ParticlecommandBuffer));
           ENCODE_PARTICLE(PML_4)
           ENCODE_PARTICLE(PML_5)
           ENCODE_PARTICLE(PML_6)
-          ParticlecommandBuffer.Commit();
-          ParticlecommandBuffer.WaitUntilCompleted();
-        }
+        //   ParticlecommandBuffer.Commit();
+        //   ParticlecommandBuffer.WaitUntilCompleted();
+        // }
+        // {
+        //   mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+        //   mxcheckGPUErrors(((int)ParticlecommandBuffer));
+
+          // ParticlecommandBuffer.Commit();
+          // ParticlecommandBuffer.WaitUntilCompleted();
+        // }
       
-        mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)ParticlecommandBuffer));
+        // mtlpp::CommandBuffer ParticlecommandBuffer = commandQueue.CommandBuffer();
+        // mxcheckGPUErrors(((int)ParticlecommandBuffer));
 
         ENCODE_PARTICLE(MAIN_1)
         
-        ParticlecommandBuffer.Commit();
-        ParticlecommandBuffer.WaitUntilCompleted();
+        StresscommandBuffer.Commit();
+        StresscommandBuffer.WaitUntilCompleted();
         
 #endif
 

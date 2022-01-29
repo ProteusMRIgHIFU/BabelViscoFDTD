@@ -386,12 +386,12 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,NumberSelSensorMaps),dtype,order='F')
 
     prg = cl.Program(ctx,AllC).build()
-    PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1','MAIN_2','MAIN_3','MAIN_4']
+    PartsStress=['MAIN_1']
     AllStressKernels={}
     for k in PartsStress:
         AllStressKernels[k]=getattr(prg,k+"_StressKernel")
 
-    PartsParticle=['PML_1','PML_2','PML_3','MAIN_1','MAIN_2','MAIN_3']
+    PartsParticle=['MAIN_1']
     AllParticleKernels={}
     for k in PartsParticle:
         AllParticleKernels[k]=getattr(prg,k+"_ParticleKernel")
@@ -434,6 +434,9 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
         GroupSize=(arguments['ManualGroupSize'][0],arguments['ManualGroupSize'][1],arguments['ManualGroupSize'][2])
     else:
         GroupSize=(N1,N2,N3)
+
+    AllGroupSizes={}
+    AllGroupSizes['MAIN_1']=GroupSize
     
 
     if arguments['ManualLocalSize'][0]!=-1:
@@ -449,15 +452,15 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
             AllParticleKernels[k].set_arg(54,np.uint32(nStep))
             AllParticleKernels[k].set_arg(55,arguments['TypeSource'])
         for k in AllStressKernels:
-            ev = cl.enqueue_nd_range_kernel(queue, AllStressKernels[k], GroupSize, LocalSize)
-        queue.finish()
+            ev = cl.enqueue_nd_range_kernel(queue, AllStressKernels[k], AllGroupSizes[k], LocalSize)
+        # queue.finish()
         for k in AllParticleKernels:
-            ev = cl.enqueue_nd_range_kernel(queue, AllParticleKernels[k], GroupSize, LocalSize)
-        queue.finish()
+            ev = cl.enqueue_nd_range_kernel(queue, AllParticleKernels[k], AllGroupSizes[k], LocalSize)
+        # queue.finish()
         if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
             SensorsKernel.set_arg(56,np.uint32(nStep))
             ev = cl.enqueue_nd_range_kernel(queue, SensorsKernel, (NumberSensors,1), None)
-            queue.finish()
+        queue.finish()
 
 
     bFirstCopy=True

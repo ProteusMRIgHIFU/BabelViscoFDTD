@@ -1,6 +1,5 @@
 #ifdef METAL
 #include"kernelparamsMetal.h"
-#endif
 
 #define METAL_PARAMS\
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
@@ -25,8 +24,9 @@
   _PT i = (_PT) gid.x;\
   _PT j = (_PT) gid.y;\
   _PT k = (_PT) gid.z;
-
+#endif
 /// PMLS
+#if defined(METAL) || defined(CUDA)
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
@@ -54,8 +54,6 @@ __kernel void PML_1_StressKernel(
 kernel void PML_1_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_CORNER
@@ -201,6 +199,7 @@ kernel void PML_6_StressKernel(
 #undef _ST_PML_4
 #undef _ST_PML_5
 #undef _ST_PML_6
+#endif
 
 
 #define _ST_MAIN_1
@@ -208,6 +207,14 @@ kernel void PML_6_StressKernel(
 #define _ST_MAIN_3
 #define _ST_MAIN_4
 #define _MAIN_KERNEL
+#if defined(OPENCL)
+#define _ST_PML_1
+#define _ST_PML_2
+#define _ST_PML_3
+#define _ST_PML_4
+#define _ST_PML_5
+#define _ST_PML_6
+#endif
 #ifdef CUDA
 __global__ void MAIN_1_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
 {
@@ -232,6 +239,14 @@ kernel void MAIN_1_StressKernel(
 		return;
     #include "StressKernel.h" 
 }
+#if defined(OPENCL)
+#undef _ST_PML_1
+#undef _ST_PML_2
+#undef _ST_PML_3
+#undef _ST_PML_4
+#undef _ST_PML_5
+#undef _ST_PML_6
+#endif
 #undef _MAIN_KERNEL
 #undef _ST_MAIN_1
 #undef _ST_MAIN_2
@@ -240,7 +255,7 @@ kernel void MAIN_1_StressKernel(
 
 
 // PML
-
+#if defined(METAL) || defined(CUDA)
 #define _PR_PML_1
 #define _PR_PML_2
 #define _PR_PML_3
@@ -409,11 +424,17 @@ kernel void PML_6_ParticleKernel(
 #undef _PR_PML_1
 #undef _PR_PML_2
 #undef _PR_PML_3
+#endif
 
 #define _PR_MAIN_1
 #define _PR_MAIN_2
 #define _PR_MAIN_3
 #define _MAIN_KERNEL
+#if defined(OPENCL)
+#define _PR_PML_1
+#define _PR_PML_2
+#define _PR_PML_3
+#endif
 #if defined(CUDA)
 __global__ void MAIN_1_ParticleKernel(InputDataKernel * p,
 			unsigned int nStep,unsigned int TypeSource)
@@ -440,6 +461,11 @@ kernel void MAIN_1_ParticleKernel(
 		return;
 	#include "ParticleKernel.h"
 }
+#if defined(OPENCL)
+#undef _PR_PML_1
+#undef _PR_PML_2
+#undef _PR_PML_3
+#endif
 #undef _PR_MAIN_1
 #undef _PR_MAIN_2
 #undef _PR_MAIN_3

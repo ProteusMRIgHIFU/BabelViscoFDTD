@@ -1,3 +1,4 @@
+#ifndef OPENCL
 #if defined(_PML_KERNEL_CORNER) 
 	i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
 	j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
@@ -54,7 +55,7 @@ if (IsOnPML_I(i)==1)
 	return;
 j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
 k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
-//  i go from PML size to N3 - PML
+//  i go from PML size to N1 - PML
 //  j go from  0 -> 2 x PML size
 //  k go from  0 -> 2 x PML size
 #endif
@@ -63,9 +64,13 @@ k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
 i+=PML_Thickness;
 j+=PML_Thickness;
 k+=PML_Thickness;
-
+#endif
 #endif
 
+#if defined(OPENCL) || defined(METAL) || defined(CUDA)
+if (i>N1 || j >N2  || k>N3)
+	return;
+#endif
 #if defined(_PR_MAIN_1) || defined(_PR_MAIN_2) ||  defined(_PR_MAIN_3)
 	_PT source;
 	mexType value;
