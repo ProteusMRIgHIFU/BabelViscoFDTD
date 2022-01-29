@@ -201,7 +201,6 @@ kernel void PML_6_StressKernel(
 #undef _ST_PML_6
 #endif
 
-
 #define _ST_MAIN_1
 #define _ST_MAIN_2
 #define _ST_MAIN_3
