@@ -166,10 +166,10 @@ Wall-time was measured from the moment preparations to run GPU code started (ini
 ### Summary of wall-time results for each device
 | Device |  CUDA single | OpenCL single |  Metal single | OpenMP single|
 | --- | --- |  --- |  --- |  ---  |
-| AMD W6800 | - | 45 s | 43 s | - |
-| AMD Vega 56 | - | 90 s | 144 s | - |
+| AMD W6800 | - | 45 s | 37 s | - |
+| AMD Vega 56 | - | 90 s | 83 s | - |
 | NVidia A6000 | 57 s| 77 s | -| - |
-| M1 Max | - |  57 s |171 s| 790 s (10 threads) |
+| M1 Max | - |  57 s |152 s| 790 s (10 threads) |
 | Xeon W-2125 | - | - | - | 2202 s (8 threads)|
 | iMac Pro (Xeon W) | - | - | - | 1649 s  (20 threads)|
 

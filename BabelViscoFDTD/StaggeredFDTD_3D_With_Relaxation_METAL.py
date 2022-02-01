@@ -1,4 +1,4 @@
-import numpy as np;
+import numpy as np
 import os
 from pathlib import Path
 import _FDTDStaggered3D_with_relaxation_METAL_single as FDTD_single;
@@ -16,13 +16,9 @@ def StaggeredFDTD_3D_METAL(arguments):
     IncludeDir=str(Path(__file__).parent.absolute())+os.sep
 
     filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c']
+
+    kernbinfile=IncludeDir+'tools'+os.sep+'Rayleigh.metallib'
     
-    handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
-    with os.fdopen(handle,'w') as ft:
-        for names in filenames:
-            with open(names) as infile:
-                ft.write(infile.read())
-            ft.write("\n")
     
 
     if (type(arguments)!=dict):
@@ -37,8 +33,8 @@ def StaggeredFDTD_3D_METAL(arguments):
             arguments[key]=np.array((arguments[key]))
     t0 = time.time()
     arguments['PI_OCL_PATH']='' #unused in METAL but needed in the low level function for completeness
-    arguments['kernelfile']=kernelfile 
-    arguments['kernbinfile']='' #these are unused in METAL but passed for completeness
+    arguments['kernelfile']=''
+    arguments['kernbinfile']=kernbinfile
     
     if arguments['DT'].dtype==np.dtype('float32'):
         Results= FDTD_single.FDTDStaggered_3D(arguments)
@@ -46,5 +42,4 @@ def StaggeredFDTD_3D_METAL(arguments):
         raise SystemError("Metal backend only supports single precision")
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)
-    os.remove(kernelfile)
     return Results

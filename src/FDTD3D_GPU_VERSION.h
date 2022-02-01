@@ -196,36 +196,18 @@ int NumberAlloc=0;
 
     mtlpp::Device device= AllDev[SelDevice];
 
-    // sprintf(BUFFER_FOR_GPU_CODE,"\n#define mexType %s\n#define METAL\n"
-    //                             "#include <metal_stdlib>\nusing namespace metal;\n"
-    //                             "#define MAX_SIZE_PML %i\n",MEX_STR,MAX_SIZE_PML);
-    // char * KernelSource = load_file(kernelfile_pr);
-    // if (KernelSource==0)
-    // {
-    //   ERROR_STRING("Unable to read __gpu_kernel.c file!!")
-    // }
-    // strncat(BUFFER_FOR_GPU_CODE,KernelSource,MAXP_BUFFER_GPU_CODE);
-    // free(KernelSource);
-
-    // PRINTF("After reading files\n");
-
     ns::Error error;
-    ns::String PathToLib("/opt/homebrew/Caskroom/miniforge/base/envs/main/lib/python3.9/site-packages/BabelViscoFDTD/tools/Rayleigh.metallib");
-    //mtlpp::Library library = device.NewLibrary(BUFFER_FOR_GPU_CODE, mtlpp::CompileOptions(), &error);
+    ns::String PathToLib(kernbinfile_pr);
     mtlpp::Library library = device.NewLibrary(PathToLib, &error);
     if (((int)library)==0 )
     {
-      // FILE * TempKernel;
-      // TempKernel=fopen("__For_Analysis_kernel.m", "w");
-      // fprintf(TempKernel,"%s",BUFFER_FOR_GPU_CODE);
-      // fclose(TempKernel);
         PRINTF("GetLocalizedDescription = %s\n",error.GetLocalizedDescription().GetCStr());
         PRINTF("GetLocalizedFailureReason = %s\n",error.GetLocalizedFailureReason().GetCStr());
         PRINTF("GetLocalizedRecoverySuggestion = %s\n",error.GetLocalizedRecoverySuggestion().GetCStr());
         PRINTF("GetLocalizedRecoveryOptions = %s\n",error.GetLocalizedRecoveryOptions().GetCStr());
         PRINTF("GetHelpAnchor = %s\n",error.GetHelpAnchor().GetCStr());
         PRINTF("GetCode = %i\n",error.GetCode());
-        ERROR_STRING("Error in compilation, see also file __For_Analysis_kernel.m that was generated with the metal code in the current directory")
+        ERROR_STRING("Error loading Metal library")
     }
     mxcheckGPUErrors(((int)library));
 
