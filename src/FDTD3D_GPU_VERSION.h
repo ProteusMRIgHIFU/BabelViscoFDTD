@@ -625,98 +625,105 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 	PRINTF("size of  InputDataKernel =%ld\n", sizeof(InputDataKernel));
 	mxcheckGPUErrors(cudaMemcpy(pGPU, &pHost, sizeof(InputDataKernel), cudaMemcpyHostToDevice));
 
-
-  struct cudaFuncAttributes funcAttrib;
-  mxcheckGPUErrors(cudaFuncGetAttributes(&funcAttrib, StressKernel));
-
-  int blockSizeStress;   // The launch configurator returned block size
-  int minGridSizeStress; // The minimum grid size needed to achieve the
-  int blockSizeParticle;   // The launch configurator returned block size
-  int minGridSizeParticle; // The minimum grid size needed to achieve the
-  int blockSizeSnap;   // The launch configurator returned block size
-  int minGridSizeSnap; // The minimum grid size needed to achieve the
-  int blockSizeSensor;   // The launch configurator returned block size
-  int minGridSizeSensor; // The minimum grid size needed to achieve the
-               // maximum occupancy for a full device launch
+  int minBlockSize;
+  int minGridSize;
 
    //Calculate the block dimensions
- 	dim3              dimBlockStress;
-  dim3              dimGridStress;
-  dim3              dimBlockParticle;
-  dim3              dimGridParticle;
-  dim3              dimBlockSnap;
-  dim3              dimGridSnap;
-  dim3              dimBlockSensors;
-  dim3              dimGridSensors;
-  
-  cudaOccupancyMaxPotentialBlockSize( &minGridSizeStress, &blockSizeStress,
-                                  StressKernel, 0, 0);
-  PRINTF("minGridSize and Blocksize from API for stress = %i and %i\n",minGridSizeStress,blockSizeStress);
+  #define CUDA_GRID_BLOC_BASE(__KERNEL__)\
+  dim3 dimBlock## __KERNEL__;  \
+  dim3 dimGrid## __KERNEL__; \
+  mxcheckGPUErrors(cudaOccupancyMaxPotentialBlockSize( &minGridSize, &minBlockSize,\
+                                  __KERNEL__, 0, 0));\
+   PRINTF("minGridSize and Blocksize from API for " #__KERNEL__ " = %i and %i\n",minGridSize,minBlockSize)\
+   dimBlock## __KERNEL__.x=4;\
+   dimBlock## __KERNEL__.y=4;\
+   dimBlock## __KERNEL__.z=(unsigned int)floor(minBlockSize/(dimBlock ## __KERNEL__.x*dimBlock ## __KERNEL__.y));
+
+  #define CUDA_GRID_BLOC_CALC_MAIN(__KERNEL__)\
+  CUDA_GRID_BLOC_BASE(__KERNEL__)\
+   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1)+1) /  dimBlock ## __KERNEL__.x);\
+   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2)+1) /  dimBlock ## __KERNEL__.y);\
+   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3)+1) /  dimBlock ## __KERNEL__.z);\
+  PRINTF(#__KERNEL__ " block size to %dx%dx%d\n", dimBlock ## __KERNEL__.x, dimBlock ## __KERNEL__.y,dimBlock## __KERNEL__.z);\
+  PRINTF(#__KERNEL__ " Stress grid size to %dx%dx%d\n", dimGrid ## __KERNEL__.x, dimGrid ## __KERNEL__.y,dimGrid## __KERNEL__.z);
+
+
+  #define CUDA_GRID_BLOC_CALC_PML(__TYPE__)\
+  CUDA_GRID_BLOC_BASE(PML_1_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_2_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_3_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_4_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_5_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_6_ ##__TYPE__ ##Kernel);\
+  dimGridPML_1_## __TYPE__ ##Kernel.x =(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.x);\
+  dimGridPML_1_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.y);\
+  dimGridPML_1_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_2_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.x);\
+  dimGridPML_2_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.y);\
+  dimGridPML_2_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_3_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.x);\
+  dimGridPML_3_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.y);\
+  dimGridPML_3_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_4_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.x);\
+  dimGridPML_4_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.y);\
+  dimGridPML_4_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_5_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.x);\
+  dimGridPML_5_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.y);\
+  dimGridPML_5_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_6_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.x);\
+  dimGridPML_6_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.y);\
+  dimGridPML_6_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.z);\
+  \
+  PRINTF("PML_1_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_1_## __TYPE__ ##Kernel.x,dimGridPML_1_## __TYPE__ ##Kernel.y,dimGridPML_1_## __TYPE__ ##Kernel.z,\
+  dimGridPML_1_## __TYPE__ ##Kernel.x*dimBlockPML_1_## __TYPE__ ##Kernel.x,dimGridPML_1_## __TYPE__ ##Kernel.y*dimBlockPML_1_## __TYPE__ ##Kernel.y,dimGridPML_1_## __TYPE__ ##Kernel.z*dimBlockPML_1_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_2_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_2_## __TYPE__ ##Kernel.x,dimGridPML_2_## __TYPE__ ##Kernel.y,dimGridPML_2_## __TYPE__ ##Kernel.z,\
+  dimGridPML_2_## __TYPE__ ##Kernel.x*dimBlockPML_2_## __TYPE__ ##Kernel.x,dimGridPML_2_## __TYPE__ ##Kernel.y*dimBlockPML_2_## __TYPE__ ##Kernel.y,dimGridPML_2_## __TYPE__ ##Kernel.z*dimBlockPML_2_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_3_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_3_## __TYPE__ ##Kernel.x,dimGridPML_3_## __TYPE__ ##Kernel.y,dimGridPML_3_## __TYPE__ ##Kernel.z,\
+  dimGridPML_3_## __TYPE__ ##Kernel.x*dimBlockPML_3_## __TYPE__ ##Kernel.x,dimGridPML_3_## __TYPE__ ##Kernel.y*dimBlockPML_3_## __TYPE__ ##Kernel.y,dimGridPML_3_## __TYPE__ ##Kernel.z*dimBlockPML_3_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_4_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_4_## __TYPE__ ##Kernel.x,dimGridPML_4_## __TYPE__ ##Kernel.y,dimGridPML_4_## __TYPE__ ##Kernel.z,\
+  dimGridPML_4_## __TYPE__ ##Kernel.x*dimBlockPML_4_## __TYPE__ ##Kernel.x,dimGridPML_4_## __TYPE__ ##Kernel.y*dimBlockPML_4_## __TYPE__ ##Kernel.y,dimGridPML_4_## __TYPE__ ##Kernel.z*dimBlockPML_4_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_5_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_5_## __TYPE__ ##Kernel.x,dimGridPML_5_## __TYPE__ ##Kernel.y,dimGridPML_5_## __TYPE__ ##Kernel.z,\
+  dimGridPML_5_## __TYPE__ ##Kernel.x*dimBlockPML_5_## __TYPE__ ##Kernel.x,dimGridPML_5_## __TYPE__ ##Kernel.y*dimBlockPML_5_## __TYPE__ ##Kernel.y,dimGridPML_5_## __TYPE__ ##Kernel.z*dimBlockPML_5_## __TYPE__ ##Kernel.z);\
+   PRINTF("PML_6_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_6_## __TYPE__ ##Kernel.x,dimGridPML_6_## __TYPE__ ##Kernel.y,dimGridPML_6_## __TYPE__ ##Kernel.z,\
+  dimGridPML_6_## __TYPE__ ##Kernel.x*dimBlockPML_6_## __TYPE__ ##Kernel.x,dimGridPML_6_## __TYPE__ ##Kernel.y*dimBlockPML_6_## __TYPE__ ##Kernel.y,dimGridPML_6_## __TYPE__ ##Kernel.z*dimBlockPML_6_## __TYPE__ ##Kernel.z);
+ 
+  CUDA_GRID_BLOC_CALC_MAIN(MAIN_1_StressKernel);
+  CUDA_GRID_BLOC_CALC_PML(Stress);
+  CUDA_GRID_BLOC_CALC_MAIN(MAIN_1_ParticleKernel);
+   CUDA_GRID_BLOC_CALC_PML(Particle);
+
   //We handle the case the user wants to specify manually the computing grid sizes
   if (ManualLocalSize_pr[0] != -1)
   {
-      dimBlockStress.x=(unsigned int)ManualLocalSize_pr[0];
-      dimBlockStress.y=(unsigned int)ManualLocalSize_pr[1];
-      dimBlockStress.z=(unsigned int)ManualLocalSize_pr[2];
-  }
-  else
-  {
-      dimBlockStress.x=8;
-      dimBlockStress.y=8;
-      dimBlockStress.z=(unsigned int)floor(blockSizeStress/(dimBlockStress.y*dimBlockStress.x));
+      dimBlockMAIN_1_StressKernel.x=(unsigned int)ManualLocalSize_pr[0];
+      dimBlockMAIN_1_StressKernel.y=(unsigned int)ManualLocalSize_pr[1];
+      dimBlockMAIN_1_StressKernel.z=(unsigned int)ManualLocalSize_pr[2];
+      dimBlockMAIN_1_ParticleKernel.x=(unsigned int)ManualLocalSize_pr[0];
+      dimBlockMAIN_1_ParticleKernel.y=(unsigned int)ManualLocalSize_pr[1];
+      dimBlockMAIN_1_ParticleKernel.z=(unsigned int)ManualLocalSize_pr[2];
   }
   if (ManualGroupSize_pr[0] != -1)
   {
-      dimGridStress.x  = (unsigned int)ManualGroupSize_pr[0];
-      dimGridStress.y  = (unsigned int)ManualGroupSize_pr[1];
-      dimGridStress.z  = (unsigned int)ManualGroupSize_pr[2];
-  }
-  else
-  {
-      dimGridStress.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockStress.x);
-      dimGridStress.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockStress.y);
-      dimGridStress.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockStress.z);
-  }
-
-  PRINTF(" Stress block size to %dx%dx%d\n", dimBlockStress.x, dimBlockStress.y,dimBlockStress.z);
-  PRINTF(" Stress grid size to %dx%dx%d\n", dimGridStress.x, dimGridStress.y,dimGridStress.z);
-
-  cudaOccupancyMaxPotentialBlockSize( &minGridSizeParticle, &blockSizeParticle,
-                                  ParticleKernel, 0, 0);
-  PRINTF("minGridSize and Blocksize from API for Particle = %i and %i\n",minGridSizeParticle,blockSizeParticle);
-  if (ManualLocalSize_pr[0] != -1)
-  {
-      dimBlockParticle.x=(unsigned int)ManualLocalSize_pr[0];
-      dimBlockParticle.y=(unsigned int)ManualLocalSize_pr[1];
-      dimBlockParticle.z=(unsigned int)ManualLocalSize_pr[2];
-  }
-  else
-  {
-      dimBlockParticle.x=8;
-      dimBlockParticle.y=8;
-      dimBlockParticle.z=(unsigned int)floor(blockSizeStress/(dimBlockStress.y*dimBlockStress.x));
-  }
-  if (ManualGroupSize_pr[0] != -1)
-  {
-      dimGridParticle.x  = (unsigned int)ManualGroupSize_pr[0];
-      dimGridParticle.y  = (unsigned int)ManualGroupSize_pr[1];
-      dimGridParticle.z  = (unsigned int)ManualGroupSize_pr[2];
-  }
-  else
-  {
-      dimGridParticle.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockParticle.x);
-      dimGridParticle.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockParticle.y);
-      dimGridParticle.z  = (unsigned int)ceil((float)(INHOST(N3)+1) / dimBlockParticle.z);
+      dimGridMAIN_1_StressKernel.x  = (unsigned int)ManualGroupSize_pr[0];
+      dimGridMAIN_1_StressKernel.y  = (unsigned int)ManualGroupSize_pr[1];
+      dimGridMAIN_1_StressKernel.z  = (unsigned int)ManualGroupSize_pr[2];
+      dimGridMAIN_1_ParticleKernel.x  = (unsigned int)ManualGroupSize_pr[0];
+      dimGridMAIN_1_ParticleKernel.y  = (unsigned int)ManualGroupSize_pr[1];
+      dimGridMAIN_1_ParticleKernel.z  = (unsigned int)ManualGroupSize_pr[2];
   }
   
-  PRINTF(" Particle block size to %dx%dx%d\n", dimBlockParticle.x, dimBlockParticle.y,dimBlockParticle.z);
-  PRINTF(" Particle grid size to %dx%dx%d\n", dimGridParticle.x, dimGridParticle.y,dimGridParticle.z);
-
-  cudaOccupancyMaxPotentialBlockSize( &minGridSizeSnap, &blockSizeSnap,
-                                  SnapShot, 0, 0);
-  PRINTF("N1:minGridSize and Blocksize from API for SnapShot = %i and %i\n",minGridSizeSnap,blockSizeSnap);
+  dim3 dimBlockSnap;
+  dim3 dimGridSnap;
+  mxcheckGPUErrors(cudaOccupancyMaxPotentialBlockSize( &minGridSize, &minBlockSize,
+                                  SnapShot, 0, 0));
+  PRINTF("N1:minGridSize and Blocksize from API for SnapShot = %i and %i\n",minGridSize,minBlockSize);
   dimBlockSnap.x=8;
-  dimBlockSnap.y=(unsigned int)floor(blockSizeSnap/(dimBlockSnap.x));
+  dimBlockSnap.y=(unsigned int)floor(minBlockSize/(dimBlockSnap.x));
 
   dimGridSnap.x  = (unsigned int)ceil((float)(INHOST(N1)+1) / dimBlockSnap.x);
   dimGridSnap.y  = (unsigned int)ceil((float)(INHOST(N2)+1) / dimBlockSnap.y);
@@ -724,10 +731,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   PRINTF(" Snapshot block size to %dx%d\n", dimBlockSnap.x, dimBlockSnap.y);
   PRINTF(" Snapshot grid size to %dx%d\n", dimGridSnap.x, dimGridSnap.y);
 
-  cudaOccupancyMaxPotentialBlockSize( &minGridSizeSensor, &blockSizeSensor,
-                                  SensorsKernel, 0, 0);
-  PRINTF("minGridSize and Blocksize from API for SensorsKernel = %i and %i\n",minGridSizeSensor,blockSizeSensor);
-  dimBlockSensors.x=blockSizeSensor;
+  dim3 dimBlockSensors;
+  dim3 dimGridSensors;
+  mxcheckGPUErrors(cudaOccupancyMaxPotentialBlockSize(  &minGridSize, &minBlockSize,
+                                  SensorsKernel, 0, 0));
+  PRINTF("minGridSize and Blocksize from API for SensorsKernel = %i and %i\n",minGridSize,minBlockSize);
+  dimBlockSensors.x=minBlockSize;
   dimBlockSensors.y=1;
   dimGridSensors.x  = (unsigned int)ceil((float)(INHOST(NumberSensors)) / dimBlockSensors.x);
   dimGridSensors.y=1;
@@ -915,29 +924,30 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-    // if (INHOST(nStep)%100==0)
-    //   PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+    if (INHOST(nStep)%100==0)
+       PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+#define CUDA_CALL(__KERNEL__,_IDSTREAM)\
+__KERNEL__ <<< dimGrid## __KERNEL__,dimBlock## __KERNEL__,0,streams[_IDSTREAM] >>> (pGPU,INHOST(nStep),INHOST(TypeSource));
 
 #if defined(CUDA)
-        unsigned int nCurStream=0;
-        unsigned int maxStream=TOTAL_streams;
-        if ((INHOST(TimeSteps)-INHOST(nStep))<maxStream)
-            maxStream=INHOST(TimeSteps)-INHOST(nStep);
-        while((INHOST(nStep)<INHOST(TimeSteps))&&(nCurStream<TOTAL_streams))
-        {
-
-            StressKernel<<<dimGridStress, dimBlockStress,0,streams[nCurStream]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
-            // We let for future reference in case we want to offload the sensor task via memory transfer
-            // if (((INHOST(nStep) % INHOST(SensorSubSampling))==0) && ((INHOST(nStep) / INHOST(SensorSubSampling))>=INHOST(SensorStart)))
-		        // {
-            //   //We copy pressure to start accumulating over time
-            //   CopyFromGPUToMXAsync(Pressure,mexType,streams[nCurStream]);
-            // }
-            //~ //********************************
-            //********************************
-            //Then we do the particle displacements
-            //********************************
-            ParticleKernel<<<dimGridParticle, dimBlockParticle,0,streams[nCurStream]>>>(pGPU,INHOST(nStep),INHOST(TypeSource));
+            CUDA_CALL(MAIN_1_StressKernel,0);
+            CUDA_CALL(PML_1_StressKernel,0);
+            CUDA_CALL(PML_2_StressKernel,0);
+            CUDA_CALL(PML_3_StressKernel,0);
+            CUDA_CALL(PML_4_StressKernel,0);
+            CUDA_CALL(PML_5_StressKernel,0);
+            CUDA_CALL(PML_6_StressKernel,0);
+            for(unsigned int nSyncStream=0;nSyncStream<TOTAL_streams;nSyncStream++)
+                mxcheckGPUErrors(cudaStreamSynchronize(streams[nSyncStream]));
+            CUDA_CALL(MAIN_1_ParticleKernel,0);
+            CUDA_CALL(PML_1_ParticleKernel,0);
+            CUDA_CALL(PML_2_ParticleKernel,0);
+            CUDA_CALL(PML_3_ParticleKernel,0);
+            CUDA_CALL(PML_4_ParticleKernel,0);
+            CUDA_CALL(PML_5_ParticleKernel,0);
+            CUDA_CALL(PML_6_ParticleKernel,0);
+            for(unsigned int nSyncStream=0;nSyncStream<TOTAL_streams;nSyncStream++)
+                mxcheckGPUErrors(cudaStreamSynchronize(streams[nSyncStream]));
         
 #endif
 #ifdef OPENCL
@@ -988,7 +998,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 			if(INHOST(nStep)==SnapshotsPos_pr[INHOST(CurrSnap)]-1)
 			{
   #if defined(CUDA)
-				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[nCurStream]>>>(INHOST(SelK),gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,INHOST(CurrSnap));
+				SnapShot<<<dimGridSnap,dimBlockSnap,0,streams[0]>>>(INHOST(SelK),gpu_Snapshots_pr,gpu_Sigma_xx_pr,gpu_Sigma_yy_pr,gpu_Sigma_zz_pr,INHOST(CurrSnap));
+        mxcheckGPUErrors(cudaStreamSynchronize(streams[0]));
 				
   #endif
   #if defined(OPENCL)
@@ -1032,7 +1043,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 		{
       SensorEntry++;
 #if defined(CUDA)
-      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[nCurStream]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
+      SensorsKernel<<<dimGridSensors,dimBlockSensors,0,streams[0]>>>(pGPU,gpu_IndexSensorMap_pr,INHOST(nStep));
+      mxcheckGPUErrors(cudaStreamSynchronize(streams[0]));
 #endif
 #if defined(OPENCL)
       mxcheckGPUErrors(clSetKernelArg(SensorsKernel, 56, sizeof(unsigned int), &INHOST(nStep)));
@@ -1067,12 +1079,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       
 
     INHOST(nStep)++;
-  #if defined(CUDA)
-      nCurStream++;
-    } //this one closes the bracket for the streams
-    for(unsigned int nSyncStream=0;nSyncStream<nCurStream;nSyncStream++)
-        cudaStreamSynchronize(streams[nSyncStream]);
-   #endif
 	}
  
   #if defined(METAL)
