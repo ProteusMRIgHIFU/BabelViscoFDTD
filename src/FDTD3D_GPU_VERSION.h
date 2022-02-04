@@ -950,7 +950,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
             CUDA_CALL(PML_6_ParticleKernel,6);
             for(unsigned int nSyncStream=0;nSyncStream<TOTAL_streams;nSyncStream++)
                 mxcheckGPUErrors(cudaStreamSynchronize(streams[nSyncStream]));
-            cudaDeviceSynchronize();
         
 #endif
 #ifdef OPENCL

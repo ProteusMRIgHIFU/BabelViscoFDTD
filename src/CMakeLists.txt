@@ -75,7 +75,7 @@ endif()
 if(STAGGERED_CUDA_SUPPORT)
     enable_language(CUDA)
 
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}  -Xptxas=--warning-as-error  -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_62,code=sm_62 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_86,code=sm_86")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}  -lineinfo -Xptxas=--warning-as-error  -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_62,code=sm_62 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_86,code=sm_86")
     
     set(CUDA_SAMPLES_INCLUDE ${CUDA_SAMPLES_LOCATION})
 
@@ -107,7 +107,7 @@ endif()
 # Add Python component if requested
 if(STAGGERED_PYTHON_SUPPORT)
     set(Python_FIND_VIRTUALENV FIRST)
-    find_package(PythonInterp 3.8 REQUIRED)
+    find_package(PythonInterp 3.6 REQUIRED)
 
     # Find NumPy headers
     exec_program(${PYTHON_EXECUTABLE}
@@ -131,11 +131,11 @@ if(STAGGERED_PYTHON_SUPPORT)
 
     # This goes after, since it uses PythonInterp as a hint
     if(WIN32)
-        find_package(PythonLibs 3.8 REQUIRED)
+        find_package(PythonLibs 3.6 REQUIRED)
     endif()
 
     if(STAGGERED_MACOS)
-        find_package(PythonLibs 3.8 REQUIRED)
+        find_package(PythonLibs 3.6 REQUIRED)
     endif()
 
     if(STAGGERED_CUDA_SUPPORT)
