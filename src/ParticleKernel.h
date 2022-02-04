@@ -68,7 +68,7 @@ k+=PML_Thickness;
 #endif
 
 #if defined(OPENCL) || defined(METAL) || defined(CUDA)
-if (i>N1 || j >N2  || k>N3)
+if (i>=N1 || j >=N2  || k>=N3)
 	return;
 #endif
 #if defined(_PR_MAIN_1) || defined(_PR_MAIN_2) ||  defined(_PR_MAIN_3)

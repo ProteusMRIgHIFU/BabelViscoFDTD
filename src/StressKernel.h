@@ -68,7 +68,7 @@ k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
 #endif
 
 #if defined(OPENCL) || defined(METAL) || defined(CUDA)
-if (i>N1 || j >N2  || k>N3)
+if (i>=N1 || j >=N2  || k>=N3)
 	return;
 #endif
 	

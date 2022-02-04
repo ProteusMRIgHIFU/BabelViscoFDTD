@@ -79,8 +79,6 @@ __kernel void PML_2_StressKernel(
 kernel void PML_2_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT
@@ -106,8 +104,6 @@ __kernel void PML_3_StressKernel(
 kernel void PML_3_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_TOP_BOTTOM
@@ -133,8 +129,6 @@ __kernel void PML_4_StressKernel(
 kernel void PML_4_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_FRONT_BACK
@@ -160,8 +154,6 @@ __kernel void PML_5_StressKernel(
 kernel void PML_5_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT_RODS
@@ -187,8 +179,6 @@ __kernel void PML_6_StressKernel(
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #undef _PML_KERNEL_BOTTOM_TOP_RODS
@@ -279,8 +269,6 @@ __kernel void PML_1_ParticleKernel(
 kernel void PML_1_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_CORNER
@@ -306,8 +294,6 @@ __kernel void PML_2_ParticleKernel(
 kernel void PML_2_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT
@@ -333,8 +319,6 @@ __kernel void PML_3_ParticleKernel(
 kernel void PML_3_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_TOP_BOTTOM
@@ -360,8 +344,6 @@ __kernel void PML_4_ParticleKernel(
 kernel void PML_4_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_FRONT_BACK
@@ -387,8 +369,6 @@ __kernel void PML_5_ParticleKernel(
 kernel void PML_5_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT_RODS
@@ -414,8 +394,6 @@ __kernel void PML_6_ParticleKernel(
 kernel void PML_6_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "ParticleKernel.h" 
 }
 #undef _PML_KERNEL_BOTTOM_TOP_RODS
@@ -456,8 +434,6 @@ __kernel void MAIN_1_ParticleKernel(
 kernel void MAIN_1_ParticleKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
 	#include "ParticleKernel.h"
 }
 #if defined(OPENCL)

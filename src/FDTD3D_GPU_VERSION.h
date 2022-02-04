@@ -641,9 +641,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   #define CUDA_GRID_BLOC_CALC_MAIN(__KERNEL__)\
   CUDA_GRID_BLOC_BASE(__KERNEL__)\
-   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1)+1) /  dimBlock ## __KERNEL__.x);\
-   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2)+1) /  dimBlock ## __KERNEL__.y);\
-   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3)+1) /  dimBlock ## __KERNEL__.z);\
+   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.x);\
+   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.y);\
+   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.z);\
   PRINTF(#__KERNEL__ " block size to %dx%dx%d\n", dimBlock ## __KERNEL__.x, dimBlock ## __KERNEL__.y,dimBlock## __KERNEL__.z);\
   PRINTF(#__KERNEL__ " Stress grid size to %dx%dx%d\n", dimGrid ## __KERNEL__.x, dimGrid ## __KERNEL__.y,dimGrid## __KERNEL__.z);
 
@@ -695,7 +695,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CUDA_GRID_BLOC_CALC_MAIN(MAIN_1_StressKernel);
   CUDA_GRID_BLOC_CALC_PML(Stress);
   CUDA_GRID_BLOC_CALC_MAIN(MAIN_1_ParticleKernel);
-   CUDA_GRID_BLOC_CALC_PML(Particle);
+  CUDA_GRID_BLOC_CALC_PML(Particle);
 
   //We handle the case the user wants to specify manually the computing grid sizes
   if (ManualLocalSize_pr[0] != -1)
@@ -753,7 +753,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   double used_db = total_db - free_db ;
 
   PRINTF("GPU memory usage: used = %f, free = %f MB, total = %f MB\n",used_db/1024.0/1024.0, free_db/1024.0/1024.0, total_db/1024.0/1024.0);
-  #define TOTAL_streams 1
+  #define TOTAL_streams 7
   cudaStream_t streams[TOTAL_streams];
   for (unsigned n =0;n<TOTAL_streams;n++)
   mxcheckGPUErrors(cudaStreamCreate ( &streams[n])) ;
@@ -921,33 +921,36 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int INHOST(nStep)=0;
   unsigned int SensorEntry=0;
 
+//%%%%%%%%%%%%% MAIN TEMPORAL LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%% MAIN TEMPORAL LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//%%%%%%%%%%%%% MAIN TEMPORAL LOOP %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-    if (INHOST(nStep)%100==0)
-       PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+   // PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
 #define CUDA_CALL(__KERNEL__,_IDSTREAM)\
-__KERNEL__ <<< dimGrid## __KERNEL__,dimBlock## __KERNEL__,0,streams[_IDSTREAM] >>> (pGPU,INHOST(nStep),INHOST(TypeSource));
+   __KERNEL__ <<< dimGrid## __KERNEL__,dimBlock## __KERNEL__,0,streams[_IDSTREAM] >>> (pGPU,INHOST(nStep),INHOST(TypeSource));
 
 #if defined(CUDA)
             CUDA_CALL(MAIN_1_StressKernel,0);
-            CUDA_CALL(PML_1_StressKernel,0);
-            CUDA_CALL(PML_2_StressKernel,0);
-            CUDA_CALL(PML_3_StressKernel,0);
-            CUDA_CALL(PML_4_StressKernel,0);
-            CUDA_CALL(PML_5_StressKernel,0);
-            CUDA_CALL(PML_6_StressKernel,0);
+            CUDA_CALL(PML_1_StressKernel,1);
+            CUDA_CALL(PML_2_StressKernel,2);
+            CUDA_CALL(PML_3_StressKernel,3);
+            CUDA_CALL(PML_4_StressKernel,4);
+            CUDA_CALL(PML_5_StressKernel,5);
+            CUDA_CALL(PML_6_StressKernel,6);
             for(unsigned int nSyncStream=0;nSyncStream<TOTAL_streams;nSyncStream++)
                 mxcheckGPUErrors(cudaStreamSynchronize(streams[nSyncStream]));
             CUDA_CALL(MAIN_1_ParticleKernel,0);
-            CUDA_CALL(PML_1_ParticleKernel,0);
-            CUDA_CALL(PML_2_ParticleKernel,0);
-            CUDA_CALL(PML_3_ParticleKernel,0);
-            CUDA_CALL(PML_4_ParticleKernel,0);
-            CUDA_CALL(PML_5_ParticleKernel,0);
-            CUDA_CALL(PML_6_ParticleKernel,0);
+            CUDA_CALL(PML_1_ParticleKernel,1);
+            CUDA_CALL(PML_2_ParticleKernel,2);
+            CUDA_CALL(PML_3_ParticleKernel,3);
+            CUDA_CALL(PML_4_ParticleKernel,4);
+            CUDA_CALL(PML_5_ParticleKernel,5);
+            CUDA_CALL(PML_6_ParticleKernel,6);
             for(unsigned int nSyncStream=0;nSyncStream<TOTAL_streams;nSyncStream++)
                 mxcheckGPUErrors(cudaStreamSynchronize(streams[nSyncStream]));
+            cudaDeviceSynchronize();
         
 #endif
 #ifdef OPENCL
