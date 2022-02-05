@@ -123,6 +123,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         let commandQueue = device.makeCommandQueue()!,
             defaultLibrary = try! device.makeLibrary(filepath: metallib)
 
+        let ForwardSimpleMetalFunction = defaultLibrary.makeFunction(name: "ForwardSimpleMetal")!
         
         let bUseAlignedMemBuffer = UnsafeMutableRawPointer(bUseAlignedMemp)
         let bUseAlignedMem = bUseAlignedMemBuffer.load(as:Int.self)
@@ -262,6 +263,13 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         var basemr2 = Int(0)
         var n2Limit = Int(0)
         var offset = Int(0)
+
+        let mr2VectorBuffer =  device.makeBuffer(length: MemoryLayout<Int>.size, options: .storageModeManaged)
+        
+        let n2BaseStepsBuffer = device.makeBuffer(length: MemoryLayout<Int>.size, options: .storageModeManaged)
+        
+        let pmr2Vector = mr2VectorBuffer!.contents().bindMemory(to: Int.self, capacity: 1)
+        let pn2Base = n2BaseStepsBuffer!.contents().bindMemory(to: Int.self, capacity: 1)
            
         while basemr2 < mr2
         {   
@@ -277,14 +285,16 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
 
             offset = basemr2*u0steps
 
-            let mr2VectorBuffer =  device.makeBuffer(bytes: &n2Limit, length: MemoryLayout<Int>.size, options: [])
-        
-            let n2BaseStepsBuffer = device.makeBuffer(bytes: &offset, length: MemoryLayout<Int>.size, options: [])
-        
+            
+            pmr2Vector[0]=n2Limit
+            pn2Base[0]=offset
+            mr2VectorBuffer!.didModifyRange(0..<1)
+            n2BaseStepsBuffer!.didModifyRange(0..<1)
+
+
             let commandBuffer = commandQueue.makeCommandBuffer()!
             let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
 
-            let ForwardSimpleMetalFunction = defaultLibrary.makeFunction(name: "ForwardSimpleMetal")!
             let computePipelineState = try device.makeComputePipelineState(function: ForwardSimpleMetalFunction)
             computeCommandEncoder.setComputePipelineState(computePipelineState)
 
@@ -319,10 +329,10 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
             basemr2+=nm_step
-            n2BaseStepsBuffer!.setPurgeableState(MTLPurgeableState.empty)
-            mr2VectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
-
         }
+
+        n2BaseStepsBuffer!.setPurgeableState(MTLPurgeableState.empty)
+        mr2VectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
         // unsafe bitcast and assigin result pointer to output
         if bUseAlignedMem == 0 
         {

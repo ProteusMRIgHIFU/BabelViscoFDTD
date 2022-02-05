@@ -190,13 +190,16 @@ All three GPU backends have analogous control to split the calculations in the G
  Please consult guidelines of each backend (CUDA, OpenCL and Metal) on how to calculate this correctly, otherwise there is a risk of specifying a too large or too short grid and thread size dimensions. For example, for both CUDA and Metal, the multiplication of `ManualGroupSize` and `ManualLocalSize` must be equal or larger than the domain size ([N1,N2,N3]) to ensure all the domain is covered; for example for a domain of size [231,220,450], `ManualGroupSize=[60,60,115]` with `ManualLocalSize=[4,4,4]` will ensure covering the domain size. For `OpenCL` each entry in `ManualGroupSize` must be equal or larger than [N1,N2,N3] and each entry must be a multiple of its corresponding entry in `ManualLocalSize`; for example for a domain of size [231,220,450], `ManualGroupSize=[240,240,460]` with `ManualLocalSize=[4,4,4]`. Be sure of specifying these parameters as an np.array of type np.int32, such as `ManualLocalSize=np.array([4,4,4]).astype(np.int32)`. 
 
 # Supported platforms for Rayleigh integral
-Since v0.9.2 Rayleigh integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
+Since v0.9.2 Rayleigh-Somerfeld integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU and the model is hyperparallel. The tool has support for 3 GPU backends: CUDA for Windows and Linux, and Metal and OpenCL for MacOS. 
 
 Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` and `pyopencl` to compile the kernel directly in the Python library. For Metal, a wrapper written in Swift language is compiled during the installation. 
 
 
 # Release notes
-* 0.9.5  Jan 18, 2021.
+* 0.9.6  Feb 5, 2022.
+    * Improved performance in Metal-based devices by using mini-kernels.
+    * Minor fixes for Rayleigh-Somerfeld in Metal
+* 0.9.5  Jan 18, 2022.
     * Very first pip-registered version
     * Possibility of user-specified dimensions of blocks for computations for fine-tuning of performance
     * Cleaning some minor bugs and add BHTE code using pycuda and pyopencl.
