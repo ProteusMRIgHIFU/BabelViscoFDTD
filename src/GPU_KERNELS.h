@@ -26,7 +26,7 @@
   _PT k = (_PT) gid.z;
 #endif
 /// PMLS
-#if defined(METAL) || defined(CUDA)
+#if defined(METAL) 
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
@@ -196,7 +196,7 @@ kernel void PML_6_StressKernel(
 #define _ST_MAIN_3
 #define _ST_MAIN_4
 #define _MAIN_KERNEL
-#if defined(OPENCL)
+#if defined(OPENCL) || defined(CUDA)
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
@@ -228,7 +228,7 @@ kernel void MAIN_1_StressKernel(
 		return;
     #include "StressKernel.h" 
 }
-#if defined(OPENCL)
+#if defined(OPENCL) || defined(CUDA)
 #undef _ST_PML_1
 #undef _ST_PML_2
 #undef _ST_PML_3
@@ -407,7 +407,7 @@ kernel void PML_6_ParticleKernel(
 #define _PR_MAIN_2
 #define _PR_MAIN_3
 #define _MAIN_KERNEL
-#if defined(OPENCL)
+#if defined(OPENCL) || defined(CUDA)
 #define _PR_PML_1
 #define _PR_PML_2
 #define _PR_PML_3
