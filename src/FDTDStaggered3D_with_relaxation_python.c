@@ -72,9 +72,9 @@
  #include "mtlpp/mtlpp.hpp"
 #endif
 
-#ifdef CUDA
-#define USE_MINI_KERNELS_CUDA
-#endif
+// #ifdef CUDA  // disabling this in the current release, it may be renable later if we find a a way to improve performance
+// #define USE_MINI_KERNELS_CUDA
+// #endif
 
 //////////////////////////////////////////GPU-SPECIFIC
 #if defined(CUDA) || defined(METAL)
