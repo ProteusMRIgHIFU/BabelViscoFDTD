@@ -34,24 +34,10 @@
 // 2 - The last value of maps of Vx, Vy, Sigma_xx, Sigma_yy and Sigma_xy. This will be useful for future developments where we may use these maps as initial states in later simulations
 // 3 - Snapshot of the particle velocity map at given time points
 
-#ifdef MATLAB_MEX // The differences between Matlab mex function and a Python extension are quite minimal for our purposes
-	#include "mex.h"
-	//#include "matrix.h"
 
-	//We define all the input params
-	#define InputStruct prhs[0]
-	//And the output params
-	#define SensorOutput_out plhs[0]
-	#define LastVMap_out plhs[1]
-	#define SqrAcc_out plhs[2]
-	#define Snapshots_out plhs[3]
+#include <Python.h>
+#include <ndarrayobject.h>
 
-
-#else
-	#include <Python.h>
-	#include <ndarrayobject.h>
-	
-#endif
 
 #include <math.h>
 #include <string.h>
@@ -84,6 +70,10 @@
 
 #ifdef METAL
  #include "mtlpp/mtlpp.hpp"
+#endif
+
+#ifdef CUDA
+#define USE_MINI_KERNELS_CUDA
 #endif
 
 //////////////////////////////////////////GPU-SPECIFIC

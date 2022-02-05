@@ -265,6 +265,70 @@ __constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];
 __constant__ mexType gpuInvDXDTplushppr[MAX_SIZE_PML];
 __constant__ mexType gpuDXDTminushppr[MAX_SIZE_PML];
 
+//Calculate the block dimensions
+#define CUDA_GRID_BLOC_BASE(__KERNEL__)\
+  dim3 dimBlock## __KERNEL__;  \
+  dim3 dimGrid## __KERNEL__; \
+  mxcheckGPUErrors(cudaOccupancyMaxPotentialBlockSize( &minGridSize, &minBlockSize,\
+                                  __KERNEL__, 0, 0));\
+   PRINTF("minGridSize and Blocksize from API for " #__KERNEL__ " = %i and %i\n",minGridSize,minBlockSize)\
+   dimBlock## __KERNEL__.x=4;\
+   dimBlock## __KERNEL__.y=4;\
+   dimBlock## __KERNEL__.z=(unsigned int)floor(minBlockSize/(dimBlock ## __KERNEL__.x*dimBlock ## __KERNEL__.y));
+
+#define CUDA_GRID_BLOC_CALC_MAIN(__KERNEL__)\
+  CUDA_GRID_BLOC_BASE(__KERNEL__)\
+   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.x);\
+   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.y);\
+   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.z);\
+  PRINTF(#__KERNEL__ " block size to %dx%dx%d\n", dimBlock ## __KERNEL__.x, dimBlock ## __KERNEL__.y,dimBlock## __KERNEL__.z);\
+  PRINTF(#__KERNEL__ " Stress grid size to %dx%dx%d\n", dimGrid ## __KERNEL__.x, dimGrid ## __KERNEL__.y,dimGrid## __KERNEL__.z);
+ 
+
+#define CUDA_GRID_BLOC_CALC_PML(__TYPE__)\
+  CUDA_GRID_BLOC_BASE(PML_1_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_2_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_3_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_4_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_5_ ##__TYPE__ ##Kernel);\
+  CUDA_GRID_BLOC_BASE(PML_6_ ##__TYPE__ ##Kernel);\
+  dimGridPML_1_## __TYPE__ ##Kernel.x =(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.x);\
+  dimGridPML_1_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.y);\
+  dimGridPML_1_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_1_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_2_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.x);\
+  dimGridPML_2_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.y);\
+  dimGridPML_2_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_2_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_3_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.x);\
+  dimGridPML_3_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.y);\
+  dimGridPML_3_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_3_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_4_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.x);\
+  dimGridPML_4_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.y);\
+  dimGridPML_4_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_4_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_5_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.x);\
+  dimGridPML_5_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.y);\
+  dimGridPML_5_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_5_## __TYPE__ ##Kernel.z);\
+  \
+  dimGridPML_6_## __TYPE__ ##Kernel.x=(unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.x);\
+  dimGridPML_6_## __TYPE__ ##Kernel.y=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.y);\
+  dimGridPML_6_## __TYPE__ ##Kernel.z=(unsigned int)ceil((float)(INHOST(PML_Thickness)*2) / (float) dimBlockPML_6_## __TYPE__ ##Kernel.z);\
+  \
+  PRINTF("PML_1_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_1_## __TYPE__ ##Kernel.x,dimGridPML_1_## __TYPE__ ##Kernel.y,dimGridPML_1_## __TYPE__ ##Kernel.z,\
+  dimGridPML_1_## __TYPE__ ##Kernel.x*dimBlockPML_1_## __TYPE__ ##Kernel.x,dimGridPML_1_## __TYPE__ ##Kernel.y*dimBlockPML_1_## __TYPE__ ##Kernel.y,dimGridPML_1_## __TYPE__ ##Kernel.z*dimBlockPML_1_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_2_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_2_## __TYPE__ ##Kernel.x,dimGridPML_2_## __TYPE__ ##Kernel.y,dimGridPML_2_## __TYPE__ ##Kernel.z,\
+  dimGridPML_2_## __TYPE__ ##Kernel.x*dimBlockPML_2_## __TYPE__ ##Kernel.x,dimGridPML_2_## __TYPE__ ##Kernel.y*dimBlockPML_2_## __TYPE__ ##Kernel.y,dimGridPML_2_## __TYPE__ ##Kernel.z*dimBlockPML_2_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_3_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_3_## __TYPE__ ##Kernel.x,dimGridPML_3_## __TYPE__ ##Kernel.y,dimGridPML_3_## __TYPE__ ##Kernel.z,\
+  dimGridPML_3_## __TYPE__ ##Kernel.x*dimBlockPML_3_## __TYPE__ ##Kernel.x,dimGridPML_3_## __TYPE__ ##Kernel.y*dimBlockPML_3_## __TYPE__ ##Kernel.y,dimGridPML_3_## __TYPE__ ##Kernel.z*dimBlockPML_3_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_4_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_4_## __TYPE__ ##Kernel.x,dimGridPML_4_## __TYPE__ ##Kernel.y,dimGridPML_4_## __TYPE__ ##Kernel.z,\
+  dimGridPML_4_## __TYPE__ ##Kernel.x*dimBlockPML_4_## __TYPE__ ##Kernel.x,dimGridPML_4_## __TYPE__ ##Kernel.y*dimBlockPML_4_## __TYPE__ ##Kernel.y,dimGridPML_4_## __TYPE__ ##Kernel.z*dimBlockPML_4_## __TYPE__ ##Kernel.z);\
+  PRINTF("PML_5_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_5_## __TYPE__ ##Kernel.x,dimGridPML_5_## __TYPE__ ##Kernel.y,dimGridPML_5_## __TYPE__ ##Kernel.z,\
+  dimGridPML_5_## __TYPE__ ##Kernel.x*dimBlockPML_5_## __TYPE__ ##Kernel.x,dimGridPML_5_## __TYPE__ ##Kernel.y*dimBlockPML_5_## __TYPE__ ##Kernel.y,dimGridPML_5_## __TYPE__ ##Kernel.z*dimBlockPML_5_## __TYPE__ ##Kernel.z);\
+   PRINTF("PML_6_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",dimGridPML_6_## __TYPE__ ##Kernel.x,dimGridPML_6_## __TYPE__ ##Kernel.y,dimGridPML_6_## __TYPE__ ##Kernel.z,\
+  dimGridPML_6_## __TYPE__ ##Kernel.x*dimBlockPML_6_## __TYPE__ ##Kernel.x,dimGridPML_6_## __TYPE__ ##Kernel.y*dimBlockPML_6_## __TYPE__ ##Kernel.y,dimGridPML_6_## __TYPE__ ##Kernel.z*dimBlockPML_6_## __TYPE__ ##Kernel.z);
+ 
 #endif
 //---------------------------------------------
 #if defined(OPENCL) || defined(METAL)
