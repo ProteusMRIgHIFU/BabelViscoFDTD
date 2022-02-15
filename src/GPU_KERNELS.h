@@ -224,8 +224,6 @@ __kernel void MAIN_1_StressKernel(
 kernel void MAIN_1_StressKernel(
 	METAL_PARAMS
 #endif
-    if (i>N1 || j >N2  || k>N3)
-		return;
     #include "StressKernel.h" 
 }
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))

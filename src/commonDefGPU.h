@@ -272,15 +272,20 @@ __constant__ mexType gpuDXDTminushppr[MAX_SIZE_PML];
   mxcheckGPUErrors(cudaOccupancyMaxPotentialBlockSize( &minGridSize, &minBlockSize,\
                                   __KERNEL__, 0, 0));\
    PRINTF("minGridSize and Blocksize from API for " #__KERNEL__ " = %i and %i\n",minGridSize,minBlockSize)\
-   dimBlock## __KERNEL__.x=4;\
-   dimBlock## __KERNEL__.y=4;\
+   dimBlock## __KERNEL__.x=8;\
+   dimBlock## __KERNEL__.y=8;\
    dimBlock## __KERNEL__.z=(unsigned int)floor(minBlockSize/(dimBlock ## __KERNEL__.x*dimBlock ## __KERNEL__.y));
 
+#if defined(USE_MINI_KERNELS_CUDA)
+#define REDUCTION_MAIN_KERNEL INHOST(PML_Thickness)*2
+#else
+#define REDUCTION_MAIN_KERNEL 0
+#endif
 #define CUDA_GRID_BLOC_CALC_MAIN(__KERNEL__)\
   CUDA_GRID_BLOC_BASE(__KERNEL__)\
-   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.x);\
-   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.y);\
-   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3)-INHOST(PML_Thickness)*2) /  dimBlock ## __KERNEL__.z);\
+   dimGrid## __KERNEL__.x  = (unsigned int)ceil((float)(INHOST(N1) - REDUCTION_MAIN_KERNEL) /  dimBlock ## __KERNEL__.x);\
+   dimGrid## __KERNEL__.y  = (unsigned int)ceil((float)(INHOST(N2) - REDUCTION_MAIN_KERNEL) /  dimBlock ## __KERNEL__.y);\
+   dimGrid## __KERNEL__.z  = (unsigned int)ceil((float)(INHOST(N3) - REDUCTION_MAIN_KERNEL) /  dimBlock ## __KERNEL__.z);\
   PRINTF(#__KERNEL__ " block size to %dx%dx%d\n", dimBlock ## __KERNEL__.x, dimBlock ## __KERNEL__.y,dimBlock## __KERNEL__.z);\
   PRINTF(#__KERNEL__ " Stress grid size to %dx%dx%d\n", dimGrid ## __KERNEL__.x, dimGrid ## __KERNEL__.y,dimGrid## __KERNEL__.z);
  
