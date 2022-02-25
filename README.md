@@ -8,7 +8,7 @@ University of Calgary
 samuel.pichardo@ucalgary.ca  
 www.neurofus.ca
 
-**Software library for FDTD of viscoelastic equation using an staggered grid arrangement and including the superposition method, with  multiple CPU- or GPU-based backends (OpenMP, CUDA, OpenCL and Metal)**
+**Software library for FDTD of viscoelastic equation using a staggered grid arrangement and including the superposition method, with multiple CPU- and GPU-based backends (OpenMP, CUDA, OpenCL and Metal)**
 
 This tool solves in time domain the viscoelastic equation for wave propagation using an staggered grid solution. The solution is primarily based on a paper from Virieux (Virieux, J., 1986. P-SV wave propagation in heterogeneous media: Velocity-stress finite-difference method. Geophysics, 51(4), pp.889-901.), who implemented for the first time the staggered grid solution for the viscoelastic equation.
  While the underlying equations and methods were  developed primarily for seismic simulation, the BabelViscoFDTD library was developed for biomedical applications to study the ultrasound transmission through bone material, with skull bone as primary target for study.
