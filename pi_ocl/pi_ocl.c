@@ -140,10 +140,10 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    kernel_stress = clCreateKernel(program, "StressKernel", &err);
+    kernel_stress = clCreateKernel(program, "MAIN_1_StressKernel", &err);
     checkError(err, "Creating stress kernel");
 
-    kernel_particle = clCreateKernel(program, "ParticleKernel", &err);
+    kernel_particle = clCreateKernel(program, "MAIN_1_ParticleKernel", &err);
     checkError(err, "Creating particle kernel");
 
 

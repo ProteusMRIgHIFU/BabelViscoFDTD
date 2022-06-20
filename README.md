@@ -180,7 +180,6 @@ The number of computing units is becoming a bit useless to compare. There are fe
 * Tests with larger domains indicated that the M1 Max performs even better. For example, for a domain size of [315, 315, 523] and 2808 temporal steps, the M1 Max showed a wall-time of 131 s while the A6000 took 139 s. 
 * Multiple tryouts on the CUDA code to adjust grid and block sizes didn't improve performance in the A6000. On the contrary, wall-time was increased, indicating that the recommended method by NVidia to calculate maximal occupancy used by default in BabelViscoFDTD provided the best performance with the A6000.
 * The other surprise was the W6800 with Metal and OpenCL that outperformed by a significant margin the A6000. 
-* Contrary to the W6800, the Vega 56 GPU showed worse performance when using Metal, similar as for the M1 Max.
 * The fact that Metal shows better performance than OpenCL in the W6800 compared to Apple Silicon is also surprising.
 * The OpenMP performance of the M1 Max is simply excellent, showing a dramatic speedup compared to the Dell Xeon and iMac Pro systems. Highly likely the tight integration of the CPU to the memory bank in the M1 system may play a significant role.
 

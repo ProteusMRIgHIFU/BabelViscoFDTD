@@ -661,7 +661,19 @@ char* load_file(char const* path)
 #endif
 
 #ifdef METAL
- 
+extern int SymbolInitiation_uint(unsigned int, unsigned int);
+extern int SymbolInitiation_mex(unsigned int, unsigned int);
+extern int CompleteCopyMEX(int, mexType *, unsigned int, unsigned int);
+extern int CompleteCopyUInt(int, unsigned int *, unsigned int);
+extern unsigned int GetThreadExecutionWidth(char[], int);
+extern unsigned int GetMaxTotalThreadsPerThreadgroup(char[], int);
+extern void EncodeStress(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+extern void EncodeParticle(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+extern float* CopyFromGPUMEX(unsigned long);
+extern unsigned int* CopyFromGPUUInt();
+extern void CreateAndCopyFromMXVarOnGPUSensor(int, mexType *);
+
+ /*
 #define GET_KERNEL_STRESS_FUNCTION(__ID__)\
     mtlpp::Function __ID__ ##_StressKernelFunc = library.NewFunction(#__ID__ "_StressKernel");\
     mxcheckGPUErrors(((int)__ID__ ##_StressKernelFunc));\
@@ -673,7 +685,7 @@ char* load_file(char const* path)
     mxcheckGPUErrors(((int)__ID__ ##_ParticleKernelFunc));\
     mtlpp::ComputePipelineState __ID__ ##_computePipelineStateParticle = device.NewComputePipelineState(__ID__ ##_ParticleKernelFunc, nullptr);\
     mxcheckGPUErrors(((int)__ID__ ##_computePipelineStateParticle));
-
+*/
 
 #define SET_USER_LOCAL_STRESS(__ID__)\
       __ID__ ##_local_stress[0]=(size_t)ManualLocalSize_pr[0];\
@@ -682,8 +694,9 @@ char* load_file(char const* path)
 
 #define CALC_USER_LOCAL_STRESS(__ID__)\
 {\
-      unsigned int w = __ID__ ##_computePipelineStateStress.GetThreadExecutionWidth();\
-      unsigned int h = __ID__ ##_computePipelineStateStress.GetMaxTotalThreadsPerThreadgroup() / w;\
+	  char dummy[] = #__ID__;\
+      unsigned int w = GetThreadExecutionWidth(dummy, 0);\
+      unsigned int h = GetMaxTotalThreadsPerThreadgroup(dummy, 0) / w;\
       unsigned int z =1;\
       if (h%2==0)\
       {\
@@ -703,8 +716,9 @@ char* load_file(char const* path)
 
 #define CALC_USER_LOCAL_PARTICLE(__ID__)\
 {\
-      unsigned int w = __ID__ ##_computePipelineStateParticle.GetThreadExecutionWidth();\
-      unsigned int h = __ID__ ##_computePipelineStateParticle.GetMaxTotalThreadsPerThreadgroup() / w;\
+	  char dummy[] = #__ID__;\
+      unsigned int w = GetThreadExecutionWidth(dummy, 1);\
+      unsigned int h = GetMaxTotalThreadsPerThreadgroup(dummy, 1) / w;\
       unsigned int z =1;\
       if (h%2==0)\
       {\
@@ -778,7 +792,9 @@ char* load_file(char const* path)
     PML_6_global_## __TYPE__[0]*PML_6_local_## __TYPE__[0],PML_6_global_## __TYPE__[1]*PML_6_local_## __TYPE__[1],PML_6_global_## __TYPE__[2]*PML_6_local_## __TYPE__[2]);
  
   #define ENCODE_STRESS(__ID__)\
-        mtlpp::ComputeCommandEncoder __ID__ ##StressEncoder = StresscommandBuffer.ComputeCommandEncoder();\
+		EncodeStress(#__ID__, __ID__ ##_global_stress[0], __ID__ ##_global_stress[1], __ID__ ##_global_stress[2], __ID__ ##_local_stress[0], __ID__ ##_local_stress[1], __ID__ ##_local_stress[2]);
+        /*
+		mtlpp::ComputeCommandEncoder __ID__ ##StressEncoder = StresscommandBuffer.ComputeCommandEncoder();\
         mxcheckGPUErrors(((int)__ID__ ##StressEncoder));\
         __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
         __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
@@ -798,8 +814,11 @@ char* load_file(char const* path)
               __ID__ ##_local_stress[1],\
               __ID__ ##_local_stress[2]));\
         __ID__ ##StressEncoder.EndEncoding();
-
+		*/
 #define ENCODE_PARTICLE(__ID__)\
+		EncodeParticle(#__ID__, __ID__ ##_global_particle[0], __ID__ ##_global_particle[1], __ID__ ##_global_particle[2], __ID__ ##_local_particle[0], __ID__ ##_local_particle[1], __ID__ ##_local_particle[2]);
+		
+		/*
         mtlpp::ComputeCommandEncoder __ID__ ##ParticleEncoder = StresscommandBuffer.ComputeCommandEncoder();\
         mxcheckGPUErrors(((int)__ID__ ##ParticleEncoder));\
         __ID__ ##ParticleEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
@@ -820,43 +839,37 @@ char* load_file(char const* path)
               __ID__ ##_local_particle[1],\
               __ID__ ##_local_particle[2]));\
         __ID__ ##ParticleEncoder.EndEncoding();
-
+		*/
 
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 //We define first the indexes for uint const values
 
 #define InitSymbol(_NameVar,_datatype,_gtype)\
 {\
-	if (_gtype==G_INT)\
-	{\
-			_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_UINT.GetContents());\
-			inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
-			_CONSTANT_BUFFER_UINT.DidModify(ns::Range((CInd_ ## _NameVar)*sizeof(_datatype), sizeof(_datatype)));\
+	if(_gtype==G_INT)\
+{\
+			if(SymbolInitiation_uint(CInd_ ## _NameVar, INHOST(_NameVar)) != 0){\
+				ERROR_STRING("Something went wrong in symbol initiation.")\
+			}\
 	}\
 	else\
 	{\
-	 	_datatype * inData = static_cast<_datatype *>(_CONSTANT_BUFFER_MEX.GetContents());\
-		inData[CInd_ ## _NameVar] = INHOST(_NameVar);\
-		_CONSTANT_BUFFER_MEX.DidModify(ns::Range((CInd_ ## _NameVar)*sizeof(_datatype), sizeof(_datatype)));\
+				if(SymbolInitiation_mex(CInd_ ## _NameVar, INHOST(_NameVar)) != 0){\
+				ERROR_STRING("Something went wrong in symbol initiation.")\
+			}\
 	}\
 }
 
 #define InitSymbolArray(_NameVar,_gtype,__Limit)\
-if (_gtype==G_INT)\
-{\
-		unsigned int * inData = static_cast<unsigned int *>(_CONSTANT_BUFFER_UINT.GetContents());\
-		for (unsigned int _n=0;_n<__Limit;_n++)\
-		{\
-			inData[_n + CInd_ ## _NameVar] = _NameVar ## _pr[_n];\
-		}\
-}\
+if (_gtype==G_INT){\		
+for (unsigned int _n=0; _n<__Limit;_n++){\
+			SymbolInitiation_uint((_n + CInd_ ## _NameVar), (_NameVar ## _pr[_n]));\
+}}\
 else\
 {\
-	mexType * inData = static_cast<mexType *>(_CONSTANT_BUFFER_MEX.GetContents());\
-	for (unsigned int _n=0;_n<__Limit;_n++)\
-	{\
-		inData[_n + CInd_ ## _NameVar] = _NameVar ## _pr[_n];\
-	}\
+		for (unsigned int _n=0; _n<__Limit;_n++){\
+			SymbolInitiation_mex(_n + CInd_ ## _NameVar, _NameVar ## _pr[_n]);\
+		}\ 
 }\
 
 const _PT  _IndexDataMetal(const char * NameVar)
@@ -966,6 +979,8 @@ const _PT  _IndexDataMetal(const char * NameVar)
 
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
 					 PRINTF("Allocating in GPU for " #_NameVar " %lu elem.\n",(_PT)SizeCopy);\
+					 CreateAndCopyFromMXVarOnGPUSensor(SizeCopy, _NameVar ## _pr);\
+/*
 					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
 				              SizeCopy,\
 				             mtlpp::ResourceOptions::StorageModeManaged);\
@@ -975,8 +990,22 @@ const _PT  _IndexDataMetal(const char * NameVar)
 					      memcpy(inData,_NameVar ## _pr ,sizeof(_dataType) * SizeCopy);\
 					      gpu_ ## _NameVar ##_pr.DidModify(ns::Range( 0, sizeof(_dataType) *SizeCopy));\
 					  }
-
+*/
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
+		if (NULL!=strstr(#_dataType,"mexType"))\
+	 {	\
+	 	 _PT subArray = _IndexDataMetal(#_NameVar);\
+		 _dataType * inData = (_dataType *)CopyFromGPUMEX(subArray);\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+	 } \
+	 else\
+	 {\
+		 _dataType * inData = (_dataType *)CopyFromGPUUInt();\
+		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+	 }
+		
+		
+/*		
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
 	 	 _PT subArray = _IndexDataMetal(#_NameVar);\
@@ -988,7 +1017,9 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
 		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 	 }
+	 */
 
+// Is this redundant? I can't find a mention in the METAL Code
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
@@ -1004,6 +1035,20 @@ const _PT  _IndexDataMetal(const char * NameVar)
 
  #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 	 		if (NULL!=strstr(#_dataType,"mexType"))\
+		{\
+			_PT subArray = _IndexDataMetal(#_NameVar);\
+	 		_dataType * inData = (_dataType *)(CopyFromGPUMEX(subArray));\
+			memcpy(_NameVar## _pr,&inData[HOST_INDEX_MEX[CInd_##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+		}\
+	 	 else\
+	 	 {\
+	 		_dataType * inData = (_dataType *)(CopyFromGPUUInt());\
+			memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+			}
+
+
+ /*
+	 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 	 {	\
 		     _PT subArray = _IndexDataMetal(#_NameVar);\
 	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
@@ -1014,7 +1059,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 	 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
 			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 			 }
-
+*/
 	 // METAL is c++ based and their own clasess release the memory
 
 		#define ownGPUFree(_NameVar) { }
@@ -1023,16 +1068,16 @@ const _PT  _IndexDataMetal(const char * NameVar)
 
 		#define CompleteCopyToGpu(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
-	 {	\
-	 	_PT subArray = _IndexDataMetal(#_NameVar);\
-		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
-		 memcpy(&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
-	 } \
-	 else\
-	 {\
-		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-		 memcpy(&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],_NameVar ## _pr,sizeof(_dataType) *SizeCopy );\
-	 	 }
+		{\
+			_PT subArray = _IndexDataMetal(#_NameVar);\
+			mexType * dummy = (mexType*)_NameVar ## _pr;\
+			CompleteCopyMEX(SizeCopy, dummy, HOST_INDEX_MEX[CInd_ ##_NameVar][0], subArray);\
+		}\
+	 	else\
+	 	{\
+		 	unsigned int * dummy = (unsigned int*)_NameVar ## _pr;\
+			CompleteCopyUInt(SizeCopy, dummy, HOST_INDEX_UINT[CInd_ ##_NameVar][0]);\
+		}
 
 #endif
 

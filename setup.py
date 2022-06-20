@@ -18,7 +18,7 @@ from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.6-1'
+version = '0.9.6-4'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -46,10 +46,15 @@ def CompileRayleighMetal(build_temp,build_lib):
         subprocess.check_call(command,cwd=build_temp)
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
+
+        command=['swiftc','-emit-library','MetalSwift.swift']
+        subprocess.check_call(command,cwd=build_temp)
         for fn in ['libRayleighMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         for fn in ['Rayleigh.metallib']:
             copyfile(build_temp+'/Sources/RayleighMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
+        for fn in ['libMetalSwift.dylib']:
+            copyfile(build_temp+'/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         bRayleighMetalCompiled=True
 
 def PrepareOpenCLKernel():
@@ -315,7 +320,8 @@ else:
                                     '-Wl',
                                     '-framework',
                                     'CoreFoundation',
-                                    '-fobjc-link-runtime'])]
+                                    '-fobjc-link-runtime'],
+                    extra_objects = ["build/lib.macosx-10.9-x86_64-3.9/BabelViscoFDTD/tools/libRayleighMetal.dylib"])]
 
     if 'arm64' not in platform.platform():
         ext_modules.append(Extension('pi_ocl',['pi_ocl/pi_ocl.c']))
