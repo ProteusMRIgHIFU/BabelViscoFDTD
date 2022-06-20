@@ -1,0 +1,54 @@
+client:
+  name: basic
+tools: {}
+targets:
+  "PackageStructure": ["<PackageStructure>"]
+  "RayleighMetal-debug.dylib": ["<RayleighMetal-debug.dylib>"]
+  "RayleighMetal-debug.module": ["<RayleighMetal-debug.module>"]
+  "main": ["<RayleighMetal-debug.dylib>","<RayleighMetal-debug.module>"]
+  "test": ["<RayleighMetal-debug.dylib>","<RayleighMetal-debug.module>"]
+default: "main"
+nodes:
+  "/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Sources/RayleighMetal/":
+    is-directory-structure: true
+commands:
+  "<RayleighMetal-debug.dylib>":
+    tool: phony
+    inputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/libRayleighMetal.dylib"]
+    outputs: ["<RayleighMetal-debug.dylib>"]
+
+  "<RayleighMetal-debug.module>":
+    tool: phony
+    inputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build/RayleighMetal.swift.o","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.swiftmodule"]
+    outputs: ["<RayleighMetal-debug.module>"]
+
+  "C.RayleighMetal-debug.dylib":
+    tool: shell
+    inputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build/RayleighMetal.swift.o"]
+    outputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/libRayleighMetal.dylib"]
+    description: "Linking ./.build/x86_64-apple-macosx/debug/libRayleighMetal.dylib"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug","-o","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/libRayleighMetal.dylib","-module-name","RayleighMetal","-emit-library","-Xlinker","-install_name","-Xlinker","@rpath/libRayleighMetal.dylib","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.5/macosx","-target","x86_64-apple-macosx11.0","-Xlinker","-add_ast_path","-Xlinker","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.swiftmodule","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"]
+
+  "C.RayleighMetal-debug.module":
+    tool: swift-compiler
+    inputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Sources/RayleighMetal/RayleighMetal.swift"]
+    outputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build/RayleighMetal.swift.o","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.swiftmodule"]
+    executable: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    module-name: "RayleighMetal"
+    module-output-path: "/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.swiftmodule"
+    import-paths: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug"]
+    temps-path: "/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build"
+    objects: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build/RayleighMetal.swift.o"]
+    other-args: ["-target","x86_64-apple-macosx11.0","-swift-version","5","-enable-batch-mode","-index-store-path","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/index/store","-Onone","-enable-testing","-g","-j20","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/.build/x86_64-apple-macosx/debug/RayleighMetal.build/RayleighMetal-Swift.h","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib"]
+    sources: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Sources/RayleighMetal/RayleighMetal.swift"]
+    is-library: true
+    enable-whole-module-optimization: false
+    num-threads: 20
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Sources/RayleighMetal/","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Package.swift","/Users/andrewxie/Documents/BabelViscoFDTD/src/Metal/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

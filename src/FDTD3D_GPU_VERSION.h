@@ -162,12 +162,28 @@ int NumberAlloc=0;
 #endif
 
 #ifdef METAL
+    extern int InitializeMetalDevices();
+    extern int ConstantBuffers(int, int);
+    extern int BufferIndexCreator();
+    extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
+    extern int IndexManipUInt(unsigned int, unsigned int, unsigned int);
+    extern _PT GetFloatEntries();
+    extern void EncoderInit();
+    extern void EncodeSnapShots(unsigned int, unsigned int);
+    extern void EncodeCommit();
+    extern void EncodeSensors(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+    extern void SyncChange();
+    extern int maxThreadSensor();
     _PT _c_mex_type[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
     _PT  _c_uint_type = 0;
     _PT  HOST_INDEX_MEX[LENGTH_INDEX_MEX][2]; //need to encode 64 bits numbers in 32 arrays...
 
     _PT  HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
+    if(InitializeMetalDevices() != 0){
+    ERROR_STRING("Something went wrong with METAL initialization")
+    }
+    /*
     ns::Array<mtlpp::Device>  AllDev= mtlpp::Device::CopyAllDevices();
     mxcheckGPUErrors(((int)AllDev));
   
@@ -209,10 +225,8 @@ int NumberAlloc=0;
         PRINTF("GetCode = %i\n",error.GetCode());
         ERROR_STRING("Error loading Metal library")
     }
-    mxcheckGPUErrors(((int)library));
-
+    mxcheckGPUErrors(((int)library));    
     PRINTF("After compiling code \n");
-
 
     GET_KERNEL_STRESS_FUNCTION(PML_1) 
     GET_KERNEL_STRESS_FUNCTION(PML_2) 
@@ -239,20 +253,26 @@ int NumberAlloc=0;
     mxcheckGPUErrors(((int)SensorsKernelFunc));
     mtlpp::ComputePipelineState computePipelineStateSensors = device.NewComputePipelineState(SensorsKernelFunc, nullptr);
     mxcheckGPUErrors(((int)computePipelineStateSensors));
-
-  
-
-    PRINTF("After getting all functions code \n");
-
+    
     mtlpp::CommandQueue commandQueue = device.NewCommandQueue();
     mxcheckGPUErrors(((int)commandQueue));
 
+  */
+  
+
+    PRINTF("After getting all functions code \n");
+    
+    if(ConstantBuffers(LENGTH_CONST_UINT, LENGTH_CONST_MEX) != 0){
+      ERROR_STRING("Something went wrong with constant buffer creation.")
+    }
+
+    /*
     mtlpp::Buffer _CONSTANT_BUFFER_UINT = device.NewBuffer(sizeof(unsigned int) * LENGTH_CONST_UINT, mtlpp::ResourceOptions::StorageModeManaged);
     mxcheckGPUErrors(((int)_CONSTANT_BUFFER_UINT));
 
     mtlpp::Buffer _CONSTANT_BUFFER_MEX = device.NewBuffer(sizeof(mexType) * LENGTH_CONST_MEX, mtlpp::ResourceOptions::StorageModeManaged);
     mxcheckGPUErrors(((int)_CONSTANT_BUFFER_MEX));
-
+    */
 #endif
 
 //initilizing constant memory variables
@@ -471,8 +491,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CreateAndCopyFromMXVarOnGPU(SqrAcc,mexType);
 
 #ifdef METAL
-
-
+  if(BufferIndexCreator()!=0){
+    ERROR_STRING("Error during making mex/uint buffers and indicies")
+  }
+  /*
   mtlpp::Buffer _MEX_BUFFER[12];
   for (_PT ii=0;ii<12;ii++)
   {
@@ -500,8 +522,15 @@ InitSymbol(SensorStart,unsigned int,G_INT);
             LENGTH_INDEX_UINT*2,
             mtlpp::ResourceOptions::StorageModeManaged);
   mxcheckGPUErrors(((int)_INDEX_UINT));
-
+  */
   {
+      for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
+      {
+          unsigned int data =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_MEX[j][0]);
+          unsigned int data2 = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
+          IndexManipMEX(data, data2, j);
+      }
+      /*
       unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
       {
@@ -510,11 +539,19 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           
           
       }
-      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2));
+      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2))
+      */
       
   }
 
   {
+    for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
+      {
+            unsigned int data =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_UINT[j][0]);
+            unsigned int data2 = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
+            IndexManipUInt(data, data2, j);
+      }
+    /*
       unsigned int * inData = static_cast< unsigned int *>(_INDEX_UINT.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
       {
@@ -523,11 +560,12 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           
       }
       _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT*2));
+      */
   }
-
+  /*
   _CONSTANT_BUFFER_UINT.DidModify(ns::Range(0, sizeof(unsigned int)*LENGTH_CONST_UINT));
   _CONSTANT_BUFFER_MEX.DidModify(ns::Range(0,sizeof(mexType) * LENGTH_CONST_MEX));
-
+  */
 
   CompleteCopyToGpu(LambdaMiuMatOverH,mexType);
   CompleteCopyToGpu(LambdaMatOverH	,mexType);
@@ -543,7 +581,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CompleteCopyToGpu(IndexSensorMap	,unsigned int);
   CompleteCopyToGpu(SourceMap		,unsigned int);
   CompleteCopyToGpu(MaterialMap		,unsigned int);
-  _PT totalfloat=0;
+  _PT totalfloat=GetFloatEntries();
+  /*
   for (_PT ii=0;ii<12;ii++)
   {
     _MEX_BUFFER[ii].DidModify(ns::Range(0,sizeof(mexType) *_c_mex_type[ii]));
@@ -551,7 +590,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   }
 
   _UINT_BUFFER.DidModify(ns::Range(0,sizeof(unsigned int) *_c_uint_type));
-  
+  */
   PRINTF("Total float entries %lu and int entries %lu\n",totalfloat,_c_uint_type);
 
 #endif
@@ -811,7 +850,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CALC_USER_LOCAL_PARTICLE(PML_6)
   
   unsigned int local_sensors[3];
-  local_sensors[0]=computePipelineStateSensors.GetMaxTotalThreadsPerThreadgroup();
+  local_sensors[0]= maxThreadSensor();
   local_sensors[1]=1;
   local_sensors[2]=1;
 
@@ -918,12 +957,14 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 #ifdef METAL
 
+        /*
         InitSymbol(nStep,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
         mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
         mxcheckGPUErrors(((int)StresscommandBuffer));
-
+        */
+        EncoderInit();
         ENCODE_STRESS(PML_1)
         ENCODE_STRESS(PML_2)
         ENCODE_STRESS(PML_3)
@@ -940,9 +981,11 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         ENCODE_PARTICLE(PML_6)
         ENCODE_PARTICLE(MAIN_1)
         
+        EncodeCommit();
+        /*
         StresscommandBuffer.Commit();
         StresscommandBuffer.WaitUntilCompleted();
-        
+        */
 #endif
 
    // Snapshots
@@ -963,6 +1006,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(clFinish(commands));
   #endif
   #if defined(METAL)
+        EncodeSnapShots((unsigned int)ceil((float)(INHOST(N1)+1) / 8), (unsigned int)ceil((float)(INHOST(N2)+1) / 8));
+        /*
         InitSymbol(CurrSnap,unsigned int,G_INT);
         mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
         mtlpp::ComputeCommandEncoder commandEncoderSnapShot = StresscommandBuffer.ComputeCommandEncoder();
@@ -982,7 +1027,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
               1),
             mtlpp::Size(8, 8,1));
         commandEncoderSnapShot.EndEncoding();
-        
+        */
   #endif
 
 				INHOST(CurrSnap)++;
@@ -1004,6 +1049,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       mxcheckGPUErrors(clFinish(commands));
 #endif
 #if defined(METAL)
+      EncodeSensors(global_sensors[0], global_sensors[1], global_sensors[2], local_sensors[0], local_sensors[1], local_sensors[2]);
+      /*
       mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
       mxcheckGPUErrors(((int)commandBufferSensors));
       mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
@@ -1026,6 +1073,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       commandEncoderSensors.EndEncoding();
       commandBufferSensors.Commit();
       commandBufferSensors.WaitUntilCompleted();
+      */
 #endif
     }
       
@@ -1035,7 +1083,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
  
   #if defined(METAL)
    
-      //#we just synchronize before transferring data back to CPU
+      // We just synchronize before transferring data back to CPU
+      SyncChange();
+      /*
       mtlpp::CommandBuffer commandBufferSync = commandQueue.CommandBuffer();
       mxcheckGPUErrors(((int)commandBufferSync));
 
@@ -1045,6 +1095,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
       blitCommandEncoderSync.EndEncoding();
       commandBufferSync.Commit();
       commandBufferSync.WaitUntilCompleted();
+      */
   #endif
 
 
