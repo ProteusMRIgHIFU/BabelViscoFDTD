@@ -400,9 +400,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   }
 
   // Create the compute kernel from the program
-    StressKernel = clCreateKernel(program, "StressKernel", &err);
+    StressKernel = clCreateKernel(program, "MAIN_1_StressKernel", &err);
     mxcheckGPUErrors(err);
-    ParticleKernel = clCreateKernel(program, "ParticleKernel", &err);
+    ParticleKernel = clCreateKernel(program, "MAIN_1_ParticleKernel", &err);
     mxcheckGPUErrors(err);
 
     SnapShot = clCreateKernel(program, "SnapShot", &err);
