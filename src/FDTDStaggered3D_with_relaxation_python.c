@@ -493,17 +493,20 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	time(&start_t);
 	//voila, from here the truly specific X64 or CUDA implementation starts
 
-// #ifndef MATLAB_MEX
-// 	Py_BEGIN_ALLOW_THREADS;
-// #endif
 
 INHOST(SelK)=INHOST(N3)/2;
 
 #if defined(CUDA) || defined(OPENCL) || defined(METAL)
   #include "FDTD3D_GPU_VERSION.h"
 #else
+// #ifndef MATLAB_MEX
+//  	Py_BEGIN_ALLOW_THREADS;
+// #endif
 	//////////BEGIN CPU SPECIFC
   #include "FDTD3D_CPU_VERSION.h"
+//    #ifndef MATLAB_MEX
+//  	Py_END_ALLOW_THREADS;
+//  #endif
 #endif
 
    ////END CPU
@@ -512,9 +515,7 @@ INHOST(SelK)=INHOST(N3)/2;
    PRINTF("Execution time = %f\n", diff_t);
 
 
- // #ifndef MATLAB_MEX
- // 	Py_END_ALLOW_THREADS;
- // #endif
+
 
 PRINTF("Done\n");
 
