@@ -286,7 +286,7 @@ else:
             if OPENMP_X64=='1':
                 bUseOpenMP=True
         if bUseOpenMP:
-            print('OpenMP for Mac X64 is enable')
+            print('OpenMP for Mac X64 is enabled')
             extra_compile_args_omp=['-Xclang','-fopenmp']
             extra_link_args_omp=[]
             define_macros_omp=[("USE_OPENMP",None)]
