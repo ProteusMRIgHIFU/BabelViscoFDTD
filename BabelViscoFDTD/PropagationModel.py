@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-from matplotlib import pyplot as plt
 from scipy import ndimage
 import warnings
 
@@ -12,8 +11,11 @@ from scipy.interpolate import interp1d
 import logging
 LOGGER_NAME = 'FDTDStaggered'
 logger = logging.getLogger(LOGGER_NAME)
-
-from .StaggeredFDTD_3D_With_Relaxation import StaggeredFDTD_3D
+try: 
+    from .StaggeredFDTD_3D_With_Relaxation import StaggeredFDTD_3D
+    print ("StaggeredFDTD_3D_CPU loaded")
+except:
+    print ("StaggeredFDTD_3D_CPU NOT loaded")
 try:
     from .StaggeredFDTD_3D_With_Relaxation_CUDA import StaggeredFDTD_3D_CUDA
     print ("StaggeredFDTD_3D_CUDA loaded")
