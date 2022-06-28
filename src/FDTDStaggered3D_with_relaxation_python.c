@@ -68,9 +68,6 @@
 #endif
 #endif
 
-#ifdef METAL
- #include "mtlpp/mtlpp.hpp"
-#endif
 
 // #ifdef CUDA  // disabling this in the current release, it may be renable later if we find a a way to improve performance
 // #define USE_MINI_KERNELS_CUDA

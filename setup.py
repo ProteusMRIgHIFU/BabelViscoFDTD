@@ -4,8 +4,9 @@ import subprocess
 import sys
 from os import path
 from pprint import pprint
-from distutils import sysconfig
+from distutils import sysconfig as sconfig
 from this import d
+from unicodedata import name
 from setuptools import setup, Extension, find_packages, Command
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
@@ -13,6 +14,7 @@ import numpy as np
 import glob
 from distutils.unixccompiler import UnixCCompiler
 from shutil import copyfile, copytree,rmtree
+import sysconfig
 
 from distutils.command.install_headers import install_headers
 
@@ -23,6 +25,17 @@ version = '0.9.6-4'
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
+
+extra_obj =[]
+def distutils_dir_name(dname):
+    """Returns the name of a distutils build directory"""
+    f = "{dirname}.{platform}-{version[0]}.{version[1]}"
+    return f.format(dirname=dname,
+                    platform=sysconfig.get_platform(),
+                    version=sys.version_info)
+extra_obj.append(os.path.join('build', distutils_dir_name('lib'))+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
+
+print(extra_obj)
 
 bRayleighMetalCompiled=False
 
@@ -132,7 +145,7 @@ if 'Darwin' not in platform.system():
                     '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
                     '-DSTAGGERED_PYTHON_SUPPORT=ON',
                     '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
-                    '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sysconfig.get_config_var('EXT_SUFFIX'))[0]),
+                    '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sconfig.get_config_var('EXT_SUFFIX'))[0]),
                     '-DCMAKE_BUILD_TYPE=%s' % cfg,
                     '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir),
                     '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), self.build_temp),
@@ -183,11 +196,24 @@ if 'Darwin' not in platform.system():
             CMakeExtension(c_module_name+'_CUDA_double')]
     install_requires.append('pycuda>=2020.1')
 
-    cmdclass={'build_ext': CMakeBuild}
+    cmdclass= {'build_ext': CMakeBuild}
    
 
 else:
     #specific building conditions for Apple  systems
+    class PostInstallCommand(install):
+        def run(self):
+            install.run(self)
+            for p in sys.path:
+                for root, dirs, files in os.walk(p):
+                    for file in files:
+                        if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
+                            metal_python = os.path.join(root, file)
+                            print(metal_python)
+                            command=['install_name_tool','-change',"libMetalSwift.dylib",'@loader_path/BabelViscoFDTD/tools/libMetalSwift.dylib', metal_python]
+                            subprocess.check_call(command)
+                            break
+    
     class DarwinInteropBuildExt(build_ext):
         def initialize_options(self):
 
@@ -275,8 +301,6 @@ else:
             CompileRayleighMetal(self.build_temp,self.build_lib)
             super().build_extensions()
 
-        
-
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
 
@@ -285,9 +309,12 @@ else:
         extra_link_args_omp=['-lomp']
         define_macros_omp=[("USE_OPENMP",None)]
     else:
-        extra_compile_args_omp=['-Xclang','-fopenmp']
+        # extra_compile_args_omp=['-Xclang','-fopenmp']
+        # extra_link_args_omp=[]
+        # define_macros_omp=[("USE_OPENMP",None)]
+        extra_compile_args_omp=[]
         extra_link_args_omp=[]
-        define_macros_omp=[("USE_OPENMP",None)]
+        define_macros_omp=[]
 
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
@@ -302,12 +329,11 @@ else:
                     extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc]),
                 Extension(c_module_name+'_METAL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.cpp",
-                    "src/mtlpp/mtlpp.mm"],
+                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
                     define_macros=[("SINGLE_PREC",None),
                                 ("METAL",None)],
                     include_dirs=[npinc],
-                    extra_compile_args=['-std=c++11','-mmacosx-version-min=11.0'],
+                    extra_compile_args=['-mmacosx-version-min=11.0'],
                     extra_link_args=['-Wl',
                                     '-framework',
                                     'Metal',
@@ -321,7 +347,8 @@ else:
                                     '-framework',
                                     'CoreFoundation',
                                     '-fobjc-link-runtime'],
-                    extra_objects = ["build/lib.macosx-10.9-x86_64-3.9/BabelViscoFDTD/tools/libRayleighMetal.dylib"])]
+                    extra_objects=extra_obj)]
+    
 
     if 'arm64' not in platform.platform():
         ext_modules.append(Extension('pi_ocl',['pi_ocl/pi_ocl.c']))
@@ -342,7 +369,8 @@ else:
                             ["src/page_memory.c"],
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
-    cmdclass={'build_ext': DarwinInteropBuildExt}
+    cmdclass = {'build_ext':DarwinInteropBuildExt, 'install':PostInstallCommand}
+
 
 setup(name="BabelViscoFDTD",
         version=version,
@@ -366,3 +394,7 @@ setup(name="BabelViscoFDTD",
             "Operating System :: Microsoft :: Windows",
             "Operating System :: POSIX :: Linux",
         ])
+
+# command = ["install_name_tool", "-change", "libMetalSwift.dylib", "@loader_path/BabelViscoFDTD/tools/libMetalSwift.dylib", 
+# #"/Users/andrewxie/miniconda3/envs/Babel/lib/python3.9/site-packages/_FDTDStaggered3D_with_relaxation_METAL_single.cpython-39-darwin.so"]
+# subprocess.check_call(command)

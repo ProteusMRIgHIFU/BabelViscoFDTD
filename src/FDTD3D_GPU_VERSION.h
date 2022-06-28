@@ -1,5 +1,23 @@
 int NumberAlloc=0;
 
+#ifdef METAL
+  PRINTF("Initializing Commands...\n");
+
+  extern int InitializeMetalDevices();
+  extern int ConstantBuffers(int, int);
+  extern int BufferIndexCreator(unsigned long[], unsigned long, unsigned long, unsigned long);
+  extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
+  extern int IndexManipUInt(unsigned int, unsigned int, unsigned int);
+  extern _PT GetFloatEntries();
+  extern void EncoderInit();
+  extern void EncodeSnapShots(unsigned int, unsigned int);
+  extern void EncodeCommit();
+  extern void EncodeSensors(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+  extern void SyncChange();
+  extern int maxThreadSensor();
+  extern void freeGPUextern();
+#endif
+
 #if defined(CUDA)
     cudaDeviceProp deviceProperties;
     int *sm13DeviceList; // Device handles for each CUDA >=1.3 capable device
@@ -162,18 +180,6 @@ int NumberAlloc=0;
 #endif
 
 #ifdef METAL
-    extern int InitializeMetalDevices();
-    extern int ConstantBuffers(int, int);
-    extern int BufferIndexCreator();
-    extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
-    extern int IndexManipUInt(unsigned int, unsigned int, unsigned int);
-    extern _PT GetFloatEntries();
-    extern void EncoderInit();
-    extern void EncodeSnapShots(unsigned int, unsigned int);
-    extern void EncodeCommit();
-    extern void EncodeSensors(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-    extern void SyncChange();
-    extern int maxThreadSensor();
     _PT _c_mex_type[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
     _PT  _c_uint_type = 0;
     _PT  HOST_INDEX_MEX[LENGTH_INDEX_MEX][2]; //need to encode 64 bits numbers in 32 arrays...
@@ -183,96 +189,12 @@ int NumberAlloc=0;
     if(InitializeMetalDevices() != 0){
     ERROR_STRING("Something went wrong with METAL initialization")
     }
-    /*
-    ns::Array<mtlpp::Device>  AllDev= mtlpp::Device::CopyAllDevices();
-    mxcheckGPUErrors(((int)AllDev));
-  
-    if (AllDev.GetSize()==0)
-    {
-      ERROR_STRING("Found 0 METAL platforms!\n");
-    }
-    unsigned int SelDevice=0;
-    {
-      for (int _n = 0;_n<AllDev.GetSize();_n++)
-      {
-        PRINTF("Metal device available: %i %s\n",_n,AllDev[_n].GetName().GetCStr());
-        if (NULL!=strstr(AllDev[_n].GetName().GetCStr(),DefaultGPUDeviceName_pr))
-        {
-          PRINTF("Found %s device!\n",DefaultGPUDeviceName_pr);
-          SelDevice=_n;
-          break;
-        }
-      }
-    }
-    if (SelDevice==-1)
-    {
-      PRINTF("Device requested %s \n",DefaultGPUDeviceName_pr);
-      ERROR_STRING("Device requested was not found!\n");
-    }
-
-    mtlpp::Device device= AllDev[SelDevice];
-
-    ns::Error error;
-    ns::String PathToLib(kernbinfile_pr);
-    mtlpp::Library library = device.NewLibrary(PathToLib, &error);
-    if (((int)library)==0 )
-    {
-        PRINTF("GetLocalizedDescription = %s\n",error.GetLocalizedDescription().GetCStr());
-        PRINTF("GetLocalizedFailureReason = %s\n",error.GetLocalizedFailureReason().GetCStr());
-        PRINTF("GetLocalizedRecoverySuggestion = %s\n",error.GetLocalizedRecoverySuggestion().GetCStr());
-        PRINTF("GetLocalizedRecoveryOptions = %s\n",error.GetLocalizedRecoveryOptions().GetCStr());
-        PRINTF("GetHelpAnchor = %s\n",error.GetHelpAnchor().GetCStr());
-        PRINTF("GetCode = %i\n",error.GetCode());
-        ERROR_STRING("Error loading Metal library")
-    }
-    mxcheckGPUErrors(((int)library));    
-    PRINTF("After compiling code \n");
-
-    GET_KERNEL_STRESS_FUNCTION(PML_1) 
-    GET_KERNEL_STRESS_FUNCTION(PML_2) 
-    GET_KERNEL_STRESS_FUNCTION(PML_3) 
-    GET_KERNEL_STRESS_FUNCTION(PML_4) 
-    GET_KERNEL_STRESS_FUNCTION(PML_5) 
-    GET_KERNEL_STRESS_FUNCTION(PML_6)    
-    GET_KERNEL_STRESS_FUNCTION(MAIN_1)     
-
-    GET_KERNEL_PARTICLE_FUNCTION(PML_1) 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_2) 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_3) 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_4) 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_5) 
-    GET_KERNEL_PARTICLE_FUNCTION(PML_6)    
-    GET_KERNEL_PARTICLE_FUNCTION(MAIN_1)  
-
-    mtlpp::Function SnapShotFunc = library.NewFunction("SnapShot");
-    mxcheckGPUErrors(((int)SnapShotFunc));
-    mtlpp::ComputePipelineState computePipelineStateSnapShot = device.NewComputePipelineState(SnapShotFunc, nullptr);
-    mxcheckGPUErrors(((int)computePipelineStateSnapShot));
-
-    mtlpp::Function SensorsKernelFunc = library.NewFunction("SensorsKernel");
-    mxcheckGPUErrors(((int)SensorsKernelFunc));
-    mtlpp::ComputePipelineState computePipelineStateSensors = device.NewComputePipelineState(SensorsKernelFunc, nullptr);
-    mxcheckGPUErrors(((int)computePipelineStateSensors));
-    
-    mtlpp::CommandQueue commandQueue = device.NewCommandQueue();
-    mxcheckGPUErrors(((int)commandQueue));
-
-  */
-  
 
     PRINTF("After getting all functions code \n");
-    
     if(ConstantBuffers(LENGTH_CONST_UINT, LENGTH_CONST_MEX) != 0){
       ERROR_STRING("Something went wrong with constant buffer creation.")
     }
-
-    /*
-    mtlpp::Buffer _CONSTANT_BUFFER_UINT = device.NewBuffer(sizeof(unsigned int) * LENGTH_CONST_UINT, mtlpp::ResourceOptions::StorageModeManaged);
-    mxcheckGPUErrors(((int)_CONSTANT_BUFFER_UINT));
-
-    mtlpp::Buffer _CONSTANT_BUFFER_MEX = device.NewBuffer(sizeof(mexType) * LENGTH_CONST_MEX, mtlpp::ResourceOptions::StorageModeManaged);
-    mxcheckGPUErrors(((int)_CONSTANT_BUFFER_MEX));
-    */
+  PRINTF("Unsigned int: %i; unsigned long: %i; float: %i/n",sizeof (unsigned int), sizeof (unsigned long), sizeof (float));
 #endif
 
 //initilizing constant memory variables
@@ -482,16 +404,16 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #ifdef OPENCL
    cl_mem gpu_Snapshots_pr;
 #endif
-#ifdef METAL
-   mtlpp::Buffer gpu_Snapshots_pr;
-#endif
 
   CreateAndCopyFromMXVarOnGPU2(Snapshots,mexType);
   CreateAndCopyFromMXVarOnGPU(SensorOutput,mexType);
   CreateAndCopyFromMXVarOnGPU(SqrAcc,mexType);
 
+// FIX
+
 #ifdef METAL
-  if(BufferIndexCreator()!=0){
+
+  if(BufferIndexCreator(_c_mex_type,_c_uint_type,LENGTH_INDEX_MEX,LENGTH_INDEX_UINT)!=0){
     ERROR_STRING("Error during making mex/uint buffers and indicies")
   }
   /*
@@ -821,7 +743,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   unsigned int PML_6_global_particle[3];
   unsigned int MAIN_1_local_particle[3];
   unsigned int MAIN_1_global_particle[3];
-
   if (ManualLocalSize_pr[0] != -1)
   {
       
@@ -871,7 +792,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   
   CALC_USER_GROUP_PML(stress);
   CALC_USER_GROUP_PML(particle);
-
+  
+  PRINTF("Attempting Sensors :)\n");
   unsigned int global_sensors[3];
   global_sensors[0]=(unsigned int)ceil((float)(INHOST(NumberSensors)) / (float)local_sensors[0]);
   global_sensors[1]=1;
@@ -909,7 +831,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
   while(INHOST(nStep)<INHOST(TimeSteps))
 	{
-   // PRINTF("nStep %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
+  // PRINTF("Step %i of %i\n",INHOST(nStep),INHOST(TimeSteps));
 #define CUDA_CALL(__KERNEL__,_IDSTREAM)\
    __KERNEL__ <<< dimGrid## __KERNEL__,dimBlock## __KERNEL__,0,streams[_IDSTREAM] >>> (pGPU,INHOST(nStep),INHOST(TypeSource));
 
@@ -956,11 +878,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 
 #endif
 #ifdef METAL
-
-        /*
         InitSymbol(nStep,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
+        /*
         mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
         mxcheckGPUErrors(((int)StresscommandBuffer));
         */
@@ -1007,11 +928,11 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   #endif
   #if defined(METAL)
         EncodeSnapShots((unsigned int)ceil((float)(INHOST(N1)+1) / 8), (unsigned int)ceil((float)(INHOST(N2)+1) / 8));
-        /*
         InitSymbol(CurrSnap,unsigned int,G_INT);
+
+        /*
         mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = StresscommandBuffer.ComputeCommandEncoder();
-        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
+        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = Strs, 0);
         commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
         commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
         commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
@@ -1236,5 +1157,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     clReleaseCommandQueue(commands);
     clReleaseContext(context);
     free(Platform);
+#endif
+#if defined(METAL)
+    freeGPUextern();
 #endif
 PRINTF("Number of unfreed allocs (it should be 0):%i\n",NumberAlloc);

@@ -671,8 +671,8 @@ extern void EncodeStress(const char[], unsigned int, unsigned int, unsigned int,
 extern void EncodeParticle(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
 extern float* CopyFromGPUMEX(unsigned long);
 extern unsigned int* CopyFromGPUUInt();
-extern void CreateAndCopyFromMXVarOnGPUSensor(int, mexType *);
-
+extern float* CopyFromGpuSnapshot();
+extern void CreateAndCopyFromMXVarOnGPUSnapShot(int, mexType *);
  /*
 #define GET_KERNEL_STRESS_FUNCTION(__ID__)\
     mtlpp::Function __ID__ ##_StressKernelFunc = library.NewFunction(#__ID__ "_StressKernel");\
@@ -694,9 +694,8 @@ extern void CreateAndCopyFromMXVarOnGPUSensor(int, mexType *);
 
 #define CALC_USER_LOCAL_STRESS(__ID__)\
 {\
-	  char dummy[] = #__ID__;\
-      unsigned int w = GetThreadExecutionWidth(dummy, 0);\
-      unsigned int h = GetMaxTotalThreadsPerThreadgroup(dummy, 0) / w;\
+      unsigned int w = GetThreadExecutionWidth(#__ID__, 0);\
+      unsigned int h = GetMaxTotalThreadsPerThreadgroup(#__ID__, 0) / w;\
       unsigned int z =1;\
       if (h%2==0)\
       {\
@@ -716,9 +715,8 @@ extern void CreateAndCopyFromMXVarOnGPUSensor(int, mexType *);
 
 #define CALC_USER_LOCAL_PARTICLE(__ID__)\
 {\
-	  char dummy[] = #__ID__;\
-      unsigned int w = GetThreadExecutionWidth(dummy, 1);\
-      unsigned int h = GetMaxTotalThreadsPerThreadgroup(dummy, 1) / w;\
+      unsigned int w = GetThreadExecutionWidth(#__ID__, 1);\
+      unsigned int h = GetMaxTotalThreadsPerThreadgroup(#__ID__, 1) / w;\
       unsigned int z =1;\
       if (h%2==0)\
       {\
@@ -952,6 +950,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
 		_c_mex_type[subArray]+=_size*INHOST(ZoneCount);\
+		PRINTF("Subarray %lu \n", subArray);\
 	} \
 	else\
 	{\
@@ -969,6 +968,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=SizeCopy;\
 			 		_c_mex_type[subArray]+=SizeCopy;\
+					PRINTF("Subarray %lu \n", subArray);\
 			 	} \
 			 	else\
 			 	{\
@@ -979,7 +979,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
 					 PRINTF("Allocating in GPU for " #_NameVar " %lu elem.\n",(_PT)SizeCopy);\
-					 CreateAndCopyFromMXVarOnGPUSensor(SizeCopy, _NameVar ## _pr);\
+					 CreateAndCopyFromMXVarOnGPUSnapShot(SizeCopy, _NameVar ## _pr);\
 /*
 					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
 				              SizeCopy,\
@@ -1019,8 +1019,11 @@ const _PT  _IndexDataMetal(const char * NameVar)
 	 }
 	 */
 
-// Is this redundant? I can't find a mention in the METAL Code
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
+		 _dataType * inData = (_dataType *)CopyFromGpuSnapshot();\
+		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
+
+/*
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
 		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
@@ -1031,7 +1034,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
 		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
 	 }
-
+*/
 
  #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 	 		if (NULL!=strstr(#_dataType,"mexType"))\
