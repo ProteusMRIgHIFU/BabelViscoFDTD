@@ -81,31 +81,6 @@ latest version of `pip`
 
 All those packages (excepting `pymesh`) are installable via `pip`.  For `pymesh`, see tutorial 6 for more details.
 
-## Linux
-Overall, any LTS-type distribution is recommended to be sure CUDA compiler supports your default GCC installation. If your installation can run the default examples of CUDA, then you should be good.
-
-Ubuntu 20.04 LTS is an excellent candidate to start with.
-
-You will also need to install OpenCL headers and libraries such as `opencl-headers`, `ocl-icd-opencl-dev`, `intel-opencl-icd` and other libraries required by you GPU manufacturer to support OpenCL. You can verify you have a healthy OpenCL installation with the tool `clinfo`.
-
-### Linux in Windows through WSL2
-Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
-
-Please note that OpenCL is not supported under WSL2. You will still need to install the packages  `opencl-headers` and `ocl-icd-opencl-dev` to ensure all compilation is completed.
-
-## Windows native
-You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
-
-## MacOS
-Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental, by default it will run only single thread. See below details how to enable it. For ARM64 version will have OpenMP fully enabled by default.
-
-The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).
-
-Best scenario for ARM64-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
-
-
-Metal backend will be available for both X86-64 and Apple Silicon systems.  
-
 # Installation
 BabelViscoFDTD is available via `pip`
 ```
@@ -119,7 +94,39 @@ pip install BabelViscoFDTD/
 ```
 run in the parent directory where you cloned the repository.
 
-### MacOS experimental OpenMP in X86-64
+## Specific OS notes
+### Linux
+Overall, any LTS-type distribution is recommended to be sure CUDA compiler supports your default GCC installation. If your installation can run the default examples of CUDA, then you should be good.
+
+Ubuntu 20.04 LTS is an excellent candidate to start with.
+
+You will also need to install OpenCL headers and libraries such as `opencl-headers`, `ocl-icd-opencl-dev`, `intel-opencl-icd` and other libraries required by you GPU manufacturer to support OpenCL. You can verify you have a healthy OpenCL installation with the tool `clinfo`.
+
+#### Linux in Windows through WSL2
+Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
+Please note that OpenCL is not supported under WSL2. You will still need to install the packages  `opencl-headers` and `ocl-icd-opencl-dev` to ensure all compilation is completed.
+
+### Windows native
+You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
+
+### MacOS
+Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental, by default it will run only single thread. See below details how to enable it. For ARM64 version will have OpenMP fully enabled by default.
+
+The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).Metal backend will be available for both X86-64 and Apple Silicon systems.  
+
+Best scenario for both X64 and ARM64-based systems is to use fully native Python distributions using homebrew:
+1. Install  [homebrew](https://brew.sh/)
+`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+1. Install miniforge
+`brew install miniforge`
+1. Create and activate a Python environment (for ARM64, Python 3.9 is recommended)
+`conda create —-name Babel python=3.9 scipy numpy`
+`conda activate Babel`
+1. Install BabelViscoFDTD
+`pip install BabelViscoFDTD`
+
+#### MacOS experimental OpenMP in X86-64
 Thanks to the people who have reported the mitigated success with OpenMP. In my own current systems I didn't have problems, but later some users reported having  issues with OpenMP. Then, we turned this feature as **experimental** the time we can figure out a more stable approach.
 For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation and execution for OpenMP will fail.
 * Install `libomp` with `brew install libomp`  
@@ -130,11 +137,11 @@ To enable the OpenMP version for MacOS install BabelViscoFDTD with:
 ```
 BABEL_MAC_OPENMP_X64=1 pip install BabelViscoFDTD
 ```
-or 
+or if you cloned the repository
 ```
 BABEL_MAC_OPENMP_X64=1 pip install BabelViscoFDTD/
 ```
-if you cloned the repository.
+
 # How to use
 After installation, please consult the Jupyter Notebooks in `Tutorial Notebooks` in the repository https://github.com/ProteusMRIgHIFU/BabelViscoFDTD to learn how to run the simulation and get familiar with the input parameters The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
