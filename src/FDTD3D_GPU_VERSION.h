@@ -3,12 +3,12 @@ int NumberAlloc=0;
 #ifdef METAL
   PRINTF("Initializing Commands...\n");
 
-  extern int InitializeMetalDevices();
+  extern int InitializeMetalDevices(const char[], int);
   extern int ConstantBuffers(int, int);
   extern int BufferIndexCreator(unsigned long[], unsigned long, unsigned long, unsigned long);
   extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
   extern int IndexManipUInt(unsigned int, unsigned int, unsigned int);
-  extern _PT GetFloatEntries();
+  extern _PT GetFloatEntries(unsigned long[], unsigned long);
   extern void EncoderInit();
   extern void EncodeSnapShots(unsigned int, unsigned int);
   extern void EncodeCommit();
@@ -16,6 +16,7 @@ int NumberAlloc=0;
   extern void SyncChange();
   extern int maxThreadSensor();
   extern void freeGPUextern();
+  extern void IndexDidModify(_PT, _PT, _PT, _PT);
 #endif
 
 #if defined(CUDA)
@@ -186,7 +187,7 @@ int NumberAlloc=0;
 
     _PT  HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
-    if(InitializeMetalDevices() != 0){
+    if(InitializeMetalDevices(DefaultGPUDeviceName_pr, sizeof(DefaultGPUDeviceName_pr)) != 0){
     ERROR_STRING("Something went wrong with METAL initialization")
     }
 
@@ -194,7 +195,7 @@ int NumberAlloc=0;
     if(ConstantBuffers(LENGTH_CONST_UINT, LENGTH_CONST_MEX) != 0){
       ERROR_STRING("Something went wrong with constant buffer creation.")
     }
-  PRINTF("Unsigned int: %i; unsigned long: %i; float: %i/n",sizeof (unsigned int), sizeof (unsigned long), sizeof (float));
+  PRINTF("Unsigned int: %i; unsigned long: %i; float: %i\n",sizeof (unsigned int), sizeof (unsigned long), sizeof (float));
 #endif
 
 //initilizing constant memory variables
@@ -452,6 +453,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           unsigned int data2 = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
           IndexManipMEX(data, data2, j);
       }
+
       /*
       unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
       for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
@@ -488,6 +490,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   _CONSTANT_BUFFER_UINT.DidModify(ns::Range(0, sizeof(unsigned int)*LENGTH_CONST_UINT));
   _CONSTANT_BUFFER_MEX.DidModify(ns::Range(0,sizeof(mexType) * LENGTH_CONST_MEX));
   */
+  IndexDidModify(LENGTH_INDEX_MEX, LENGTH_INDEX_UINT, LENGTH_CONST_MEX, LENGTH_CONST_UINT);
 
   CompleteCopyToGpu(LambdaMiuMatOverH,mexType);
   CompleteCopyToGpu(LambdaMatOverH	,mexType);
@@ -503,7 +506,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CompleteCopyToGpu(IndexSensorMap	,unsigned int);
   CompleteCopyToGpu(SourceMap		,unsigned int);
   CompleteCopyToGpu(MaterialMap		,unsigned int);
-  _PT totalfloat=GetFloatEntries();
+  _PT totalfloat=GetFloatEntries(_c_mex_type, _c_uint_type);
   /*
   for (_PT ii=0;ii<12;ii++)
   {
@@ -793,7 +796,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CALC_USER_GROUP_PML(stress);
   CALC_USER_GROUP_PML(particle);
   
-  PRINTF("Attempting Sensors :)\n");
   unsigned int global_sensors[3];
   global_sensors[0]=(unsigned int)ceil((float)(INHOST(NumberSensors)) / (float)local_sensors[0]);
   global_sensors[1]=1;
@@ -927,9 +929,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         mxcheckGPUErrors(clFinish(commands));
   #endif
   #if defined(METAL)
-        EncodeSnapShots((unsigned int)ceil((float)(INHOST(N1)+1) / 8), (unsigned int)ceil((float)(INHOST(N2)+1) / 8));
         InitSymbol(CurrSnap,unsigned int,G_INT);
-
+        EncodeSnapShots((unsigned int)ceil((float)(INHOST(N1)+1) / 8), (unsigned int)ceil((float)(INHOST(N2)+1) / 8));
         /*
         mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
         mtlpp::ComputeCommandEncoder commandEncoderSnapShot = Strs, 0);

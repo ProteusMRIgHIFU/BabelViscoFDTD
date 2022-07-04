@@ -662,7 +662,7 @@ char* load_file(char const* path)
 
 #ifdef METAL
 extern int SymbolInitiation_uint(unsigned int, unsigned int);
-extern int SymbolInitiation_mex(unsigned int, unsigned int);
+extern int SymbolInitiation_mex(unsigned int, mexType);
 extern int CompleteCopyMEX(int, mexType *, unsigned int, unsigned int);
 extern int CompleteCopyUInt(int, unsigned int *, unsigned int);
 extern unsigned int GetThreadExecutionWidth(char[], int);
@@ -673,19 +673,6 @@ extern float* CopyFromGPUMEX(unsigned long);
 extern unsigned int* CopyFromGPUUInt();
 extern float* CopyFromGpuSnapshot();
 extern void CreateAndCopyFromMXVarOnGPUSnapShot(int, mexType *);
- /*
-#define GET_KERNEL_STRESS_FUNCTION(__ID__)\
-    mtlpp::Function __ID__ ##_StressKernelFunc = library.NewFunction(#__ID__ "_StressKernel");\
-    mxcheckGPUErrors(((int)__ID__ ##_StressKernelFunc));\
-    mtlpp::ComputePipelineState __ID__ ##_computePipelineStateStress = device.NewComputePipelineState(__ID__ ##_StressKernelFunc, nullptr);\
-    mxcheckGPUErrors(((int)__ID__ ##_computePipelineStateStress));
-
-#define GET_KERNEL_PARTICLE_FUNCTION(__ID__)\
-    mtlpp::Function __ID__ ##_ParticleKernelFunc = library.NewFunction(#__ID__ "_ParticleKernel");\
-    mxcheckGPUErrors(((int)__ID__ ##_ParticleKernelFunc));\
-    mtlpp::ComputePipelineState __ID__ ##_computePipelineStateParticle = device.NewComputePipelineState(__ID__ ##_ParticleKernelFunc, nullptr);\
-    mxcheckGPUErrors(((int)__ID__ ##_computePipelineStateParticle));
-*/
 
 #define SET_USER_LOCAL_STRESS(__ID__)\
       __ID__ ##_local_stress[0]=(size_t)ManualLocalSize_pr[0];\
@@ -866,7 +853,7 @@ for (unsigned int _n=0; _n<__Limit;_n++){\
 else\
 {\
 		for (unsigned int _n=0; _n<__Limit;_n++){\
-			SymbolInitiation_mex(_n + CInd_ ## _NameVar, _NameVar ## _pr[_n]);\
+			SymbolInitiation_mex((_n + CInd_ ## _NameVar), _NameVar ## _pr[_n]);\
 		}\ 
 }\
 
@@ -950,7 +937,6 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=_size*INHOST(ZoneCount);\
 		_c_mex_type[subArray]+=_size*INHOST(ZoneCount);\
-		PRINTF("Subarray %lu \n", subArray);\
 	} \
 	else\
 	{\
@@ -968,7 +954,6 @@ const _PT  _IndexDataMetal(const char * NameVar)
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][0]=_c_mex_type[subArray];\
 			 		HOST_INDEX_MEX[CInd_ ## _NameVar][1]=SizeCopy;\
 			 		_c_mex_type[subArray]+=SizeCopy;\
-					PRINTF("Subarray %lu \n", subArray);\
 			 	} \
 			 	else\
 			 	{\
@@ -980,6 +965,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 #define CreateAndCopyFromMXVarOnGPU2(_NameVar,_dataType) SizeCopy =GET_NUMBER_ELEMS(_NameVar); \
 					 PRINTF("Allocating in GPU for " #_NameVar " %lu elem.\n",(_PT)SizeCopy);\
 					 CreateAndCopyFromMXVarOnGPUSnapShot(SizeCopy, _NameVar ## _pr);\
+
 /*
 					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
 				              SizeCopy,\
@@ -991,6 +977,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 					      gpu_ ## _NameVar ##_pr.DidModify(ns::Range( 0, sizeof(_dataType) *SizeCopy));\
 					  }
 */
+
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
 	 {	\
@@ -1041,7 +1028,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		{\
 			_PT subArray = _IndexDataMetal(#_NameVar);\
 	 		_dataType * inData = (_dataType *)(CopyFromGPUMEX(subArray));\
-			memcpy(_NameVar## _pr,&inData[HOST_INDEX_MEX[CInd_##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
+			memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 		}\
 	 	 else\
 	 	 {\
