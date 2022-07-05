@@ -1019,7 +1019,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 	 else\
 	 {\
 		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
-		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
+		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\	
 	 }
 */
 
@@ -1050,7 +1050,7 @@ const _PT  _IndexDataMetal(const char * NameVar)
 			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 			 }
 */
-	 // METAL is c++ based and their own clasess release the memory
+	 // Memory Freedom is incorporated into freeGPUextern() in FDTD3D_GPU_VERSION
 
 		#define ownGPUFree(_NameVar) { }
 

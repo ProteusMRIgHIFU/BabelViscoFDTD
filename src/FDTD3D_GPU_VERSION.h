@@ -194,8 +194,7 @@ int NumberAlloc=0;
     PRINTF("After getting all functions code \n");
     if(ConstantBuffers(LENGTH_CONST_UINT, LENGTH_CONST_MEX) != 0){
       ERROR_STRING("Something went wrong with constant buffer creation.")
-    }
-  PRINTF("Unsigned int: %i; unsigned long: %i; float: %i\n",sizeof (unsigned int), sizeof (unsigned long), sizeof (float));
+    }    
 #endif
 
 //initilizing constant memory variables
@@ -1039,6 +1038,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CopyFromGPUToMX(Sigma_xy,mexType);
   CopyFromGPUToMX(Sigma_xz,mexType);
   CopyFromGPUToMX(Sigma_yz,mexType);
+  CopyFromGPUToMX(Sigma_zz,mexType);
   CopyFromGPUToMX(Pressure,mexType);
 
   {

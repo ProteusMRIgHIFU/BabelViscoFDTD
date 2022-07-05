@@ -20,7 +20,10 @@ var mex_array:[UInt64] = []
 
 @_cdecl("InitializeMetalDevices")
 public func InitializeMetalDevices(specDevice:UnsafeRawPointer, leng:Int) -> Int {   
-    
+    particle_funcs = []
+    stress_funcs = []
+    mex_array = []
+
     let devices = MTLCopyAllDevices()
     print("Found", devices.count, "METAL Devices!")
     if devices.count == 0 {
@@ -75,13 +78,11 @@ public func InitializeMetalDevices(specDevice:UnsafeRawPointer, leng:Int) -> Int
         let particle_dummy = defaultLibrary.makeFunction(name: y)!
         let particle_pipeline = try! device.makeComputePipelineState(function:particle_dummy) //Adjust try
         particle_funcs.append(particle_pipeline)
-        print(y, "function and pipeline created!")
         y = x
         y +=  "_StressKernel"
         let stress_dummy = defaultLibrary.makeFunction(name: y)!
         let stress_pipeline = try! device.makeComputePipelineState(function:stress_dummy) //Adjust try
         stress_funcs.append(stress_pipeline)
-        print(y, "function and pipeline created!")
     }
 
     print("Making Compute Pipeline State Objects for SnapShot and Sensors...")
@@ -103,12 +104,10 @@ var index_uint:MTLBuffer?
 @_cdecl("ConstantBuffers")
 public func ConstantBuffers(lenconstuint: Int, lenconstmex: Int) -> Int
 {
-    print(lenconstuint, lenconstmex)
     var ll = MemoryLayout<UInt32>.stride * lenconstuint
     constant_buffer_uint = device.makeBuffer(length: ll, options:MTLResourceOptions.storageModeManaged)
     ll = MemoryLayout<Float32>.stride * lenconstmex
     constant_buffer_mex = device.makeBuffer(length: ll, options:MTLResourceOptions.storageModeManaged)
-    print("Constant Buffers Created!")
     return 0
 }
 
@@ -136,12 +135,11 @@ public func SymbolInitiation_mex(index: UInt32, data:Float32) -> Int{
 
 @_cdecl("BufferIndexCreator")
 public func BufferIndexCreator(c_mex_type:UnsafeMutablePointer<UInt64>, c_uint_type:UInt64, length_index_mex:UInt64, length_index_uint:UInt64) -> Int {
+    mex_buffer = []
     var ll = MemoryLayout<UInt64>.stride * 12
     let dummyBuffer:MTLBuffer? = device.makeBuffer(bytes:c_mex_type, length: ll, options:MTLResourceOptions.storageModeManaged)
     let swift_arr = UnsafeBufferPointer(start: dummyBuffer!.contents().assumingMemoryBound(to: UInt64.self), count: 12)
-    print(Array(swift_arr))
     for i in (0...11) {
-        print("Allocating Buffer", i, "with", Int(swift_arr[i]), "float entries.")
         ll = MemoryLayout<Float32>.stride * Int(swift_arr[i])
         let temp:MTLBuffer? = device.makeBuffer(length: ll, options:MTLResourceOptions.storageModeManaged)
         mex_buffer.append(temp)
@@ -157,8 +155,6 @@ public func BufferIndexCreator(c_mex_type:UnsafeMutablePointer<UInt64>, c_uint_t
     ll = MemoryLayout<UInt32>.stride * Int(length_index_uint) * 2
     index_uint = device.makeBuffer(length:ll, options:MTLResourceOptions.storageModeManaged)
     
-    print(Int(length_index_uint), Int(length_index_mex))
-    print("Buffer and indices created!")
     return 0
 }
 
@@ -200,8 +196,8 @@ var floatCounter:Int = 0
 @_cdecl("CompleteCopyMEX")
 public func CompleteCopyMEX(size:Int, ptr:UnsafeMutablePointer<Float32>, ind:UInt64, buff:UInt64) -> Int
 {
-    print("Copying data into buffer:", buff, "index:", ind, "size:", size)
     /*
+    print("Copying data into buffer:", buff, "index:", ind, "size:", size)
     let data = UnsafeBufferPointer(start:ptr, count: size)
     print(Array(data))
     */
@@ -215,8 +211,8 @@ public func CompleteCopyMEX(size:Int, ptr:UnsafeMutablePointer<Float32>, ind:UIn
 @_cdecl("CompleteCopyUInt")
 public func CompleteCopyUInt(size:Int, ptr:UnsafeMutablePointer<UInt32>, ind:UInt64) -> Int
 {
-    print("UInt Copying data into index:", ind, "size:", size)
     /*
+    print("UInt Copying data into index:", ind, "size:", size)
     let data = UnsafeBufferPointer(start:ptr, count: size)
     print(Array(data))
     */
@@ -235,6 +231,7 @@ public func CompleteCopyUInt(size:Int, ptr:UnsafeMutablePointer<UInt32>, ind:UIn
 @_cdecl("GetFloatEntries")
 public func GetFloatEntries(c_mex_type: UnsafeMutablePointer<UInt64>, c_uint_type: UInt64) -> UInt64
 {
+    floatCounter = 0
     var ll = MemoryLayout<UInt64>.stride * 12
     let dummyBuffer:MTLBuffer? = device.makeBuffer(bytes:c_mex_type, length: ll, options:MTLResourceOptions.storageModeManaged)
     let swift_arr = UnsafeBufferPointer(start: dummyBuffer!.contents().assumingMemoryBound(to: UInt64.self), count: 12)
@@ -304,7 +301,6 @@ var stress_commandBuffer:MTLCommandBuffer!
 public func EncoderInit(){
     stress_commandBuffer = commandQueue.makeCommandBuffer()!
 }
-var bob:Int = 0
 @_cdecl("EncodeStress")
 public func EncodeStress(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x:UInt32, y:UInt32, z:UInt32){
     let dummyString = NSString(bytes:fun, length: 5, encoding:String.Encoding.utf8.rawValue)
