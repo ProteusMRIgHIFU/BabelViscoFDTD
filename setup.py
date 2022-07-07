@@ -194,21 +194,6 @@ if 'Darwin' not in platform.system():
 
 else:
     #specific building conditions for Apple  systems
-    class PostInstallCommand(install):
-        def run(self):
-            import site
-            install.run(self)
-            for p in sys.path:
-                for root, dirs, files in os.walk(p):
-                    for file in files:
-                        if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
-                            pathInstall=site.getsitepackages()[0]
-                            metal_python = os.path.join(root,file)
-                            command=['install_name_tool','-change','libMetalSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libMetalSwift.dylib'), metal_python]
-                            subprocess.check_call(command)
-                            break
-    
-
     class DarwinInteropBuildExt(build_ext):
         def initialize_options(self):
 
@@ -298,6 +283,20 @@ else:
             print('building extension')
             CompileRayleighMetal(self.build_temp,self.build_lib)
             super().build_extensions()
+            
+    class PostInstallCommand(install):
+        def run(self):
+            import site
+            install.run(self)
+            for p in sys.path:
+                for root, dirs, files in os.walk(p):
+                    for file in files:
+                        if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
+                            pathInstall=site.getsitepackages()[0]
+                            metal_python = os.path.join(root,file)
+                            command=['install_name_tool','-change','libMetalSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libMetalSwift.dylib'), metal_python]
+                            subprocess.check_call(command)
+                            break
 
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
