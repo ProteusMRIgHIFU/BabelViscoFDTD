@@ -41,8 +41,9 @@ public func InitializeMetalDevices(specDevice:UnsafeRawPointer, leng:Int) -> Int
     }
 
     print("The Device METAL selects as default is:", MTLCreateSystemDefaultDevice()!.name)
-    let dummyString = NSString(bytes:specDevice, length: leng/2, encoding:String.Encoding.utf8.rawValue)
-    let request = dummyString as! String
+    let request : String = ProcessInfo.processInfo.environment["__BabelMetalDevice"]!
+    print("Requested device ")
+    print(request)
     if request != "" { // Will be fixed if I understand what is being input
         var bFound = false
         for dev in MTLCopyAllDevices() {

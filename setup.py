@@ -27,15 +27,6 @@ npinc=np.get_include()+os.sep+'numpy'
 c_module_name = '_FDTDStaggered3D_with_relaxation'
 
 extra_obj =[]
-def distutils_dir_name(dname):
-    """Returns the name of a distutils build directory"""
-    f = "{dirname}.{platform}-{version[0]}.{version[1]}"
-    return f.format(dirname=dname,
-                    platform=sysconfig.get_platform(),
-                    version=sys.version_info)
-extra_obj.append(os.path.join('build', distutils_dir_name('lib'))+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
-
-print(extra_obj)
 
 bRayleighMetalCompiled=False
 
@@ -43,7 +34,10 @@ if os.path.isdir(dir_path+"build"): #can't find a better way to ensure in-tree b
     rmtree(dir_path+"build")
 def CompileRayleighMetal(build_temp,build_lib):
     global bRayleighMetalCompiled
+    global extra_obj
     if not bRayleighMetalCompiled:
+        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
+
         print('Compiling Metal Rayleigh')
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
@@ -203,14 +197,15 @@ else:
     #specific building conditions for Apple  systems
     class PostInstallCommand(install):
         def run(self):
+            import site
             install.run(self)
             for p in sys.path:
                 for root, dirs, files in os.walk(p):
                     for file in files:
                         if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
-                            metal_python = os.path.join(root, file)
-                            print(metal_python)
-                            command=['install_name_tool','-change',"libMetalSwift.dylib",'@loader_path/BabelViscoFDTD/tools/libMetalSwift.dylib', metal_python]
+                            pathInstall=site.getsitepackages()[0]
+                            metal_python = os.path.join(root,file)
+                            command=['install_name_tool','-change','libMetalSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libMetalSwift.dylib'), metal_python]
                             subprocess.check_call(command)
                             break
     
@@ -293,7 +288,10 @@ else:
                                         cwd=self.build_temp)
                 subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
                                     cwd=self.build_temp)
-            else:       
+            else:
+                if 'METAL' in  ext.name:
+                    ext.extra_objects=extra_obj
+                    print('ext.extra_objects', ext.extra_objects)
                 super().build_extension(ext)
 
         def build_extensions(self):
@@ -346,8 +344,8 @@ else:
                                     '-Wl',
                                     '-framework',
                                     'CoreFoundation',
-                                    '-fobjc-link-runtime'],
-                    extra_objects=extra_obj)]
+                                    '-fobjc-link-runtime'])]
+                    # extra_objects=extra_obj)]
     
 
     if 'arm64' not in platform.platform():
