@@ -63,7 +63,7 @@ latest version of `pip`
 * setuptools >=51.0.0
 * pyopencl>=2020 (if in Windows, install manually a wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl)
 * pycuda>=2020 (only in Linux and Windows)
-* mkl (obligatory for OpenMP support in X86-64 Apple systems; mkl is not available for arm6
+
 
 ### Extra dependencies required in some of the tutorials
 * matplotlib
@@ -81,32 +81,6 @@ latest version of `pip`
 
 All those packages (excepting `pymesh`) are installable via `pip`.  For `pymesh`, see tutorial 6 for more details.
 
-## Linux
-Overall, any LTS-type distribution is recommended to be sure CUDA compiler supports your default GCC installation. If your installation can run the default examples of CUDA, then you should be good.
-
-Ubuntu 20.04 LTS is an excellent candidate to start with.
-
-You will also need to install OpenCL headers and libraries such as `opencl-headers`, `ocl-icd-opencl-dev`, `intel-opencl-icd` and other libraries required by you GPU manufacturer to support OpenCL. You can verify you have a healthy OpenCL installation with the tool `clinfo`.
-
-### Linux in Windows through WSL2
-Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
-
-Please note that OpenCL is not supported under WSL2. You will still need to install the packages  `opencl-headers` and `ocl-icd-opencl-dev` to ensure all compilation is completed.
-
-## Windows native
-You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
-
-## MacOS
-Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP both in X86-64 and M1 processors. The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  M1-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).
-
-Best scenario for M1-based systems is to use a fully native Python distribution. You can see details how to do this using homebrew; follow step 2 at https://towardsdatascience.com/how-to-easily-set-up-python-on-any-m1-mac-5ea885b73fab 
-
-For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation for OpenMP support will fail.
-* Install `libomp` with `brew install libomp`  
-* Install `mkl` with `pip install mkl` or `conda install mkl`
-
-Metal backend will be available for both X86-64 and Apple Silicon systems.  
-
 # Installation
 BabelViscoFDTD is available via `pip`
 ```
@@ -119,6 +93,55 @@ If you prefer trying experimental versions, you can clone https://github.com/Pro
 pip install BabelViscoFDTD/
 ```
 run in the parent directory where you cloned the repository.
+
+## Specific OS notes
+### Linux
+Overall, any LTS-type distribution is recommended to be sure CUDA compiler supports your default GCC installation. If your installation can run the default examples of CUDA, then you should be good.
+
+Ubuntu 20.04 LTS is an excellent candidate to start with.
+
+You will also need to install OpenCL headers and libraries such as `opencl-headers`, `ocl-icd-opencl-dev`, `intel-opencl-icd` and other libraries required by you GPU manufacturer to support OpenCL. You can verify you have a healthy OpenCL installation with the tool `clinfo`.
+
+#### Linux in Windows through WSL2
+Starting in 2020, support for CUDA execution directly in WSL2 became possible. I highly recommended you give it a try as I have had excellent experiences with it. Just follow the official instructions from NVIDIA (https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
+Please note that OpenCL is not supported under WSL2. You will still need to install the packages  `opencl-headers` and `ocl-icd-opencl-dev` to ensure all compilation is completed.
+
+### Windows native
+You will need a VStudio installation that is compatible with your CUDA version; for example, CUDA 11.2 supports officially VS 2015 to 2019.
+
+### MacOS
+Any recent version of MacOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in MacOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental, by default it will run only single thread. See below details how to enable it. For ARM64 version will have OpenMP fully enabled by default.
+
+The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below MacOS notes for more details).Metal backend will be available for both X86-64 and Apple Silicon systems.  
+
+Best scenario for both X64 and ARM64-based systems is to use fully native Python distributions using homebrew:
+1. Install  [homebrew](https://brew.sh/)
+`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+1. Install miniforge
+`brew install miniforge`
+1. Create and activate a Python environment (for ARM64, Python 3.9 is recommended)
+`conda create —-name Babel python=3.9 scipy numpy`
+`conda activate Babel`
+1. Install BabelViscoFDTD
+`pip install BabelViscoFDTD`
+
+#### MacOS experimental OpenMP in X86-64
+Thanks to the people who have reported the mitigated success with OpenMP. In my own current systems I didn't have problems, but later some users reported having  issues with OpenMP. Then, we turned this feature as **experimental** the time we can figure out a more stable approach.
+For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation and execution for OpenMP will fail.
+* Install `libomp` with `brew install libomp`  
+* Install `mkl` with `pip install mkl` or `conda install mkl`
+
+
+To enable the OpenMP version for MacOS install BabelViscoFDTD with:
+```
+BABEL_MAC_OPENMP_X64=1 pip install BabelViscoFDTD
+```
+or if you cloned the repository
+```
+BABEL_MAC_OPENMP_X64=1 pip install BabelViscoFDTD/
+```
+
 # How to use
 After installation, please consult the Jupyter Notebooks in `Tutorial Notebooks` in the repository https://github.com/ProteusMRIgHIFU/BabelViscoFDTD to learn how to run the simulation and get familiar with the input parameters The notebooks are ordered from basics of operation to more complex simulation scenarios, including simulation using the superposition method. If you are familiar with FDTD-type or similar numerical tools for acoustic simulation (such as k-Wave or Simsonic), then it should  be straightforward to start using this tool.
 
@@ -142,12 +165,12 @@ Consult `setup.py` to review how all the potential modalities are generated.
 
 # Important information specific to the different environments for use
 ### MacOS notes
-MacOS support for HPC has shifted in recent years significantly. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended. Also, OpenCL in MacOS may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For example, for M1 processors, OpenCL drivers can support 64 bits addressing, but for an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation, only Metal can support it without problems. 
+MacOS support for HPC has shifted in recent years significantly. In modern MacOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For MacOS, Metal backend is recommended for AMD processors. OpenCL in MacOS X86_64 may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. On the other hand, for ARM64 processors, OpenCL drivers can support 64 bits addressing. For an AMD W6800 (32 GB RAM) it only supports 32 bits. Using `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers supports 64 bits addressing. If you need to access more than 4 GB of space for your simulation using AMD GPU, only Metal can support it without problems. As noted below in the the performance analysis, it is worth mentionning that currently (and paradoxically) for the specific case of ARM64 GPUs, OpenCL offers the best performance.
 
-**Important**: The OpenCL implementation with M1 processors seems to work only with the native Python arm64 installation mentioned above. 
+**Important**: The OpenCL implementation with ARM64 processors seems to work only with the native Python arm64 installation mentioned above. 
 
 ### Metal support
-Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM in AMD GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and M1-based processors with 32 or more GB of RAM.
+Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are becoming available, it is interesting to see how well their devices stand compared to Nvidia or AMD based systems. Also, there are other limitations such as maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM for Metal-supported GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and ARM64-based processors with 32 or more GB of RAM.
 
 While Metal offers better performance overall over OpenCL in AMD processors, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process.
 
@@ -178,7 +201,7 @@ The number of computing units is becoming a bit useless to compare. There are fe
 * The ratio of performance between M1 Max and A6000 (CUDA vs. Metal) is about 230% slower, which is close to the theoretical difference of raw SP TFLOPS performance of 180%.
 * *BUT*, the OpenCL performance of the M1 Max is dramatically better than Metal, matching the A6000 performance, way far from the theoretical difference of raw SP TFLOPS that was expected. 
 * Tests with larger domains indicated that the M1 Max performs even better. For example, for a domain size of [315, 315, 523] and 2808 temporal steps, the M1 Max showed a wall-time of 131 s while the A6000 took 139 s. 
-* Multiple tryouts on the CUDA code to adjust grid and block sizes didn't improve performance in the A6000. On the contrary, wall-time was increased, indicating that the recommended method by NVidia to calculate maximal occupancy used by default in BabelViscoFDTD provided the best performance with the A6000.
+* Multiple tryouts on the CUDA code to adjust grid and block sizes didn't improve performance in the A6000. On the contrary, wall-time was increased, indicating that the recommended method by Nvidia to calculate maximal occupancy used by default in BabelViscoFDTD provided the best performance with the A6000.
 * The other surprise was the W6800 with Metal and OpenCL that outperformed by a significant margin the A6000. 
 * The fact that Metal shows better performance than OpenCL in the W6800 compared to Apple Silicon is also surprising.
 * The OpenMP performance of the M1 Max is simply excellent, showing a dramatic speedup compared to the Dell Xeon and iMac Pro systems. Highly likely the tight integration of the CPU to the memory bank in the M1 system may play a significant role.
@@ -195,6 +218,9 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 
 # Release notes
+* 0.9.6-post-10  June 27, 2022
+    * A fix for OpenCL in X64 Mac system that was missing the new kernel names
+    * OpenMP for X64 in Mac is being turned back as experimental feature as some systems are unable to run with it correclty and there is not a clear path how to ensure this will be stable. The feature will remain accessible if installing the library with the BABEL_MAC_OPENMP_X64 option enabled.
 * 0.9.6  Feb 5, 2022.
     * Improved performance in Metal-based devices by using mini-kernels.
     * Minor fixes for Rayleigh-Somerfeld in Metal

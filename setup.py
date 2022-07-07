@@ -16,7 +16,6 @@ from distutils.unixccompiler import UnixCCompiler
 from shutil import copyfile, copytree,rmtree
 import sysconfig
 
-from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 

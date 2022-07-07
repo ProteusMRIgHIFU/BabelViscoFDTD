@@ -11,7 +11,6 @@ from scipy.interpolate import interp1d
 import logging
 LOGGER_NAME = 'FDTDStaggered'
 logger = logging.getLogger(LOGGER_NAME)
-
 try: 
     from .StaggeredFDTD_3D_With_Relaxation import StaggeredFDTD_3D
     print ("StaggeredFDTD_3D_CPU loaded")

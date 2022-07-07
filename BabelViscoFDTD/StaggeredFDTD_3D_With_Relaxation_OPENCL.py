@@ -169,7 +169,7 @@ def StaggeredFDTD_3D_OPENCL(arguments):
     if bFound:
         print('Device ', arguments['DefaultGPUDeviceName'], ' Found!')
     else:
-        raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found found!')
+        raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found!')
     
     address_bits=device.get_info(cl.device_info.ADDRESS_BITS)
 
@@ -289,7 +289,7 @@ def _StaggeredFDTD_3D_OPENCL_pyopenCL(arguments,dtype=np.float32):
     if bFound:
         print('Device ', arguments['DefaultGPUDeviceName'], ' Found!')
     else:
-        raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found found!')
+        raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found!')
     
     address_bits=device.get_info(cl.device_info.ADDRESS_BITS)
 
