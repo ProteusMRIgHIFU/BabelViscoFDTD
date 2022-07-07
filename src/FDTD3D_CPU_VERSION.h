@@ -120,6 +120,7 @@
 				}
 			}
 		}
+		// PRINTF("After stress\n")
 		#ifdef CHECK_FOR_NANs
 			#pragma omp parallel for private(jj,ii,CurZone)
 			for(kk=0; kk<N3; kk++)
@@ -173,6 +174,7 @@
 					}
 				}
 			}
+			// PRINTF("After particle\n")
 
 			#ifdef CHECK_FOR_NANs
 			#pragma omp parallel for private(jj,ii,CurZone)
