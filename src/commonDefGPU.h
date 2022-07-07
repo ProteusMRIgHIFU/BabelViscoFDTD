@@ -778,53 +778,10 @@ extern void CreateAndCopyFromMXVarOnGPUSnapShot(int, mexType *);
  
   #define ENCODE_STRESS(__ID__)\
 		EncodeStress(#__ID__, __ID__ ##_global_stress[0], __ID__ ##_global_stress[1], __ID__ ##_global_stress[2], __ID__ ##_local_stress[0], __ID__ ##_local_stress[1], __ID__ ##_local_stress[2]);
-        /*
-		mtlpp::ComputeCommandEncoder __ID__ ##StressEncoder = StresscommandBuffer.ComputeCommandEncoder();\
-        mxcheckGPUErrors(((int)__ID__ ##StressEncoder));\
-        __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
-        __ID__ ##StressEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
-        __ID__ ##StressEncoder.SetBuffer(_INDEX_MEX, 0, 2);\
-        __ID__ ##StressEncoder.SetBuffer(_INDEX_UINT, 0, 3);\
-        __ID__ ##StressEncoder.SetBuffer(_UINT_BUFFER, 0, 4);\
-        for (_PT ii=0;ii<12;ii++)\
-            __ID__ ##StressEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);\
-        __ID__ ##StressEncoder.SetComputePipelineState(__ID__ ##_computePipelineStateStress);\
-        __ID__ ##StressEncoder.DispatchThreadgroups(\
-            mtlpp::Size(\
-              __ID__ ##_global_stress[0],\
-              __ID__ ##_global_stress[1],\
-              __ID__ ##_global_stress[2]),\
-            mtlpp::Size(\
-              __ID__ ##_local_stress[0],\
-              __ID__ ##_local_stress[1],\
-              __ID__ ##_local_stress[2]));\
-        __ID__ ##StressEncoder.EndEncoding();
-		*/
+
 #define ENCODE_PARTICLE(__ID__)\
 		EncodeParticle(#__ID__, __ID__ ##_global_particle[0], __ID__ ##_global_particle[1], __ID__ ##_global_particle[2], __ID__ ##_local_particle[0], __ID__ ##_local_particle[1], __ID__ ##_local_particle[2]);
-		
-		/*
-        mtlpp::ComputeCommandEncoder __ID__ ##ParticleEncoder = StresscommandBuffer.ComputeCommandEncoder();\
-        mxcheckGPUErrors(((int)__ID__ ##ParticleEncoder));\
-        __ID__ ##ParticleEncoder.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);\
-        __ID__ ##ParticleEncoder.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);\
-        __ID__ ##ParticleEncoder.SetBuffer(_INDEX_MEX, 0, 2);\
-        __ID__ ##ParticleEncoder.SetBuffer(_INDEX_UINT, 0, 3);\
-        __ID__ ##ParticleEncoder.SetBuffer(_UINT_BUFFER, 0, 4);\
-        for (_PT ii=0;ii<12;ii++)\
-            __ID__ ##ParticleEncoder.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);\
-        __ID__ ##ParticleEncoder.SetComputePipelineState(__ID__ ##_computePipelineStateParticle);\
-        __ID__ ##ParticleEncoder.DispatchThreadgroups(\
-            mtlpp::Size(\
-              __ID__ ##_global_particle[0],\
-              __ID__ ##_global_particle[1],\
-              __ID__ ##_global_particle[2]),\
-            mtlpp::Size(\
-              __ID__ ##_local_particle[0],\
-              __ID__ ##_local_particle[1],\
-              __ID__ ##_local_particle[2]));\
-        __ID__ ##ParticleEncoder.EndEncoding();
-		*/
+
 
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )
 //We define first the indexes for uint const values
@@ -966,17 +923,6 @@ const _PT  _IndexDataMetal(const char * NameVar)
 					 PRINTF("Allocating in GPU for " #_NameVar " %lu elem.\n",(_PT)SizeCopy);\
 					 CreateAndCopyFromMXVarOnGPUSnapShot(SizeCopy, _NameVar ## _pr);\
 
-/*
-					 gpu_ ## _NameVar ##_pr = device.NewBuffer(sizeof(_dataType) * \
-				              SizeCopy,\
-				             mtlpp::ResourceOptions::StorageModeManaged);\
-				   mxcheckGPUErrors(((int)gpu_ ## _NameVar ##_pr));\
-					 {\
-					      _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ##_pr.GetContents());\
-					      memcpy(inData,_NameVar ## _pr ,sizeof(_dataType) * SizeCopy);\
-					      gpu_ ## _NameVar ##_pr.DidModify(ns::Range( 0, sizeof(_dataType) *SizeCopy));\
-					  }
-*/
 
 #define CopyFromGPUToMX(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar ##_res)*INHOST(ZoneCount); \
 		if (NULL!=strstr(#_dataType,"mexType"))\
@@ -991,37 +937,10 @@ const _PT  _IndexDataMetal(const char * NameVar)
 		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 	 }
 		
-		
-/*		
-		if (NULL!=strstr(#_dataType,"mexType"))\
-	 {	\
-	 	 _PT subArray = _IndexDataMetal(#_NameVar);\
-		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
-		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-	 } \
-	 else\
-	 {\
-		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-		 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-	 }
-	 */
 
 #define CopyFromGPUToMX3(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 		 _dataType * inData = (_dataType *)CopyFromGpuSnapshot();\
 		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
-
-/*
-		if (NULL!=strstr(#_dataType,"mexType"))\
-	 {	\
-		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
-		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\
-	 } \
-	 else\
-	 {\
-		 _dataType * inData = static_cast<_dataType*>(gpu_ ## _NameVar ## _pr.GetContents());\
-		 memcpy(_NameVar ## _pr,inData,sizeof(_dataType) *SizeCopy );\	
-	 }
-*/
 
  #define CopyFromGPUToMX4(_NameVar,_dataType) 	 SizeCopy = GET_NUMBER_ELEMS(_NameVar); \
 	 		if (NULL!=strstr(#_dataType,"mexType"))\
@@ -1036,20 +955,6 @@ const _PT  _IndexDataMetal(const char * NameVar)
 			memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
 			}
 
-
- /*
-	 		if (NULL!=strstr(#_dataType,"mexType"))\
-	 	 {	\
-		     _PT subArray = _IndexDataMetal(#_NameVar);\
-	 		 _dataType * inData = static_cast<_dataType*>(_MEX_BUFFER[subArray].GetContents());\
-			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_MEX[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-			  } \
-	 	 else\
-	 	 {\
-	 		 _dataType * inData = static_cast<_dataType*>(_UINT_BUFFER.GetContents());\
-			 memcpy(_NameVar ## _pr,&inData[HOST_INDEX_UINT[CInd_ ##_NameVar][0]],sizeof(_dataType) *SizeCopy );\
-			 }
-*/
 	 // Memory Freedom is incorporated into freeGPUextern() in FDTD3D_GPU_VERSION
 
 		#define ownGPUFree(_NameVar) { }
