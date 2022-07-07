@@ -142,7 +142,7 @@ public func BufferIndexCreator(c_mex_type:UnsafeMutablePointer<UInt64>, c_uint_t
     let c_mex_buffer:MTLBuffer? = device.makeBuffer(bytes:c_mex_type, length: ll, options:MTLResourceOptions.storageModeManaged)
     let c_mex_array = UnsafeBufferPointer(start: c_mex_buffer!.contents().assumingMemoryBound(to: UInt64.self), count: 12)
     for i in (0...11) {
-        ll = MemoryLayout<Float32>.stride * Int(swift_arr[i])
+        ll = MemoryLayout<Float32>.stride * Int(c_mex_array[i])
         let temp:MTLBuffer? = device.makeBuffer(length: ll, options:MTLResourceOptions.storageModeManaged)
         mex_buffer.append(temp)
         mex_array.append(c_mex_array[i])

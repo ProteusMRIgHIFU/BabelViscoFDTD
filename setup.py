@@ -20,7 +20,7 @@ from distutils.command.install_headers import install_headers
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.6-4'
+version = '0.9.6-10'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -80,12 +80,12 @@ def PrepareOpenCLKernel():
                 f.writelines(inclines)
     copyfile(dir_path+'src'+os.sep+'Indexing.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing.h')
     
-install_requires=['numpy>=1.15.1', 
-                'scipy>=1.1.0', 
-                'h5py>=2.9.0',
-                'hdf5plugin>=3.2', 
-                'pydicom>=1.3.0',
-                'pyopencl>=2020.1']
+install_requires=['numpy', 
+                'scipy', 
+                'h5py',
+                'hdf5plugin', 
+                'pydicom',
+                'pyopencl']
 
 PrepareOpenCLKernel()
 
@@ -307,12 +307,22 @@ else:
         extra_link_args_omp=['-lomp']
         define_macros_omp=[("USE_OPENMP",None)]
     else:
-        # extra_compile_args_omp=['-Xclang','-fopenmp']
-        # extra_link_args_omp=[]
-        # define_macros_omp=[("USE_OPENMP",None)]
-        extra_compile_args_omp=[]
-        extra_link_args_omp=[]
-        define_macros_omp=[]
+        OPENMP_X64 = os.getenv('BABEL_MAC_OPENMP_X64') 
+        print('BABEL_MAC_OPENMP_X64',OPENMP_X64)
+        bUseOpenMP=True
+        if OPENMP_X64 is not None:
+            if OPENMP_X64=='1':
+                bUseOpenMP=True
+        if bUseOpenMP:
+            print('OpenMP for Mac X64 is enabled')
+            extra_compile_args_omp=['-Xclang','-fopenmp']
+            extra_link_args_omp=['-liomp5']
+            define_macros_omp=[("USE_OPENMP",None)]
+        else:
+            print('OpenMP for Mac X64 is disabled')
+            extra_compile_args_omp=[]
+            extra_link_args_omp=[]
+            define_macros_omp=[]
 
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
