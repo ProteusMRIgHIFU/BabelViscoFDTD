@@ -11,14 +11,15 @@ from shutil import copyfile
 from distutils.sysconfig import get_python_inc
 
 
-
 def StaggeredFDTD_3D_METAL(arguments):
+    os.environ['__BabelMetal'] =(os.path.dirname(os.path.abspath(__file__))+os.sep+'tools')
+    print(os.environ['__BabelMetal'])
+    os.environ['__BabelMetalDevice'] = arguments['DefaultGPUDeviceName']
     IncludeDir=str(Path(__file__).parent.absolute())+os.sep
 
     filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c']
 
     kernbinfile=IncludeDir+'tools'+os.sep+'Rayleigh.metallib'
-    
     
 
     if (type(arguments)!=dict):
