@@ -962,7 +962,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CopyFromGPUToMX(Sigma_xy,mexType);
   CopyFromGPUToMX(Sigma_xz,mexType);
   CopyFromGPUToMX(Sigma_yz,mexType);
-  CopyFromGPUToMX(Sigma_zz,mexType);
   CopyFromGPUToMX(Pressure,mexType);
 
   {
