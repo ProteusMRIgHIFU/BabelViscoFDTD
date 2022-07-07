@@ -416,35 +416,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   if(BufferIndexCreator(_c_mex_type,_c_uint_type,LENGTH_INDEX_MEX,LENGTH_INDEX_UINT)!=0){
     ERROR_STRING("Error during making mex/uint buffers and indicies")
   }
-  /*
-  mtlpp::Buffer _MEX_BUFFER[12];
-  for (_PT ii=0;ii<12;ii++)
-  {
-     PRINTF("Allocating Buffer %i with %lu float entries\n",ii,_c_mex_type[ii]);
-    _MEX_BUFFER[ii]= device.NewBuffer(sizeof(mexType) *_c_mex_type[ii],
-            mtlpp::ResourceOptions::StorageModeManaged);
-    mxcheckGPUErrors(((int)_MEX_BUFFER[ii]));
-    if (_MEX_BUFFER[ii].GetLength() != sizeof(mexType) *_c_mex_type[ii])
-    {
-        PRINTF("ERROR, size of buffer is not what is expected %lu, %lu\n",_MEX_BUFFER[ii].GetLength(),sizeof(mexType) *_c_mex_type[ii]);
-        ERROR_STRING("Stopping simulation");
-    }
-  }
 
-  mtlpp::Buffer _UINT_BUFFER = device.NewBuffer(sizeof(unsigned int) *_c_uint_type,
-            mtlpp::ResourceOptions::StorageModeManaged);
-  mxcheckGPUErrors(((int)_UINT_BUFFER));
-
-  mtlpp::Buffer _INDEX_MEX = device.NewBuffer(sizeof(unsigned int) *
-            LENGTH_INDEX_MEX*2,
-            mtlpp::ResourceOptions::StorageModeManaged);
-  mxcheckGPUErrors(((int)_INDEX_MEX));
-
-  mtlpp::Buffer _INDEX_UINT = device.NewBuffer(sizeof(unsigned int) *
-            LENGTH_INDEX_UINT*2,
-            mtlpp::ResourceOptions::StorageModeManaged);
-  mxcheckGPUErrors(((int)_INDEX_UINT));
-  */
   {
       for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
       {
@@ -505,16 +477,8 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CompleteCopyToGpu(IndexSensorMap	,unsigned int);
   CompleteCopyToGpu(SourceMap		,unsigned int);
   CompleteCopyToGpu(MaterialMap		,unsigned int);
-  _PT totalfloat=GetFloatEntries(_c_mex_type, _c_uint_type);
-  /*
-  for (_PT ii=0;ii<12;ii++)
-  {
-    _MEX_BUFFER[ii].DidModify(ns::Range(0,sizeof(mexType) *_c_mex_type[ii]));
-    totalfloat+=_c_mex_type[ii];
-  }
 
-  _UINT_BUFFER.DidModify(ns::Range(0,sizeof(unsigned int) *_c_uint_type));
-  */
+  _PT totalfloat=GetFloatEntries(_c_mex_type, _c_uint_type);
   PRINTF("Total float entries %lu and int entries %lu\n",totalfloat,_c_uint_type);
 
 #endif
@@ -882,11 +846,9 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         InitSymbol(nStep,unsigned int,G_INT);
         InitSymbol(TypeSource,unsigned int,G_INT);
         InitSymbol(SelK,unsigned int,G_INT);
-        /*
-        mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-        mxcheckGPUErrors(((int)StresscommandBuffer));
-        */
+
         EncoderInit();
+
         ENCODE_STRESS(PML_1)
         ENCODE_STRESS(PML_2)
         ENCODE_STRESS(PML_3)
@@ -904,10 +866,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
         ENCODE_PARTICLE(MAIN_1)
         
         EncodeCommit();
-        /*
-        StresscommandBuffer.Commit();
-        StresscommandBuffer.WaitUntilCompleted();
-        */
 #endif
 
    // Snapshots
@@ -971,30 +929,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
 #endif
 #if defined(METAL)
       EncodeSensors(global_sensors[0], global_sensors[1], global_sensors[2], local_sensors[0], local_sensors[1], local_sensors[2]);
-      /*
-      mtlpp::CommandBuffer commandBufferSensors = commandQueue.CommandBuffer();
-      mxcheckGPUErrors(((int)commandBufferSensors));
-      mtlpp::ComputeCommandEncoder commandEncoderSensors = commandBufferSensors.ComputeCommandEncoder();
-      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_UINT, 0, 0);
-      commandEncoderSensors.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-      commandEncoderSensors.SetBuffer(_INDEX_MEX, 0, 2);
-      commandEncoderSensors.SetBuffer(_INDEX_UINT, 0, 3);
-      commandEncoderSensors.SetBuffer(_UINT_BUFFER, 0, 4);
-      for (_PT ii=0;ii<12;ii++)
-            commandEncoderSensors.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-      commandEncoderSensors.SetComputePipelineState(computePipelineStateSensors);
-      commandEncoderSensors.DispatchThreadgroups(
-          mtlpp::Size(
-            global_sensors[0],
-            global_sensors[1],
-            global_sensors[2]),
-          mtlpp::Size(local_sensors[0],
-                      local_sensors[1],
-                      local_sensors[2]));
-      commandEncoderSensors.EndEncoding();
-      commandBufferSensors.Commit();
-      commandBufferSensors.WaitUntilCompleted();
-      */
 #endif
     }
       
@@ -1002,21 +936,10 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     INHOST(nStep)++;
 	}
  
-  #if defined(METAL)
-   
+  #if defined(METAL)   
       // We just synchronize before transferring data back to CPU
       SyncChange();
-      /*
-      mtlpp::CommandBuffer commandBufferSync = commandQueue.CommandBuffer();
-      mxcheckGPUErrors(((int)commandBufferSync));
 
-      mtlpp::BlitCommandEncoder blitCommandEncoderSync = commandBufferSync.BlitCommandEncoder();
-      for (_PT ii=0;ii<12;ii++)
-          blitCommandEncoderSync.Synchronize(_MEX_BUFFER[ii]);
-      blitCommandEncoderSync.EndEncoding();
-      commandBufferSync.Commit();
-      commandBufferSync.WaitUntilCompleted();
-      */
   #endif
 
 
@@ -1160,6 +1083,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
     free(Platform);
 #endif
 #if defined(METAL)
+    // Frees GPU memory that was used due to the creation of buffers
     freeGPUextern();
 #endif
 PRINTF("Number of unfreed allocs (it should be 0):%i\n",NumberAlloc);
