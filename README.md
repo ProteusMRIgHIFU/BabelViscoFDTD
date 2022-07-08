@@ -218,6 +218,8 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 
 # Release notes
+* 0.9.7  July 7, 2022
+    * The MTLPP C++ library is now replaced by a Swift interface to access the Metal implementation for the viscoelastic FDTD solution. This will ensure using a more standard Apple development language for the future, as MTLPP is not maintained anymore. While there is a new Apple-based C++ wrapper for Metal, using Swift is still preferred as we created now a C-linking compatible library that in the future can be also used directly in Python. In the longterm, we aim to eliminate the C code extension and use only Python code in tandem with pyopencl, pycuda and  Metal 
 * 0.9.6-post-10  June 27, 2022
     * A fix for OpenCL in X64 Mac system that was missing the new kernel names
     * OpenMP for X64 in Mac is being turned back as experimental feature as some systems are unable to run with it correclty and there is not a clear path how to ensure this will be stable. The feature will remain accessible if installing the library with the BABEL_MAC_OPENMP_X64 option enabled.
