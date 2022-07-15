@@ -667,8 +667,8 @@ extern int CompleteCopyMEX(int, mexType *, unsigned int, unsigned int);
 extern int CompleteCopyUInt(int, unsigned int *, unsigned int);
 extern unsigned int GetThreadExecutionWidth(char[], int);
 extern unsigned int GetMaxTotalThreadsPerThreadgroup(char[], int);
-extern void EncodeStress(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-extern void EncodeParticle(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+extern void EncodeStress(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,unsigned int, unsigned int, unsigned int);
+extern void EncodeParticle(const char[], unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,unsigned int, unsigned int, unsigned int);
 extern float* CopyFromGPUMEX(unsigned long);
 extern unsigned int* CopyFromGPUUInt();
 extern float* CopyFromGpuSnapshot();
@@ -679,12 +679,13 @@ extern void CreateAndCopyFromMXVarOnGPUSnapShot(int, mexType *);
       __ID__ ##_local_stress[1]=(size_t)ManualLocalSize_pr[1];\
       __ID__ ##_local_stress[2]=(size_t)ManualLocalSize_pr[2];
 
+
 #define CALC_USER_LOCAL_STRESS(__ID__)\
 {\
       unsigned int w = GetThreadExecutionWidth(#__ID__, 0);\
       unsigned int h = GetMaxTotalThreadsPerThreadgroup(#__ID__, 0) / w;\
       unsigned int z =1;\
-      if (h%2==0)\
+	  if (h%2==0)\
       {\
         h=h/2;\
         z=2;\
@@ -776,11 +777,11 @@ extern void CreateAndCopyFromMXVarOnGPUSnapShot(int, mexType *);
   PRINTF("PML_6_global_" #__TYPE__ "=[%i,%i,%i],[%i,%i,%i]\n",PML_6_global_## __TYPE__[0],PML_6_global_## __TYPE__[1],PML_6_global_## __TYPE__[2],\
     PML_6_global_## __TYPE__[0]*PML_6_local_## __TYPE__[0],PML_6_global_## __TYPE__[1]*PML_6_local_## __TYPE__[1],PML_6_global_## __TYPE__[2]*PML_6_local_## __TYPE__[2]);
  
-  #define ENCODE_STRESS(__ID__)\
-		EncodeStress(#__ID__, __ID__ ##_global_stress[0], __ID__ ##_global_stress[1], __ID__ ##_global_stress[2], __ID__ ##_local_stress[0], __ID__ ##_local_stress[1], __ID__ ##_local_stress[2]);
+  #define ENCODE_STRESS(__ID__,_Gx,_Gy,_Gz)\
+		EncodeStress(#__ID__, __ID__ ##_global_stress[0], __ID__ ##_global_stress[1], __ID__ ##_global_stress[2], __ID__ ##_local_stress[0], __ID__ ##_local_stress[1], __ID__ ##_local_stress[2],_Gx,_Gy,_Gz);
 
-#define ENCODE_PARTICLE(__ID__)\
-		EncodeParticle(#__ID__, __ID__ ##_global_particle[0], __ID__ ##_global_particle[1], __ID__ ##_global_particle[2], __ID__ ##_local_particle[0], __ID__ ##_local_particle[1], __ID__ ##_local_particle[2]);
+#define ENCODE_PARTICLE(__ID__,_Gx,_Gy,_Gz)\
+		EncodeParticle(#__ID__, __ID__ ##_global_particle[0], __ID__ ##_global_particle[1], __ID__ ##_global_particle[2], __ID__ ##_local_particle[0], __ID__ ##_local_particle[1], __ID__ ##_local_particle[2],_Gx,_Gy,_Gz);
 
 
 #define mxcheckGPUErrors(val)           mxcheck ( (val), #val, __FILE__, __LINE__ )

@@ -265,11 +265,14 @@ public func GetThreadExecutionWidth(fun:UnsafeMutablePointer<CChar>, id:Int)-> U
 
 @_cdecl("EncoderInit")
 public func EncoderInit(){
-    stress_commandBuffer = commandQueue.makeCommandBuffer()!
+        stress_commandBuffer = commandQueue.makeCommandBuffer()!
+    
 }
 
 @_cdecl("EncodeStress")
-public func EncodeStress(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x:UInt32, y:UInt32, z:UInt32){
+public func EncodeStress(fun:UnsafeRawPointer, i:UInt32, j:UInt32, 
+                        k:UInt32, x:UInt32, y:UInt32, z:UInt32,
+                        Gx:UInt32,Gy:UInt32,Gz:UInt32){
     let func_name = NSString(bytes:fun, length: 5, encoding:String.Encoding.utf8.rawValue)
     var ind:Int!
     for name in func_names{
@@ -288,12 +291,15 @@ public func EncodeStress(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x:U
         computeCommandEncoder.setBuffer(mex_buffer[i], offset: 0, index: (5+i))
     }
     computeCommandEncoder.setComputePipelineState(stress_funcs[ind]!)
-    computeCommandEncoder.dispatchThreadgroups(MTLSize(width: Int(i), height: Int(j), depth: Int(k)), threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
+    //computeCommandEncoder.dispatchThreadgroups(MTLSize(width: Int(i), height: Int(j), depth: Int(k)), threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
+    computeCommandEncoder.dispatchThreads(MTLSize(width: Int(Gx), height: Int(Gy), depth: Int(Gz)),
+                            threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
     computeCommandEncoder.endEncoding()
 }
 
 @_cdecl("EncodeParticle")
-public func EncodeParticle(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x:UInt32, y:UInt32, z:UInt32){
+public func EncodeParticle(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x:UInt32, y:UInt32, z:UInt32,
+                            Gx:UInt32,Gy:UInt32,Gz:UInt32){
     let func_name = NSString(bytes:fun, length: 5, encoding:String.Encoding.utf8.rawValue)
     var index:Int!
     for name in func_names{
@@ -312,15 +318,17 @@ public func EncodeParticle(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x
         computeCommandEncoder.setBuffer(mex_buffer[i], offset: 0, index: (5+i))
     }
     computeCommandEncoder.setComputePipelineState(particle_funcs[index]!)
-    computeCommandEncoder.dispatchThreadgroups(MTLSize(width: Int(i), height: Int(j), depth: Int(k)), threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
+    //computeCommandEncoder.dispatchThreadgroups(MTLSize(width: Int(i), height: Int(j), depth: Int(k)), threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
+    computeCommandEncoder.dispatchThreads(MTLSize(width: Int(Gx), height: Int(Gy), depth: Int(Gz)),
+                            threadsPerThreadgroup:MTLSize(width:Int(x), height: Int(y), depth: Int(z)))
     computeCommandEncoder.endEncoding()
 }
 
 @_cdecl("EncodeCommit")
 public func EncodeCommit(){
-    stress_commandBuffer.commit()
-    stress_commandBuffer.waitUntilCompleted()
-
+        stress_commandBuffer.commit()
+        stress_commandBuffer.waitUntilCompleted()
+    
 }
 
 @_cdecl("CreateAndCopyFromMXVarOnGPUSnapShot")
