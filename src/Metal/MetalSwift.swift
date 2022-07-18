@@ -178,13 +178,13 @@ public func IndexManipUInt(data:UInt32, data2:UInt32, index:UInt32) -> Int{
 }
 @_cdecl("IndexDidModify")
 public func IndexDidModify(lenind_mex:UInt64, lenind_uint:UInt64, lenconstmex:UInt64, lenconstuint:UInt64){
-    var r:Range = 0 ..< (Int(lenind_mex) * 2 + 1) * MemoryLayout<UInt32>.stride
+    var r:Range = 0 ..< (Int(lenind_mex) * 2 ) * MemoryLayout<UInt32>.stride
     index_mex!.didModifyRange(r)
-    r = 0 ..< (Int(lenind_uint) * 2 + 1) * MemoryLayout<UInt32>.stride
+    r = 0 ..< (Int(lenind_uint) * 2 ) * MemoryLayout<UInt32>.stride
     index_uint!.didModifyRange(r)
-    r = 0 ..< (Int(lenconstuint) + 1) * MemoryLayout<UInt32>.stride
+    r = 0 ..< (Int(lenconstuint) ) * MemoryLayout<UInt32>.stride
     constant_buffer_uint!.didModifyRange(r)
-    r = 0 ..< (Int(lenconstmex) + 1) * MemoryLayout<Float32>.stride
+    r = 0 ..< (Int(lenconstmex) ) * MemoryLayout<Float32>.stride
     constant_buffer_mex!.didModifyRange(r)
 }
 
@@ -193,7 +193,7 @@ public func CompleteCopyMEX(size:Int, ptr:UnsafeMutablePointer<Float32>, ind:UIn
 {
     let ll = size * MemoryLayout<Float32>.stride
     mex_buffer[Int(buff)]!.contents().advanced(by:(Int(ind) * MemoryLayout<Float32>.stride)).copyMemory(from: ptr, byteCount:ll)
-    let r : Range = (Int(ind) * MemoryLayout<Float32>.stride)..<((Int(ind) * MemoryLayout<Float32>.stride) + ll + 1)
+    let r : Range = (Int(ind) * MemoryLayout<Float32>.stride)..<((Int(ind) * MemoryLayout<Float32>.stride) + ll )
     mex_buffer[Int(buff)]!.didModifyRange(r)
     return 0
 }
@@ -217,12 +217,12 @@ public func GetFloatEntries(c_mex_type: UnsafeMutablePointer<UInt64>, c_uint_typ
     let c_mex_buffer:MTLBuffer? = device.makeBuffer(bytes:c_mex_type, length: ll, options:MTLResourceOptions.storageModeManaged)
     let c_mex_array = UnsafeBufferPointer(start: c_mex_buffer!.contents().assumingMemoryBound(to: UInt64.self), count: 12)
     for i in (0...11) {
-        var r:Range = 0 ..< (Int(c_mex_array[i]) + 1) * MemoryLayout<Float32>.stride
+        var r:Range = 0 ..< (Int(c_mex_array[i]) ) * MemoryLayout<Float32>.stride
         mex_buffer[i]!.didModifyRange(r)
         floatCounter += Int(c_mex_array[i]) 
     }
     c_mex_buffer!.setPurgeableState(MTLPurgeableState.empty)
-    var r:Range = 0 ..< (Int(c_uint_type) + 1) * MemoryLayout<UInt32>.stride
+    var r:Range = 0 ..< (Int(c_uint_type) ) * MemoryLayout<UInt32>.stride
     uint_buffer!.didModifyRange(r)
     return UInt64(floatCounter)
 }
