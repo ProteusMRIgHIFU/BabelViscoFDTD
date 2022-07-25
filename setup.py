@@ -401,7 +401,3 @@ setup(name="BabelViscoFDTD",
             "Operating System :: Microsoft :: Windows",
             "Operating System :: POSIX :: Linux",
         ])
-
-# command = ["install_name_tool", "-change", "libMetalSwift.dylib", "@loader_path/BabelViscoFDTD/tools/libMetalSwift.dylib", 
-# #"/Users/andrewxie/miniconda3/envs/Babel/lib/python3.9/site-packages/_FDTDStaggered3D_with_relaxation_METAL_single.cpython-39-darwin.so"]
-# subprocess.check_call(command)
