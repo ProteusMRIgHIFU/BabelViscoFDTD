@@ -89,8 +89,9 @@ def _PrepParamsForKernel(arguments):
 
 AllC=''
 
-class StaggederedFDTD_3D_With_Relaxation_OPENCL():
+class StaggeredFDTD_3D_With_Relaxation_OPENCL():
     def __init__(self, arguments):
+        super().__init__("OPENCL") # Defines what commands will be run in the BASE
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
         global TotalAllocs
@@ -454,5 +455,6 @@ class StaggederedFDTD_3D_With_Relaxation_OPENCL():
                 'Pressure':ArrayResCPU['Pressure']},\
                 ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots']
 
-
+def StaggeredFDTD_3D_OPENCL(arguments):
+    return StaggeredFDTD_3D_With_Relaxation_OPENCL(arguments)
 
