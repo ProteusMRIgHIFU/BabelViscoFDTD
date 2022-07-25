@@ -37,166 +37,99 @@ MASKID['SEL_PEAK']=0x0000000002
 NumberSelRMSPeakMaps=0
 NumberSelSensorMaps=0
 TotalAllocs=0
-
-def _PrepParamsForKernel(arguments):
-    global NumberSelRMSPeakMaps
-    global NumberSelSensorMaps
-
-
-    copyParams=['DT','N1','N2','N3','SensorSubSampling','SensorStart','LengthSource','TimeSteps',\
-               'SelRMSorPeak','SelMapsRMSPeak','SelMapsSensors','InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
-    outparams={}
-    for c in copyParams:
-        outparams[c]=arguments[c]
-        
-    outparams['PML_Thickness']=arguments['PMLThickness']
-        
-    outparams['NumberSources']=arguments['SourceFunctions'].shape[0]
-    outparams['ZoneCount']=arguments['SPP_ZONES']
-    outparams['NumberSensors']=arguments['IndexSensorMap'].size
-    
-    
-    outparams['Limit_I_low_PML']=outparams['PML_Thickness']-1
-    outparams['Limit_I_up_PML']=arguments['N1']-outparams['PML_Thickness']
-    outparams['Limit_J_low_PML']=outparams['PML_Thickness']-1
-    outparams['Limit_J_up_PML']=arguments['N2']-outparams['PML_Thickness']
-    outparams['Limit_K_low_PML']=outparams['PML_Thickness']-1
-    outparams['Limit_K_up_PML']=arguments['N3']-outparams['PML_Thickness']
-
-    outparams['SizeCorrI']=arguments['N1']-2*outparams['PML_Thickness']
-    outparams['SizeCorrJ']=arguments['N2']-2*outparams['PML_Thickness']
-    outparams['SizeCorrK']=arguments['N3']-2*outparams['PML_Thickness']
-
-    #//The size of the matrices where the PML is valid depends on the size of the PML barrier
-    outparams['SizePML']= arguments['N1']*arguments['N2']*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
-    outparams['SizePMLxp1']= (arguments['N1']+1)*(arguments['N2'])*(arguments['N3']) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
-    outparams['SizePMLyp1']= arguments['N1']*(arguments['N2']+1)*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
-    outparams['SizePMLzp1']= arguments['N1']*(arguments['N2'])*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
-    outparams['SizePMLxp1yp1zp1']= (arguments['N1']+1)*(arguments['N2']+1)*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
-
-    for k in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
-        outparams['IndexRMSPeak_'+k]=0
-        outparams['IndexSensor_'+k]=0
-        if arguments['SelMapsRMSPeak'] & MASKID[k]:
-            outparams['IndexRMSPeak_'+k]=NumberSelRMSPeakMaps
-            NumberSelRMSPeakMaps+=1
-        if arguments['SelMapsSensors'] & MASKID[k]:
-            outparams['IndexSensor_'+k]=NumberSelSensorMaps
-            NumberSelSensorMaps+=1
-    outparams['NumberSelRMSPeakMaps']=NumberSelRMSPeakMaps
-    outparams['NumberSelSensorMaps']=NumberSelSensorMaps
-    return outparams
-
 AllC=''
 
-class StaggeredFDTD_3D_With_Relaxation_OPENCL():
+class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self, arguments):
-        super().__init__("OPENCL") # Defines what commands will be run in the BASE
+        super().__init__(arguments)
+
+    def _InitSymbol(self, IP,_NameVar,td,SCode=[]):
+        if td in ['float','double']:
+            res = '__constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
+        else:
+            lType =' _PT '
+            res = '__constant '+ lType  + _NameVar + ' = %i;\n' %(IP[_NameVar])
+        SCode.append(res)
+        
+    def _InitSymbolArray(self, IP,_NameVar,td,SCode):
+        res =  "__constant "+ td + " gpu" + _NameVar + "pr[%i] ={\n" % (IP[_NameVar].size)
+        for n in range(IP[_NameVar].size):
+            if td in ['float','double']:
+                res+="%.9g" % (IP[_NameVar][n])
+            else:
+                res+="%i" % (IP[_NameVar][n])
+            if n<IP[_NameVar].size-1:
+                res+=',\n'
+            else:
+                res+='};\n'
+        SCode.append(res)            
+        
+    def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags=cl.mem_flags.READ_WRITE):
+        global TotalAllocs
+        if td in ['float','unsigned int']:
+            f=4
+        else: # double
+            f=8
+        print('Allocating for',Name,dims,'elements')
+        ArraysGPUOp[Name]=cl.Buffer(ctx, flags,size=dims*f)
+        TotalAllocs+=1            
+
+    def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags=cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR):
+        global TotalAllocs
+        print('Allocating for',Name,ArrayResCPU[Name].size,'elements')
+        ArraysGPUOp[Name]=cl.Buffer(ctx, flags,hostbuf=ArrayResCPU[Name])
+        TotalAllocs+=1
+
+    def _PrepParamsForKernel(self, arguments):
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
-        global TotalAllocs
-        global AllC
-        
-        IncludeDir=str(Path(__file__).parent.absolute())+os.sep
 
 
-        if (type(arguments)!=dict):
-            raise TypeError( "The input parameter must be a dictionary")
-
-        for key in arguments.keys():
-            if type(arguments[key])==np.ndarray:
-                if np.isfortran(arguments[key])==False:
-                    #print "StaggeredFDTD_3D: Converting ndarray " + key + " to Fortran convention";
-                    arguments[key] = np.asfortranarray(arguments[key])
-            elif type(arguments[key])!=str:
-                arguments[key]=np.array((arguments[key]))
-
-        if arguments['DT'].dtype==np.dtype('float32'):
-            dtype=np.float32
-        else:
-            dtype=np.float64
-
-        
-        gpu_kernelSrc=IncludeDir+'_gpu_kernel.c'
-        index_src=IncludeDir+'_indexing.h'
-
-
-        td = 'float'
-        if dtype is np.float64:
-            td='double'
-        t0=time.time()
-        
-        NumberSelRMSPeakMaps=0
-        NumberSelSensorMaps=0
-        TotalAllocs=0
-        
-        outparams=_PrepParamsForKernel(arguments)
-
-        N1=arguments['N1']
-        N2=arguments['N2']
-        N3=arguments['N3']
-        
-        #we prepare the kernel code
-        SCode =[]
-
-        platforms = cl.get_platforms()
-        devices=platforms[0].get_devices()
-        bFound=False
-        for device in devices:
-            if arguments['DefaultGPUDeviceName'] in device.name:
-                bFound=True
-                break
-        
-        if bFound:
-            print('Device ', arguments['DefaultGPUDeviceName'], ' Found!')
-        else:
-            raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found!')
-        
-        address_bits=device.get_info(cl.device_info.ADDRESS_BITS)
-
-        print('Address bits', address_bits)
-
-        if address_bits==32:
-            SCode.append("#define _PT_32\n")
-        SCode.append("#define mexType " + td +"\n")
-        SCode.append("#define OPENCL\n")
-        
-        with open(index_src) as f:
-            SCode+=f.readlines()
-
-
-        LParamFloat = ['DT']
-        LParamInt=["N1","N2", "N3", "Limit_I_low_PML", "Limit_J_low_PML", "Limit_K_low_PML", "Limit_I_up_PML","Limit_J_up_PML",\
-                "Limit_K_up_PML","SizeCorrI","SizeCorrJ","SizeCorrK","PML_Thickness","NumberSources", "LengthSource","ZoneCount",\
-                "SizePMLxp1","SizePMLyp1","SizePMLzp1","SizePML","SizePMLxp1yp1zp1","NumberSensors","TimeSteps","SelRMSorPeak",\
-                "SelMapsRMSPeak", "IndexRMSPeak_ALLV","IndexRMSPeak_Vx","IndexRMSPeak_Vy", "IndexRMSPeak_Vz", "IndexRMSPeak_Sigmaxx",\
-                "IndexRMSPeak_Sigmayy","IndexRMSPeak_Sigmazz","IndexRMSPeak_Sigmaxy","IndexRMSPeak_Sigmaxz","IndexRMSPeak_Sigmayz",\
-                "IndexRMSPeak_Pressure","NumberSelRMSPeakMaps","SelMapsSensors","IndexSensor_ALLV","IndexSensor_Vx","IndexSensor_Vy",\
-                "IndexSensor_Vz","IndexSensor_Sigmaxx","IndexSensor_Sigmayy","IndexSensor_Sigmazz","IndexSensor_Sigmaxy",\
-                "IndexSensor_Sigmaxz","IndexSensor_Sigmayz","IndexSensor_Pressure","NumberSelSensorMaps","SensorSubSampling",
-                "SensorStart"]
-        LParamArray=['InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
-        assert(len(outparams)==(len(LParamFloat)+len(LParamInt)+len(LParamArray)))
-        for k in LParamFloat:
-            super()._InitSymbol(outparams,k,td,SCode)
-        for k in LParamInt:
-            super()._InitSymbol(outparams,k,'unsigned int',SCode)
-        for k in LParamArray:
-            super()._InitSymbolArray(outparams,k,td,SCode)
-
-        with open(gpu_kernelSrc) as f:
-            SCode+=f.readlines()
-        AllC=''
-        for l in SCode:
-            AllC+=l
-        
-
-        if platform.system() != 'Windows':
-            arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl'
-        
-        
-        t0 = time.time()
+        copyParams=['DT','N1','N2','N3','SensorSubSampling','SensorStart','LengthSource','TimeSteps',\
+                'SelRMSorPeak','SelMapsRMSPeak','SelMapsSensors','InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
+        outparams={}
+        for c in copyParams:
+            outparams[c]=arguments[c]
             
+        outparams['PML_Thickness']=arguments['PMLThickness']
+            
+        outparams['NumberSources']=arguments['SourceFunctions'].shape[0]
+        outparams['ZoneCount']=arguments['SPP_ZONES']
+        outparams['NumberSensors']=arguments['IndexSensorMap'].size
+        
+        
+        outparams['Limit_I_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_I_up_PML']=arguments['N1']-outparams['PML_Thickness']
+        outparams['Limit_J_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_J_up_PML']=arguments['N2']-outparams['PML_Thickness']
+        outparams['Limit_K_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_K_up_PML']=arguments['N3']-outparams['PML_Thickness']
+
+        outparams['SizeCorrI']=arguments['N1']-2*outparams['PML_Thickness']
+        outparams['SizeCorrJ']=arguments['N2']-2*outparams['PML_Thickness']
+        outparams['SizeCorrK']=arguments['N3']-2*outparams['PML_Thickness']
+
+        #//The size of the matrices where the PML is valid depends on the size of the PML barrier
+        outparams['SizePML']= arguments['N1']*arguments['N2']*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLxp1']= (arguments['N1']+1)*(arguments['N2'])*(arguments['N3']) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLyp1']= arguments['N1']*(arguments['N2']+1)*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLzp1']= arguments['N1']*(arguments['N2'])*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLxp1yp1zp1']= (arguments['N1']+1)*(arguments['N2']+1)*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+
+        for k in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
+            outparams['IndexRMSPeak_'+k]=0
+            outparams['IndexSensor_'+k]=0
+            if arguments['SelMapsRMSPeak'] & MASKID[k]:
+                outparams['IndexRMSPeak_'+k]=NumberSelRMSPeakMaps
+                NumberSelRMSPeakMaps+=1
+            if arguments['SelMapsSensors'] & MASKID[k]:
+                outparams['IndexSensor_'+k]=NumberSelSensorMaps
+                NumberSelSensorMaps+=1
+        outparams['NumberSelRMSPeakMaps']=NumberSelRMSPeakMaps
+        outparams['NumberSelSensorMaps']=NumberSelSensorMaps
+        return outparams
+
+    def _Execution(self, arguments):
         if platform.system() =='Darwin' and 'arm64' not in platform.platform():
             # we use old wrapper and pi_ocl (this is only required for MacOS X86-64)
             handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
@@ -216,11 +149,8 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL():
         else:
             # we use pyopencl
             Results=self._StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
-            
-        t0=time.time()-t0
-        print ('Time to run low level FDTDStaggered_3D =', t0)
-        AllC=''
         return Results
+
     def _StaggeredFDTD_3D_OPENCL_pyopenCL(self, arguments,dtype=np.float32):
         print('Running OpenCL version via pyopencl')
         global NumberSelRMSPeakMaps
@@ -260,7 +190,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL():
         ctx=cl.Context([device])
         queue = cl.CommandQueue(ctx)
         
-        outparams=_PrepParamsForKernel(arguments)
+        outparams=self.PrepParamsForKernel(arguments)
 
         N1=arguments['N1']
         N2=arguments['N2']
@@ -366,23 +296,23 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL():
 
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                 'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:
-            super()._CreateAndCopyFromMXVarOnGPU(k,ctx,ArraysGPUOp,arguments)
+            self._CreateAndCopyFromMXVarOnGPU(k,ctx,ArraysGPUOp,arguments)
         for k in ['V_x_x','V_y_x','V_z_x']:
-            super()._ownGpuCalloc(k,ctx,td,outparams['SizePMLxp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,outparams['SizePMLxp1'],ArraysGPUOp)
         for k in ['V_x_y','V_y_y','V_z_y']:
-            super()._ownGpuCalloc(k,ctx,td,outparams['SizePMLyp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,outparams['SizePMLyp1'],ArraysGPUOp)
         for k in ['V_x_z','V_y_z','V_z_z']:
-            super()._ownGpuCalloc(k,ctx,td,outparams['SizePMLzp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,outparams['SizePMLzp1'],ArraysGPUOp)
         for k in ['Sigma_x_xx','Sigma_y_xx','Sigma_z_xx','Sigma_x_yy','Sigma_y_yy','Sigma_z_yy','Sigma_x_zz','Sigma_y_zz','Sigma_z_zz']:
-            super()._ownGpuCalloc(k,ctx,td,outparams['SizePML'],ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,outparams['SizePML'],ArraysGPUOp)
         for k in ['Sigma_x_xy','Sigma_y_xy','Sigma_x_xz','Sigma_z_xz','Sigma_y_yz','Sigma_z_yz']:
-            super()._ownGpuCalloc(k,ctx,td,outparams['SizePMLxp1yp1zp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,outparams['SizePMLxp1yp1zp1'],ArraysGPUOp)
         for k in ['Rxx','Ryy','Rzz']:
-            super()._ownGpuCalloc(k,ctx,td,ArrayResCPU['Sigma_xx'].size,ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,ArrayResCPU['Sigma_xx'].size,ArraysGPUOp)
         for k in ['Rxy','Rxz','Ryz']:
-            super()._ownGpuCalloc(k,ctx,td,ArrayResCPU['Sigma_xy'].size,ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,ArrayResCPU['Sigma_xy'].size,ArraysGPUOp)
         for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots','SensorOutput','SqrAcc']:
-            super()._ownGpuCalloc(k,ctx,td,ArrayResCPU[k].size,ArraysGPUOp)
+            self._ownGpuCalloc(k,ctx,td,ArrayResCPU[k].size,ArraysGPUOp)
             
         for n,k in enumerate(_IndexDataKernel):
             for k2 in AllStressKernels:
