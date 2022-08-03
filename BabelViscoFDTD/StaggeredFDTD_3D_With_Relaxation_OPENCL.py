@@ -19,6 +19,20 @@ if platform.system() =='Darwin' and 'arm64' not in platform.platform():
     import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
     import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
 
+MASKID={}
+MASKID['ALLV']=0x0000000001
+MASKID['Vx']  =0x0000000002
+MASKID['Vy']  =0x0000000004
+MASKID['Vz']  =0x0000000008
+MASKID['Sigmaxx'] =0x0000000010
+MASKID['Sigmayy'] =0x0000000020
+MASKID['Sigmazz'] =0x0000000040
+MASKID['Sigmaxy'] =0x0000000080
+MASKID['Sigmaxz'] =0x0000000100
+MASKID['Sigmayz'] =0x0000000200
+MASKID['Pressure']=0x0000000400
+MASKID['SEL_RMS']=0x0000000001
+MASKID['SEL_PEAK']=0x0000000002
 
 NumberSelRMSPeakMaps=0
 NumberSelSensorMaps=0
