@@ -14,8 +14,23 @@ from distutils.sysconfig import get_python_inc
 import pyopencl as cl 
 TotalAllocs=0
 
+MASKID={}
+MASKID['ALLV']=0x0000000001
+MASKID['Vx']  =0x0000000002
+MASKID['Vy']  =0x0000000004
+MASKID['Vz']  =0x0000000008
+MASKID['Sigmaxx'] =0x0000000010
+MASKID['Sigmayy'] =0x0000000020
+MASKID['Sigmazz'] =0x0000000040
+MASKID['Sigmaxy'] =0x0000000080
+MASKID['Sigmaxz'] =0x0000000100
+MASKID['Sigmayz'] =0x0000000200
+MASKID['Pressure']=0x0000000400
+MASKID['SEL_RMS']=0x0000000001
+MASKID['SEL_PEAK']=0x0000000002
+
 class StaggeredFDTD_3D_With_Relaxation_BASE():
-    def __init__(self,arguments):
+    def __init__(self,arguments, extra_params=[]):
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
         global TotalAllocs
@@ -37,6 +52,8 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         if arguments['DT'].dtype==np.dtype('float32'):
             dtype=np.float32
+        elif extra_params["BACKEND"] == "METAL":
+            raise SystemError("Metal backend only supports single precision")
         else:
             dtype=np.float64
 
@@ -126,19 +143,66 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         return Results
 
     def _InitSymbol(self, IP,_NameVar,td,SCode=[]):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _InitSymbol")
+        raise NotImplementedError("This block must be implemented in a child class")
     
     def _InitSymbolArray(self, IP,_NameVar,td,SCode=[]):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _InitSymbolArray")
+        raise NotImplementedError("This block must be implemented in a child class")
     
-    def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags=cl.mem_flags.READ_WRITE):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _ownGpuCalloc")
+    def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags):
+        raise NotImplementedError("This block must be implemented in a child class")
     
-    def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags=cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _CreateAndCopyFromMXVarOnGPU")
+    def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags):
+        raise NotImplementedError("This block must be implemented in a child class")
     
     def _PrepParamsForKernel(self, arguments):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _PrepParamsForKernel")
+        global NumberSelRMSPeakMaps
+        global NumberSelSensorMaps
+
+
+        copyParams=['DT','N1','N2','N3','SensorSubSampling','SensorStart','LengthSource','TimeSteps',\
+                'SelRMSorPeak','SelMapsRMSPeak','SelMapsSensors','InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
+        outparams={}
+        for c in copyParams:
+            outparams[c]=arguments[c]
+            
+        outparams['PML_Thickness']=arguments['PMLThickness']
+            
+        outparams['NumberSources']=arguments['SourceFunctions'].shape[0]
+        outparams['ZoneCount']=arguments['SPP_ZONES']
+        outparams['NumberSensors']=arguments['IndexSensorMap'].size
+        
+        
+        outparams['Limit_I_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_I_up_PML']=arguments['N1']-outparams['PML_Thickness']
+        outparams['Limit_J_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_J_up_PML']=arguments['N2']-outparams['PML_Thickness']
+        outparams['Limit_K_low_PML']=outparams['PML_Thickness']-1
+        outparams['Limit_K_up_PML']=arguments['N3']-outparams['PML_Thickness']
+
+        outparams['SizeCorrI']=arguments['N1']-2*outparams['PML_Thickness']
+        outparams['SizeCorrJ']=arguments['N2']-2*outparams['PML_Thickness']
+        outparams['SizeCorrK']=arguments['N3']-2*outparams['PML_Thickness']
+
+        #//The size of the matrices where the PML is valid depends on the size of the PML barrier
+        outparams['SizePML']= arguments['N1']*arguments['N2']*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLxp1']= (arguments['N1']+1)*(arguments['N2'])*(arguments['N3']) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLyp1']= arguments['N1']*(arguments['N2']+1)*arguments['N3'] - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLzp1']= arguments['N1']*(arguments['N2'])*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+        outparams['SizePMLxp1yp1zp1']= (arguments['N1']+1)*(arguments['N2']+1)*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
+
+        for k in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
+            outparams['IndexRMSPeak_'+k]=0
+            outparams['IndexSensor_'+k]=0
+            if arguments['SelMapsRMSPeak'] & MASKID[k]:
+                outparams['IndexRMSPeak_'+k]=NumberSelRMSPeakMaps
+                NumberSelRMSPeakMaps+=1
+            if arguments['SelMapsSensors'] & MASKID[k]:
+                outparams['IndexSensor_'+k]=NumberSelSensorMaps
+                NumberSelSensorMaps+=1
+        outparams['NumberSelRMSPeakMaps']=NumberSelRMSPeakMaps
+        outparams['NumberSelSensorMaps']=NumberSelSensorMaps
+        return outparams
+
     def _Execution(self, arguments):
-        raise ValueError("This block shouldn't be reached! Something went wrong in _Execution")      
+        raise NotImplementedError("This block must be implemented in a child class")
     

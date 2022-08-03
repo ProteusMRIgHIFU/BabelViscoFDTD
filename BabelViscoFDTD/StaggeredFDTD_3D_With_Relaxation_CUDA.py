@@ -1,9 +1,35 @@
 import numpy as np;
+import pycuda.driver as cuda
+import pycuda.autoinit
+import pycuda.compiler
 
 import _FDTDStaggered3D_with_relaxation_CUDA_double as FDTD_double;
 import _FDTDStaggered3D_with_relaxation_CUDA_single as FDTD_single;
 
 import time
+
+import StaggeredFDTD_3D_With_Relaxation_BASE
+def StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BASE):
+    def __init__(self):
+        print("Stuff here.")
+
+    def _InitSymbol(self, IP,_NameVar,td,SCode=[]):
+        raise NotImplementedError("This block must be implemented in a child class")
+    
+    def _InitSymbolArray(self, IP,_NameVar,td,SCode=[]):
+        raise NotImplementedError("This block must be implemented in a child class")
+    
+    def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags):
+        raise NotImplementedError("This block must be implemented in a child class")
+    
+    def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags):
+        raise NotImplementedError("This block must be implemented in a child class")
+    
+    def _PrepParamsForKernel(self, arguments):
+        raise NotImplementedError("This block must be implemented in a child class")
+
+    def _Execution(self, arguments):
+        raise NotImplementedError("This block must be implemented in a child class")
 
 def StaggeredFDTD_3D_CUDA(arguments):
     if (type(arguments)!=dict):
