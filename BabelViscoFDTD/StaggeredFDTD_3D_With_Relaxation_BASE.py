@@ -57,7 +57,6 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         else:
             dtype=np.float64
 
-        
         gpu_kernelSrc=IncludeDir+'_gpu_kernel.c'
         index_src=IncludeDir+'_indexing.h'
 
@@ -72,16 +71,14 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         TotalAllocs=0
         
         outparams=self._PrepParamsForKernel(arguments)
-
-        N1=arguments['N1']
-        N2=arguments['N2']
-        N3=arguments['N3']
         
         #we prepare the kernel code
-        SCode =[]
+        SCode = []
+
+        self._PostInitScript(arguments)
 
         platforms = cl.get_platforms()
-        devices=platforms[0].get_devices()
+        devices=platforms[0].get_devices()  
         bFound=False
         for device in devices:
             if arguments['DefaultGPUDeviceName'] in device.name:
@@ -134,7 +131,15 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
             arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl'
         
         t0 = time.time()
-        
+
+        # Check here for OpenCL on x86-64 Mac Devices
+        if extra_params['BACKEND'] == 'OPENCL' and platform.system() =='Darwin' and 'arm64' not in platform.platform():
+            Results = self._OpenCL_86_64(arguments)
+            t0=time.time()-t0
+            print ('Time to run low level FDTDStaggered_3D =', t0)
+            AllC = ''
+            return Results
+
         Results = self._Execution(arguments)
             
         t0=time.time()-t0
@@ -142,11 +147,14 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         AllC=''
         return Results
 
+    def _PostInitScript(self, arguments):
+        raise NotImplementedError("This block must be implemented in a child class!")
+
     def _InitSymbol(self, IP,_NameVar,td,SCode=[]):
-        raise NotImplementedError("This block must be implemented in a child class")
+        raise NotImplementedError("This block must be implemented in a child class!")
     
     def _InitSymbolArray(self, IP,_NameVar,td,SCode=[]):
-        raise NotImplementedError("This block must be implemented in a child class")
+        raise NotImplementedError("This block must be implemented in a child class!")
     
     def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags):
         raise NotImplementedError("This block must be implemented in a child class")
@@ -154,7 +162,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags):
         raise NotImplementedError("This block must be implemented in a child class")
     
-    def _PrepParamsForKernel(self, arguments):
+    def _PrepParamsForKernel(self, arguments, SCode):
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
 

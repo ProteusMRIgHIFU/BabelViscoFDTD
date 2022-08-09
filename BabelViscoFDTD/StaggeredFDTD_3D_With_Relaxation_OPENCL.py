@@ -44,6 +44,9 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         extra_params = {"BACKEND":"OPENCL"}
         super().__init__(arguments)
 
+    def _PostInitScript(self, arguments):
+        pass
+
     def _InitSymbol(self, IP,_NameVar,td,SCode=[]):
         if td in ['float','double']:
             res = '__constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
@@ -81,26 +84,25 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         ArraysGPUOp[Name]=cl.Buffer(ctx, flags,hostbuf=ArrayResCPU[Name])
         TotalAllocs+=1
 
-    def _Execution(self, arguments):
-        if platform.system() =='Darwin' and 'arm64' not in platform.platform():
-            # we use old wrapper and pi_ocl (this is only required for MacOS X86-64)
-            handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
-            with os.fdopen(handle,'w') as ft:
-                ft.write(AllC)
-            handle, kernbinfile = tempfile.mkstemp(suffix='.BIN',dir=os.getcwd())
-            os.close(handle)
-            arguments['kernelfile']=kernelfile
-            arguments['kernbinfile']=kernbinfile
-            if arguments['DT'].dtype==np.dtype('float32'):
-                Results= FDTD_single.FDTDStaggered_3D(arguments)
-            else:
-                Results= FDTD_double.FDTDStaggered_3D(arguments)
-            os.remove(kernelfile) 
-            if os.path.isfile(kernbinfile):
-                os.remove(kernbinfile) 
+    def _OpenCL_86_64(self, arguments):
+        handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
+        with os.fdopen(handle,'w') as ft:
+            ft.write(AllC)
+        handle, kernbinfile = tempfile.mkstemp(suffix='.BIN',dir=os.getcwd())
+        os.close(handle)
+        arguments['kernelfile']=kernelfile
+        arguments['kernbinfile']=kernbinfile
+        if arguments['DT'].dtype==np.dtype('float32'):
+            Results= FDTD_single.FDTDStaggered_3D(arguments)
         else:
-            # we use pyopencl
-            Results=self._StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
+            Results= FDTD_double.FDTDStaggered_3D(arguments)
+        os.remove(kernelfile) 
+        if os.path.isfile(kernbinfile):
+            os.remove(kernbinfile) 
+        return Results
+
+    def _Execution(self, arguments):
+        Results=self._StaggeredFDTD_3D_OPENCL_pyopenCL(arguments)
         return Results
 
     def _StaggeredFDTD_3D_OPENCL_pyopenCL(self, arguments,dtype=np.float32):
