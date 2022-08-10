@@ -10,7 +10,7 @@ from shutil import copyfile
 
 import ctypes
 
-import StaggeredFDTD_3D_With_Relaxation_BASE
+from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
 
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc

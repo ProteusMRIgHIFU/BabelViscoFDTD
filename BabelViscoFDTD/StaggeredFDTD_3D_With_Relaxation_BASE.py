@@ -10,8 +10,6 @@ from shutil import copyfile
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc
 
-# Do I need to put this in a try block?
-import pyopencl as cl 
 TotalAllocs=0
 
 MASKID={}
@@ -30,7 +28,7 @@ MASKID['SEL_RMS']=0x0000000001
 MASKID['SEL_PEAK']=0x0000000002
 
 class StaggeredFDTD_3D_With_Relaxation_BASE():
-    def __init__(self,arguments, extra_params=[]):
+    def __init__(self, arguments, extra_params={}):
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
         global TotalAllocs
@@ -64,43 +62,26 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         td = 'float'
         if dtype is np.float64:
             td='double'
+        extra_params['td'] = td
+    
         t0=time.time()
         
         NumberSelRMSPeakMaps=0
         NumberSelSensorMaps=0
         TotalAllocs=0
         
-        outparams=self._PrepParamsForKernel(arguments)
+        outparams = self._PrepParamsForKernel(arguments)
         
         #we prepare the kernel code
-        SCode = []
 
-        self._PostInitScript(arguments)
-
-        platforms = cl.get_platforms()
-        devices=platforms[0].get_devices()  
-        bFound=False
-        for device in devices:
-            if arguments['DefaultGPUDeviceName'] in device.name:
-                bFound=True
-                break
+        extra_params = self._PostInitScript(arguments, extra_params)
         
-        if bFound:
-            print('Device ', arguments['DefaultGPUDeviceName'], ' Found!')
+        if extra_params["BACKEND"] == "OPENCL":
+            SCode = extra_params["SCode"]
+            with open(index_src) as f:
+                SCode+=f.readlines()
         else:
-            raise ValueError('Device ' + arguments['DefaultGPUDeviceName'] + ' not found!')
-        
-        address_bits=device.get_info(cl.device_info.ADDRESS_BITS)
-
-        print('Address bits', address_bits)
-
-        if address_bits==32:
-            SCode.append("#define _PT_32\n")
-        SCode.append("#define mexType " + td +"\n")
-        SCode.append("#define OPENCL\n")
-        
-        with open(index_src) as f:
-            SCode+=f.readlines()
+            SCode = []
 
         LParamFloat = ['DT']
         LParamInt=["N1","N2", "N3", "Limit_I_low_PML", "Limit_J_low_PML", "Limit_K_low_PML", "Limit_I_up_PML","Limit_J_up_PML",\
@@ -121,31 +102,97 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         for k in LParamArray:
             self._InitSymbolArray(outparams,k,td,SCode)
 
-        with open(gpu_kernelSrc) as f:
-            SCode+=f.readlines()
-        AllC=''
-        for l in SCode:
-            AllC+=l
+        if extra_params["BACKEND"] == "OPENCL":
+            with open(gpu_kernelSrc) as f:
+                SCode+=f.readlines()
+            AllC=''
+            for l in SCode:
+                AllC+=l
+            if platform.system() != 'Windows': 
+                arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl' # Unused for Metal
         
-        if platform.system() != 'Windows':
-            arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl'
         
-        t0 = time.time()
 
         # Check here for OpenCL on x86-64 Mac Devices
-        if extra_params['BACKEND'] == 'OPENCL' and platform.system() =='Darwin' and 'arm64' not in platform.platform():
-            Results = self._OpenCL_86_64(arguments)
+        if extra_params['BACKEND'] == 'OPENCL' and platform.system() =='Darwin' and 'arm64' not in platform.platform() and False:
+            print("Executing with C backend...")
+            self._OpenCL_86_64(arguments, AllC)
             t0=time.time()-t0
             print ('Time to run low level FDTDStaggered_3D =', t0)
             AllC = ''
-            return Results
+            return
 
-        Results = self._Execution(arguments)
+        N1=arguments['N1']
+        N2=arguments['N2']
+        N3=arguments['N3']
+                    
+        # Might need to change the order to C for Swift, we'll see.
+        if extra_params['BACKEND'] == 'METAL':
+            ord = 'C'
+        else:
+            ord = 'F'
+
+        ArrayResCPU={}
+        for k in ['Sigma_xx','Sigma_yy','Sigma_zz','Pressure']:
+            ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype,order=ord)
+        for k in ['Sigma_xy','Sigma_xz','Sigma_yz']:
+            ArrayResCPU[k]=np.zeros((N1+1,N2+1,N3+1),dtype,order=ord)
+        ArrayResCPU['Vx']=np.zeros((N1+1,N2,N3),dtype,order=ord)
+        ArrayResCPU['Vy']=np.zeros((N1,N2+1,N3),dtype,order=ord)
+        ArrayResCPU['Vz']=np.zeros((N1,N2,N3+1),dtype,order=ord)
+
+        if 	(arguments['SelRMSorPeak'] &  MASKID['SEL_PEAK']) and (arguments['SelRMSorPeak'] &  MASKID['SEL_RMS']):
+            #both peak and RMS
+            updims=2 
+        else:
+            updims=1
+
+        ArrayResCPU['SqrAcc']=np.zeros((N1,N2,N3,outparams['NumberSelRMSPeakMaps'],updims),dtype,order=ord)
+        Ns=1
+        NumberSnapshots=arguments['SnapshotsPos'].size
+        NumberSensors=arguments['IndexSensorMap'].size
+        if NumberSnapshots>0:
+            Ns=NumberSnapshots
+        ArrayResCPU['Snapshots']=np.zeros((N1,N2,Ns),dtype,order=ord)
+        TimeSteps=arguments['TimeSteps']
+        SensorSubSampling=arguments['SensorSubSampling']
+        SensorStart=arguments['SensorStart']
+        ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order=ord)
+
+        self._InitiateCommands(AllC)
+
+        ArraysGPUOp={}
+
+        for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
+                'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:
+            self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
+        for k in ['V_x_x','V_y_x','V_z_x']:
+            self._ownGpuCalloc(k,td,outparams['SizePMLxp1'],ArraysGPUOp)
+        for k in ['V_x_y','V_y_y','V_z_y']:
+            self._ownGpuCalloc(k,td,outparams['SizePMLyp1'],ArraysGPUOp)
+        for k in ['V_x_z','V_y_z','V_z_z']:
+            self._ownGpuCalloc(k,td,outparams['SizePMLzp1'],ArraysGPUOp)
+        for k in ['Sigma_x_xx','Sigma_y_xx','Sigma_z_xx','Sigma_x_yy','Sigma_y_yy','Sigma_z_yy','Sigma_x_zz','Sigma_y_zz','Sigma_z_zz']:
+            self._ownGpuCalloc(k,td,outparams['SizePML'],ArraysGPUOp)
+        for k in ['Sigma_x_xy','Sigma_y_xy','Sigma_x_xz','Sigma_z_xz','Sigma_y_yz','Sigma_z_yz']:
+            self._ownGpuCalloc(k,td,outparams['SizePMLxp1yp1zp1'],ArraysGPUOp)
+        for k in ['Rxx','Ryy','Rzz']:
+            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xx'].size,ArraysGPUOp)
+        for k in ['Rxy','Rxz','Ryz']:
+            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xy'].size,ArraysGPUOp)
+        for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots','SensorOutput','SqrAcc']:
+            self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+        
+        self._GroupSizes(arguments, ArraysGPUOp)
+
+        self._Execution(arguments, ArrayResCPU, ArraysGPUOp)
             
         t0=time.time()-t0
         print ('Time to run low level FDTDStaggered_3D =', t0)
+
         AllC=''
-        return Results
+        
+        return
 
     def _PostInitScript(self, arguments):
         raise NotImplementedError("This block must be implemented in a child class!")
@@ -162,7 +209,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags):
         raise NotImplementedError("This block must be implemented in a child class")
     
-    def _PrepParamsForKernel(self, arguments, SCode):
+    def _PrepParamsForKernel(self, arguments):
         global NumberSelRMSPeakMaps
         global NumberSelSensorMaps
 
@@ -214,3 +261,5 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
     def _Execution(self, arguments):
         raise NotImplementedError("This block must be implemented in a child class")
     
+    def _Return(self):
+        return self.Results
