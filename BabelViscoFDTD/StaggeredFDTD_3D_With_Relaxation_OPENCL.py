@@ -71,8 +71,6 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         self.ctx=cl.Context([device])
         self.queue = cl.CommandQueue(self.ctx)
 
-        return extra_params
-
 
     def _InitSymbol(self, IP,_NameVar,td,SCode):
         if td in ['float','double']:
@@ -105,7 +103,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         ArraysGPUOp[Name]=cl.Buffer(self.ctx, flags,size=dims*f)
         TotalAllocs+=1            
 
-    def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU,flags=cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR):
+    def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU, flags=cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR):
         global TotalAllocs
         print('Allocating for',Name,ArrayResCPU[Name].size,'elements')
         ArraysGPUOp[Name]=cl.Buffer(self.ctx, flags,hostbuf=ArrayResCPU[Name])
@@ -176,7 +174,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
                 'Pressure':ArrayResCPU['Pressure']},\
                 ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots']
 
-    def _GroupSizes(self, arguments, ArraysGPUOp):
+    def _PreExecuteScript(self, arguments, ArraysGPUOp):
         self.TimeSteps = arguments['TimeSteps']
         N1=arguments['N1']
         N2=arguments['N2']
