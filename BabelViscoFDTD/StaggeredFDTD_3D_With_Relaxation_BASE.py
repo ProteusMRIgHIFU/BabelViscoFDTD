@@ -32,7 +32,6 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         global NumberSelRMSPeakMaps # Is it necessary to keep these global anymore?
         global NumberSelSensorMaps
         global TotalAllocs
-        global AllC
         
         IncludeDir=str(Path(__file__).parent.absolute())+os.sep
 
@@ -95,7 +94,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
                 "IndexSensor_Sigmaxz","IndexSensor_Sigmayz","IndexSensor_Pressure","NumberSelSensorMaps","SensorSubSampling",
                 "SensorStart"]
         LParamArray=['InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
-        assert(len(outparams)==(len(LParamFloat)+len(LParamInt)+len(LParamArray)))
+        assert len(outparams)==(len(LParamFloat)+len(LParamInt)+len(LParamArray))
         for k in LParamFloat:
             self._InitSymbol(outparams,k,td,SCode)
         for k in LParamInt:
@@ -115,7 +114,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         
 
         # Check here for OpenCL on x86-64 Mac Devices
-        if extra_params['BACKEND'] == 'OPENCL' and platform.system() =='Darwin' and 'arm64' not in platform.platform() and False:
+        if extra_params['BACKEND'] == 'OPENCL' and platform.system() == 'Darwin' and 'arm64' not in platform.platform():
             print("Executing with C backend...")
             self._OpenCL_86_64(arguments, AllC)
             t0=time.time()-t0
@@ -158,11 +157,13 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         TimeSteps=arguments['TimeSteps']
         SensorSubSampling=arguments['SensorSubSampling']
         SensorStart=arguments['SensorStart']
+        print("Number Selected Sensor Maps:", outparams['NumberSelRMSPeakMaps'])
         ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order=ord)
         
         self._InitiateCommands(AllC)
 
         ArraysGPUOp={}
+        
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                     'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
             self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
@@ -198,6 +199,8 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         AllC=''
         
+        self.CreateResults(ArrayResCPU)
+
         return
 
     def _PostInitScript(self, arguments):

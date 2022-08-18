@@ -161,18 +161,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         
         for k in ArraysGPUOp:
             ArraysGPUOp[k].release()
-                    
-        self.Results = ArrayResCPU['SensorOutput'],\
-                {'Vx':ArrayResCPU['Vx'],\
-                'Vy':ArrayResCPU['Vy'],\
-                'Vz':ArrayResCPU['Vz'],\
-                'Sigma_xx':ArrayResCPU['Sigma_xx'],\
-                'Sigma_yy':ArrayResCPU['Sigma_yy'],\
-                'Sigma_zz':ArrayResCPU['Sigma_zz'],\
-                'Sigma_xy':ArrayResCPU['Sigma_xy'],\
-                'Sigma_yz':ArrayResCPU['Sigma_yz'],\
-                'Pressure':ArrayResCPU['Pressure']},\
-                ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots']
+
 
     def _PreExecuteScript(self, arguments, ArraysGPUOp):
         self.TimeSteps = arguments['TimeSteps']
@@ -233,7 +222,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
             "Oy",
             "Oz",
             "Pressure"]
-        assert(len(_IndexDataKernel)==54)
+        assert len(_IndexDataKernel)==54
         
         for n,k in enumerate(_IndexDataKernel):
             for k2 in self.AllStressKernels:
@@ -274,6 +263,19 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         
         self.SensorsKernel=prg.SensorsKernel
         
+    def CreateResults(self, ArrayResCPU):
+        self.Results = ArrayResCPU['SensorOutput'],\
+                {'Vx':ArrayResCPU['Vx'],\
+                'Vy':ArrayResCPU['Vy'],\
+                'Vz':ArrayResCPU['Vz'],\
+                'Sigma_xx':ArrayResCPU['Sigma_xx'],\
+                'Sigma_yy':ArrayResCPU['Sigma_yy'],\
+                'Sigma_zz':ArrayResCPU['Sigma_zz'],\
+                'Sigma_xy':ArrayResCPU['Sigma_xy'],\
+                'Sigma_yz':ArrayResCPU['Sigma_yz'],\
+                'Pressure':ArrayResCPU['Pressure']},\
+                ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots']  
+
 
 
 def StaggeredFDTD_3D_OPENCL(arguments):

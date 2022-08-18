@@ -8,7 +8,8 @@ import _FDTDStaggered3D_with_relaxation_CUDA_single as FDTD_single;
 
 import time
 
-import StaggeredFDTD_3D_With_Relaxation_BASE
+from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
+
 def StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self):
         print("Stuff here.")
