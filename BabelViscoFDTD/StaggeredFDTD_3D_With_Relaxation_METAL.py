@@ -216,13 +216,13 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
     def _IndexManip(self):
         for i in range(self.LENGTH_INDEX_MEX):
             data = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
-            data2 = np.uint32(np.uint64(self.HOST_INDEX_MEX[i][0])>>32)
-            self.swift_fun.IndexManipMEX(c_uint32(data), c_uint32(data2), c_uint32(i))
+            data2 = np.uint64([self.HOST_INDEX_MEX[i][0]])>>32
+            self.swift_fun.IndexManipMEX(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
 
         for i in range(self.LENGTH_INDEX_UINT):
             data = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            data2 = np.uint32(self.HOST_INDEX_MEX[i][0])>>32
-            self.swift_fun.IndexManipUInt(c_uint32(data), c_uint32(data2), c_uint32(i))
+            data2 = np.uint64([self.HOST_INDEX_MEX[i][0]])>>32
+            self.swift_fun.IndexManipUInt(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
 
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
