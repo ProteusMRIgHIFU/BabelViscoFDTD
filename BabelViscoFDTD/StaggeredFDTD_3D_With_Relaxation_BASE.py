@@ -127,19 +127,15 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         N3=arguments['N3']
                     
         # Might need to change the order to C for Swift, we'll see.
-        if extra_params['BACKEND'] == 'METAL':
-            ord = 'C'
-        else:
-            ord = 'F'
 
         ArrayResCPU={}
         for k in ['Sigma_xx','Sigma_yy','Sigma_zz','Pressure']:
-            ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype,order=ord)
+            ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype,order='F')
         for k in ['Sigma_xy','Sigma_xz','Sigma_yz']:
-            ArrayResCPU[k]=np.zeros((N1+1,N2+1,N3+1),dtype,order=ord)
-        ArrayResCPU['Vx']=np.zeros((N1+1,N2,N3),dtype,order=ord)
-        ArrayResCPU['Vy']=np.zeros((N1,N2+1,N3),dtype,order=ord)
-        ArrayResCPU['Vz']=np.zeros((N1,N2,N3+1),dtype,order=ord)
+            ArrayResCPU[k]=np.zeros((N1+1,N2+1,N3+1),dtype,order='F')
+        ArrayResCPU['Vx']=np.zeros((N1+1,N2,N3),dtype,order='F')
+        ArrayResCPU['Vy']=np.zeros((N1,N2+1,N3),dtype,order='F')
+        ArrayResCPU['Vz']=np.zeros((N1,N2,N3+1),dtype,order='F')
 
         if 	(arguments['SelRMSorPeak'] &  MASKID['SEL_PEAK']) and (arguments['SelRMSorPeak'] &  MASKID['SEL_RMS']):
             #both peak and RMS
@@ -147,18 +143,18 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         else:
             updims=1
 
-        ArrayResCPU['SqrAcc']=np.zeros((N1,N2,N3,outparams['NumberSelRMSPeakMaps'],updims),dtype,order=ord)
+        ArrayResCPU['SqrAcc']=np.zeros((N1,N2,N3,outparams['NumberSelRMSPeakMaps'],updims),dtype,order='F')
         Ns=1
         NumberSnapshots=arguments['SnapshotsPos'].size
         NumberSensors=arguments['IndexSensorMap'].size
         if NumberSnapshots>0:
             Ns=NumberSnapshots
-        ArrayResCPU['Snapshots']=np.zeros((N1,N2,Ns),dtype,order=ord)
+        ArrayResCPU['Snapshots']=np.zeros((N1,N2,Ns),dtype,order='F')
         TimeSteps=arguments['TimeSteps']
         SensorSubSampling=arguments['SensorSubSampling']
         SensorStart=arguments['SensorStart']
         print("Number Selected Sensor Maps:", outparams['NumberSelRMSPeakMaps'])
-        ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order=ord)
+        ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order='F')
         
         self._InitiateCommands(AllC)
 
@@ -190,7 +186,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
             for k in ['SensorOutput','SqrAcc']:
                 self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)
 
-        self._PreExecuteScript(arguments, ArraysGPUOp)
+        self._PreExecuteScript(arguments, ArraysGPUOp, outparams)
 
         self._Execution(arguments, ArrayResCPU, ArraysGPUOp)
             
@@ -270,5 +266,15 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
     def _Execution(self, arguments):
         raise NotImplementedError("This block must be implemented in a child class")
     
-    def _Return(self):
-        return self.Results
+    def CreateResults(self, ArrayResCPU):
+        self.Results = ArrayResCPU['SensorOutput'],\
+                {'Vx':ArrayResCPU['Vx'],\
+                'Vy':ArrayResCPU['Vy'],\
+                'Vz':ArrayResCPU['Vz'],\
+                'Sigma_xx':ArrayResCPU['Sigma_xx'],\
+                'Sigma_yy':ArrayResCPU['Sigma_yy'],\
+                'Sigma_zz':ArrayResCPU['Sigma_zz'],\
+                'Sigma_xy':ArrayResCPU['Sigma_xy'],\
+                'Sigma_yz':ArrayResCPU['Sigma_yz'],\
+                'Pressure':ArrayResCPU['Pressure']},\
+                ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots'] 

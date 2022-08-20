@@ -1,3 +1,5 @@
+from calendar import c
+from multiprocessing.dummy import Array
 from unicodedata import name
 import numpy as np
 import os
@@ -10,7 +12,7 @@ from shutil import copyfile
 
 import ctypes
 
-from ctypes import c_int, c_uint32, c_float, c_wchar_p, c_uint64
+from ctypes import c_byte, c_int, c_uint32, c_float, c_wchar_p, c_uint64
 
 from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
 
@@ -25,12 +27,13 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         self.swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/tools/libMetalSwift.dylib")
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
-        self._c_mex_type = np.zeros(12, np.float32)
-        self._c_uint_type = np.float32(0)
-        self.HOST_INDEX_MEX = np.zeros((53, 2), np.float32)
-        self.HOST_INDEX_UINT = np.zeros((3, 2), np.float32)
+        self._c_mex_type = np.zeros(12, np.uint64)
+        self._c_uint_type = np.uint32(0)
+        self.HOST_INDEX_MEX = np.zeros((53, 2), np.uint64)
+        self.HOST_INDEX_UINT = np.zeros((3, 2), np.uint64)
         self.LENGTH_INDEX_MEX = 53
         self.LENGTH_INDEX_UINT = 3
+        self.ZoneCount = arguments['SPP_ZONES']
         self._IndexDataMetal = {
             "V_x_x":0, "V_y_x":0, "V_z_x":0, "V_x_y":0, "V_y_y":0, "V_z_y":0, "V_x_z":0, "V_y_z":0, "V_z_z":0,
             "Vx":1, "Vy":1, "Vz":1,
@@ -76,7 +79,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
 
         # Defines functions sent to Swift
         self.swift_fun.InitializeMetalDevices.argtypes = [
-            ctypes.POINTER(c_wchar_p),
             ctypes.c_int]
         self.swift_fun.ConstantBuffers.argtypes = [
             ctypes.c_int,
@@ -109,20 +111,19 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             c_uint64,
             c_uint64,
             c_uint64]
-        self.swift_fun.GetMaxTotalThreadsPerThreadgroup.argtypes = [ctypes.POINTER(c_wchar_p), ctypes.c_int]
+        self.swift_fun.GetMaxTotalThreadsPerThreadgroup.argtypes = [ctypes.c_char_p, ctypes.c_int]
         self.swift_fun.GetMaxTotalThreadsPerThreadgroup.restype = ctypes.c_uint32
-        self.swift_fun.GetThreadExecutionWidth.argtypes = [ctypes.POINTER(c_wchar_p), ctypes.c_int]
+        self.swift_fun.GetThreadExecutionWidth.argtypes = [ctypes.c_char_p, ctypes.c_int]
         self.swift_fun.GetThreadExecutionWidth.restype = ctypes.c_uint32 
         extra_params = {"BACKEND":"METAL"}
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
         print("Attempting Metal Initiation...")
-        if self.swift_fun.InitializeMetalDevices(ctypes.byref(c_wchar_p(arguments['DefaultGPUDeviceName'])), c_int(len(arguments['DefaultGPUDeviceName']))) == -1:
+        if self.swift_fun.InitializeMetalDevices(c_int(len(arguments['DefaultGPUDeviceName']))) == -1:
             raise ValueError("Something has gone horribly wrong.")
-        if self.swift_fun.ConstantBuffers(self.LENGTH_CONST_UINT, self.LENGTH_CONST_MEX) == -1:
+        if self.swift_fun.ConstantBuffers(c_int(self.LENGTH_CONST_UINT), c_int(self.LENGTH_CONST_MEX)) == -1:
             raise ValueError("Something has gone horribly wrong")
-        print("Woohoo!")
     
 
     def _InitSymbol(self, IP,_NameVar,td, SCode):
@@ -149,12 +150,12 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         if Name == "Snapshots":
             pass
         elif td == "float":
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = self._c_mex_type[self._IndexDataMetal[Name]]
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = dims # Not sure if dims is equivalent to _size * INHOST(ZoneCount)
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims * self.ZoneCount) # Not sure if dims is equivalent to _size * INHOST(ZoneCount)
             self._c_mex_type[self._IndexDataMetal[Name]] += dims
         elif td == "unsigned int":
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = self._c_uint_type
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = dims
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims * self.ZoneCount)
             self._c_uint_type += dims
 
     
@@ -162,18 +163,23 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
         SizeCopy = ArrayResCPU[Name].size
         if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = self._c_mex_type[self._IndexDataMetal[Name]]
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = SizeCopy
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
             self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
         elif Name in ['IndexSensorMap','SourceMap','MaterialMap',]: # unsigned int
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = self._c_uint_type
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = SizeCopy
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(SizeCopy)
             self._c_uint_type += SizeCopy
     
-    def _PreExecuteScript(self, arguments, ArraysGPUOp):
-#        self._IndexManip() # This keeps segfaulting, I don't know how to write an equivalent function in Python
+    def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
 
-#        self.swift_fun.IndexDidModify(c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT), c_uint64(self.LENGTH_CONST_MEX), c_uint64(self.LENGTH_CONST_UINT))
+        self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
+        
+        self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(self._c_uint_type), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
+
+        self._IndexManip() # This keeps segfaulting, I don't know how to write an equivalent function in Python
+
+        self.swift_fun.IndexDidModify(c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT), c_uint64(self.LENGTH_CONST_MEX), c_uint64(self.LENGTH_CONST_UINT))
 
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                     'Ox','Oy','Oz','SourceFunctions']:
@@ -182,8 +188,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         for k in ['IndexSensorMap','SourceMap','MaterialMap']:
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
 
-        if arguments['ManualGroupSize'][0]!=-1:
-            self._SET_USER_LOCAL(arguments['ManualGroupSize'])
+        if arguments['ManualLocalSize'][0]!=-1:
+            self._SET_USER_LOCAL(arguments['ManualLocalSize'])
         else:
             self._CALC_USER_LOCAL("MAIN_1", "STRESS")
             self._CALC_USER_LOCAL("MAIN_1", "PARTICLE")
@@ -191,98 +197,112 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         for j in ["STRESS", "PARTICLE"]:
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
                 self._CALC_USER_LOCAL(i, j)
+        
+        if arguments['ManualGroupSize'][0] != -1:
+            self._SET_USER_GLOBAL(arguments['ManualGroupSize'])
+        else:
+            self._CALC_USER_GROUP_MAIN(arguments, outparams)
 
-        self.maxThreadSensor = [0, 0, 0]
+        self. _CALC_USER_GROUP_PML(outparams)
+
+        self.swift_fun.maxThreadSensor.argtypes = []
+        self.swift_fun.maxThreadSensor.restype = c_int
+        
+        self.localSensor = [self.swift_fun.maxThreadSensor(), 1, 1]
+        self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
+
+
 
     def _IndexManip(self):
         for i in range(self.LENGTH_INDEX_MEX):
-            data = 0xFFFFFFFF & int(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            data2 = int(self.HOST_INDEX_MEX[i][0])>>32
+            data = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
+            data2 = np.uint32(np.uint64(self.HOST_INDEX_MEX[i][0])>>32)
             self.swift_fun.IndexManipMEX(c_uint32(data), c_uint32(data2), c_uint32(i))
 
         for i in range(self.LENGTH_INDEX_UINT):
-            data = 0xFFFFFFFF & int(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            data2 = int(self.HOST_INDEX_MEX[i][0])>>32
+            data = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
+            data2 = np.uint32(self.HOST_INDEX_MEX[i][0])>>32
             self.swift_fun.IndexManipUInt(c_uint32(data), c_uint32(data2), c_uint32(i))
 
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
-            self.swift_fun.CompleteCopyMEX(c_int(SizeCopy), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_float)), self.HOST_INDEX_MEX[self.C_IND[Name]][0].ctypes.data_as(ctypes.c_uint64), self._IndexDataMetal[Name].ctypes.data_as(ctypes.c_uint64))
+            self.swift_fun.CompleteCopyMEX(c_int(SizeCopy), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_float)), c_uint64(self.HOST_INDEX_MEX[self.C_IND[Name]][0]), c_uint64(self._IndexDataMetal[Name]))
         elif td == "unsigned int":
-            self.swift_fun.CompleteCopyUInt(SizeCopy.ctypes.data_as(ctypes.c_int), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_uint32)), self.HOST_INDEX_UINT[self.C_IND[Name]][0].ctypes.data_as(ctypes.c_uint64))
+            self.swift_fun.CompleteCopyUInt(c_int(SizeCopy), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_uint32)), c_uint64(self.HOST_INDEX_UINT[self.C_IND[Name]][0]))
 
     def _CALC_USER_LOCAL(self, Name, Type):
         if Type == "STRESS":
             Swift = 0
         elif Type == "PARTICLE":
             Swift = 1
-        w = self.swift_fun.GetMaxTotalThreadsPerThreadgroup(ctypes.byref(c_wchar_p(Name)), Swift.ctypes.data_as(ctypes.c_int))
-        h = self.swift_fun.GetThreadExecutionWidth(ctypes.byref(c_wchar_p(Name)), Swift.ctypes.data_as(ctypes.c_int))
+        print(Name, Type)
+        w = self.swift_fun.GetThreadExecutionWidth(ctypes.c_char_p(bytes(Name, 'utf-8')), c_int(Swift)) 
+        h = self.swift_fun.GetMaxTotalThreadsPerThreadgroup(ctypes.c_char_p(bytes(Name, 'utf-8')), c_int(Swift)) / w
         z = 1
         if h % 2 == 0:
             h = h / 2
             z = 2
         self.FUNCTION_LOCALS[Name][Type][0] = w
-        self.FUNCTION_LOCALS[Name][Type][1] = h
+        self.FUNCTION_LOCALS[Name][Type][1] = int(h)
         self.FUNCTION_LOCALS[Name][Type][2] = z
-        print(Name, "local", Type + "= [" + str(w) + ", " + str(h) + ", " + str(z) + "]")
+        print(Name, "local", Type + " = [" + str(w) + ", " + str(h) + ", " + str(z) + "]")
     
     def _SET_USER_LOCAL(self, ManualLocalSize):
         for Type in ['STRESS', 'PARTICLE']:
             for index in range(3):
-                self.FUNCTION_LOCALS['MAIN_1'][Type][index] = ManualLocalSize[index]
+                self.FUNCTION_LOCALS['MAIN_1'][Type][index] = ManualLocalSize[index] # Can probably change this
     
     def _SET_USER_GLOBAL(self, ManualGlobalSize):
         for Type in ['STRESS', 'PARTICLE']:
             for index in range(3):
                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ManualGlobalSize[index] 
 
-    def _CALC_USER_GROUP_MAIN(self, arguments):
+    def _CALC_USER_GROUP_MAIN(self, arguments, outparams):
         for Type in ['STRESS', 'PARTICLE']:
             for index in range(3):
-                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+index)]-arguments['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
+                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]-outparams['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
             print("MAIN_1_global_" + Type, "=", str(self.FUNCTION_GLOBALS['MAIN_1'][Type]))
     
-    def _CALC_USER_GROUP_PML(self, arguments):
+    def _CALC_USER_GROUP_PML(self, outparams):
         for Type in ['STRESS', 'PARTICLE']:
-            self.FUNCTION_GLOBALS['PML_1'][Type][0] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][0])
-            self.FUNCTION_GLOBALS['PML_1'][Type][1] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][1])
-            self.FUNCTION_GLOBALS['PML_1'][Type][2] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][2])
+            self.FUNCTION_GLOBALS['PML_1'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][0])
+            self.FUNCTION_GLOBALS['PML_1'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][1])
+            self.FUNCTION_GLOBALS['PML_1'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][2])
 
-            self.FUNCTION_GLOBALS['PML_2'][Type][0] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_2'][Type][0])
-            self.FUNCTION_GLOBALS['PML_2'][Type][1] = ceil(arguments['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_2'][Type][1])
-            self.FUNCTION_GLOBALS['PML_2'][Type][2] = ceil(arguments['SizeCorrK'] / self.FUNCTION_LOCALS['PML_2'][Type][2])
+            self.FUNCTION_GLOBALS['PML_2'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_2'][Type][0])
+            self.FUNCTION_GLOBALS['PML_2'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_2'][Type][1])
+            self.FUNCTION_GLOBALS['PML_2'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_2'][Type][2])
 
-            self.FUNCTION_GLOBALS['PML_3'][Type][0] = ceil(arguments['SizeCorrI'] / self.FUNCTION_LOCALS['PML_3'][Type][0])
-            self.FUNCTION_GLOBALS['PML_3'][Type][1] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_3'][Type][1])
-            self.FUNCTION_GLOBALS['PML_3'][Type][2] = ceil(arguments['SizeCorrK'] / self.FUNCTION_LOCALS['PML_3'][Type][2])
+            self.FUNCTION_GLOBALS['PML_3'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_3'][Type][0])
+            self.FUNCTION_GLOBALS['PML_3'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_3'][Type][1])
+            self.FUNCTION_GLOBALS['PML_3'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_3'][Type][2])
 
-            self.FUNCTION_GLOBALS['PML_4'][Type][0] = ceil(arguments['SizeCorrI'] / self.FUNCTION_LOCALS['PML_4'][Type][0])
-            self.FUNCTION_GLOBALS['PML_4'][Type][1] = ceil(arguments['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_4'][Type][1])
-            self.FUNCTION_GLOBALS['PML_4'][Type][2] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_4'][Type][2])
+            self.FUNCTION_GLOBALS['PML_4'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_4'][Type][0])
+            self.FUNCTION_GLOBALS['PML_4'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_4'][Type][1])
+            self.FUNCTION_GLOBALS['PML_4'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_4'][Type][2])
 
-            self.FUNCTION_GLOBALS['PML_5'][Type][0] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][0])
-            self.FUNCTION_GLOBALS['PML_5'][Type][1] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][1])
-            self.FUNCTION_GLOBALS['PML_5'][Type][2] = ceil(arguments['SizeCorrK'] / self.FUNCTION_LOCALS['PML_5'][Type][2])
+            self.FUNCTION_GLOBALS['PML_5'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][0])
+            self.FUNCTION_GLOBALS['PML_5'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][1])
+            self.FUNCTION_GLOBALS['PML_5'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_5'][Type][2])
 
-            self.FUNCTION_GLOBALS['PML_6'][Type][0] = ceil(arguments['SizeCorrI'] / self.FUNCTION_LOCALS['PML_6'][Type][0])
-            self.FUNCTION_GLOBALS['PML_6'][Type][1] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][1])
-            self.FUNCTION_GLOBALS['PML_6'][Type][2] = ceil(arguments['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][2])
+            self.FUNCTION_GLOBALS['PML_6'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_6'][Type][0])
+            self.FUNCTION_GLOBALS['PML_6'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][1])
+            self.FUNCTION_GLOBALS['PML_6'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][2])
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
                 print(i + "_global_" + Type + "=", str(self.FUNCTION_GLOBALS[i][Type]))
 
     def _InitiateCommands(self, AllC):
         pass
 
-    def _Execution(self, arguments):
+    def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
         TimeSteps = arguments['TimeSteps']
         self.swift_fun.EncoderInit.argtypes = [] # Not sure if this is necessary
         self.swift_fun.EncodeCommit.argtypes = []
         self.swift_fun.EncodeSensors.argtypes = []
         self.swift_fun.SyncChange.argtypes = []
         self.swift_fun.EncodeStress.argtypes = [
-            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.c_char_p,
             ctypes.c_uint32,
             ctypes.c_uint32,
             ctypes.c_uint32,
@@ -291,7 +311,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ctypes.c_uint32,
         ]
         self.swift_fun.EncodeParticle.argtypes = [
-            ctypes.POINTER(ctypes.c_char),
+            ctypes.c_char_p,
             ctypes.c_uint32,
             ctypes.c_uint32,
             ctypes.c_uint32,
@@ -312,40 +332,87 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ctypes.c_uint32,
         ]
     
-        InitDict = {'nStep':0, 'TypeSource':0, 'SelK':0}
+        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource']), 'SelK':int(arguments['N3']/2)}
+
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
-            for i in ['nStep', 'TypeSource', 'SelK']:
-                self._InitSymbol(InitDict, i, 'unsigned int')
+            for i in ['nStep', 'TypeSource']:
+                self._InitSymbol(InitDict, i, 'unsigned int', [])
             self.swift_fun.EncoderInit()
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
-                str_ptr = i.ctypes.data_as(ctypes.POINTER(ctypes.c_char_p))
-                glox_ptr = self.FUNCTION_GLOBALS[i]["STRESS"][0].ctypes.data_as(ctypes.c_uint32)
-                gloy_ptr = self.FUNCTION_GLOBALS[i]["STRESS"][1].ctypes.data_as(ctypes.c_uint32)
-                gloz_ptr = self.FUNCTION_GLOBALS[i]["STRESS"][2].ctypes.data_as(ctypes.c_uint32)
-                locx_ptr = self.FUNCTION_LOCALS[i]["STRESS"][0].ctypes.data_as(ctypes.c_uint32)
-                locy_ptr = self.FUNCTION_LOCALS[i]["STRESS"][1].ctypes.data_as(ctypes.c_uint32)
-                locz_ptr = self.FUNCTION_LOCALS[i]["STRESS"][2].ctypes.data_as(ctypes.c_uint32)
+                str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
+                glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["STRESS"][0])
+                gloy_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["STRESS"][1])
+                gloz_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["STRESS"][2])
+                locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][0])
+                locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][1])
+                locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][2])
+                print(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
                 self.swift_fun.EncodeStress(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
+                print("Stress", i, "successfully encoded!")
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
-                str_ptr = i.ctypes.data_as(ctypes.POINTER(ctypes.c_char))
-                glox_ptr = self.FUNCTION_GLOBALS[i]["PARTICLE"][0].ctypes.data_as(ctypes.c_uint32)
-                gloy_ptr = self.FUNCTION_GLOBALS[i]["PARTICLE"][1].ctypes.data_as(ctypes.c_uint32)
-                gloz_ptr = self.FUNCTION_GLOBALS[i]["PARTICLE"][2].ctypes.data_as(ctypes.c_uint32)
-                locx_ptr = self.FUNCTION_LOCALS[i]["PARTICLE"][0].ctypes.data_as(ctypes.c_uint32)
-                locy_ptr = self.FUNCTION_LOCALS[i]["PARTICLE"][1].ctypes.data_as(ctypes.c_uint32)
-                locz_ptr = self.FUNCTION_LOCALS[i]["PARTICLE"][2].ctypes.data_as(ctypes.c_uint32)
+                str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
+                glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][0])
+                gloy_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][1])
+                gloz_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][2])
+                locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][0])
+                locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][1])
+                locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][2])
                 self.swift_fun.EncodeParticle(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
+                print("Particle", i, "successfully encoded!")
+
+            
             self.swift_fun.EncodeCommit()
-            self.swift_fun.EncodeSensors()
-        
+            print('Commit Success!')
+            if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
+
+                glox_ptr = c_uint32(self.globalSensor[0])
+                gloy_ptr = c_uint32(self.globalSensor[1])
+                gloz_ptr = c_uint32(self.globalSensor[2])
+                locx_ptr = c_uint32(self.localSensor[0])
+                locy_ptr = c_uint32(self.localSensor[1])
+                locz_ptr = c_uint32(self.localSensor[2])
+            
+                self.swift_fun.EncodeSensors(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
+                print("Sensors Success!")
         self.swift_fun.SyncChange()
-        Results = {}
+
+        for i in ['SqrAcc', 'SensorOutput']:
+            SizeCopy = ArrayResCPU[i].size
+            Shape = ArrayResCPU[i].shape
+            ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
+            Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
+            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            ArrayResCPU[i].resize(Shape)
+            print(ArrayResCPU[i].shape)
+            print(Shape)
+            assert ArrayResCPU[i].shape == Shape
+        
+
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
-            Results[i] = (ctypes.c_float * 1000) # Get the number somehow
-            Buffer = self.swift_fun.CopyFromGPUMEX(i.ctypes.data_as(ctypes.POINTER(ctypes.c_char_p)))
-            ctypes.memmove(Results[i], Buffer, 1000)
-        return Results 
+            SizeCopy = ArrayResCPU[i].size
+            Shape = ArrayResCPU[i].shape
+            ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
+            Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4)
+            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            ArrayResCPU[i].resize(Shape)
+            assert ArrayResCPU[i].shape == Shape
+
+#        self.swift_fun.CopyFromGpuSnapshot.argtypes = []
+#        self.swift_fun.CopyFromGpuSnapshot.restype = ctypes.POINTER(c_float)       
+#        SizeCopy = ArrayResCPU['Snapshots'].size
+#        ArrayResCPU["Snapshots"] = (ctypes.c_float * SizeCopy)
+#        Buffer = self.swift_fun.CopyFromGpuSnapshot()
+#        ctypes.memmove(ArrayResCPU['Snapshots'], Buffer, SizeCopy)
+
+        self.swift_fun.freeGPUextern.argtypes = []
+        self.swift_fun.freeGPUextern.restype = None
+
+        self.swift_fun.freeGPUextern()
+
+
 
         
 
@@ -357,21 +424,6 @@ def StaggeredFDTD_3D_METAL(arguments):
     IncludeDir=str(Path(__file__).parent.absolute())+os.sep
 
     Instance = StaggeredFDTD_3D_With_Relaxation_METAL(arguments)
-
-#    filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c'] # This is done in Base already
-
-    kernbinfile=IncludeDir+'tools'+os.sep+'Rayleigh.metallib'
-    
-#
-
-    arguments['PI_OCL_PATH']='' #unused in METAL but needed in the low level function for completeness
-    arguments['kernelfile']=''
-    arguments['kernbinfile']=kernbinfile
-#    
-    if arguments['DT'].dtype==np.dtype('float32'):
-        Results= FDTD_single.FDTDStaggered_3D(arguments)
-    else:
-        raise SystemError("Metal backend only supports single precision")
-    t0=time.time()-t0
-    print ('Time to run low level FDTDStaggered_3D =', t0)
+    Results = Instance.Results
+    print(Results)
     return Results

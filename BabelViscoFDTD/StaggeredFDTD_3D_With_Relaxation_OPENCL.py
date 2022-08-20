@@ -163,7 +163,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
             ArraysGPUOp[k].release()
 
 
-    def _PreExecuteScript(self, arguments, ArraysGPUOp):
+    def _PreExecuteScript(self, arguments, ArraysGPUOp, dummy):
         self.TimeSteps = arguments['TimeSteps']
         N1=arguments['N1']
         N2=arguments['N2']
