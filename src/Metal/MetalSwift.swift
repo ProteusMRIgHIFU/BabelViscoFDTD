@@ -29,7 +29,7 @@ var stress_commandBuffer:MTLCommandBuffer!
 var SnapShotsBuffer:MTLBuffer?
 
 @_cdecl("InitializeMetalDevices")
-public func InitializeMetalDevices(specDevice:UnsafeRawPointer, leng:Int) -> Int {   
+public func InitializeMetalDevices(leng:Int) -> Int {   
     // Empties arrays from previous runs
     particle_funcs = []
     stress_funcs = []
@@ -410,5 +410,5 @@ public func freeGPUextern() {
     uint_buffer!.setPurgeableState(MTLPurgeableState.empty)
     index_mex!.setPurgeableState(MTLPurgeableState.empty)
     index_uint!.setPurgeableState(MTLPurgeableState.empty)
-    SnapShotsBuffer!.setPurgeableState(MTLPurgeableState.empty)
+//    SnapShotsBuffer!.setPurgeableState(MTLPurgeableState.empty)
 }
