@@ -28,7 +28,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
-        self._c_uint_type = np.uint32(0)
+        self._c_uint_type = np.uint64(0)
         self.HOST_INDEX_MEX = np.zeros((53, 2), np.uint64)
         self.HOST_INDEX_UINT = np.zeros((3, 2), np.uint64)
         self.LENGTH_INDEX_MEX = 53
@@ -174,8 +174,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
 
         self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
-        
-        self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(self._c_uint_type), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
+        self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(np.uint64(self._c_uint_type)), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
 
         self._IndexManip() # This keeps segfaulting, I don't know how to write an equivalent function in Python
 
@@ -332,7 +331,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ctypes.c_uint32,
         ]
     
-        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource']), 'SelK':int(arguments['N3']/2)}
+        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
 
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
@@ -391,7 +390,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
-            SizeCopy = ArrayResCPU[i].size
+            SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             Shape = ArrayResCPU[i].shape
             ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
