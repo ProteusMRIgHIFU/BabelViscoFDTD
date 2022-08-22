@@ -3,7 +3,7 @@ int NumberAlloc=0;
 #ifdef METAL
   PRINTF("Initializing Commands...\n");
 
-  extern int InitializeMetalDevices(const char[], int);
+  extern int InitializeMetalDevices();
   extern int ConstantBuffers(int, int);
   extern int BufferIndexCreator(unsigned long[], unsigned long, unsigned long, unsigned long);
   extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
@@ -187,7 +187,7 @@ int NumberAlloc=0;
 
     _PT  HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
-    if(InitializeMetalDevices(DefaultGPUDeviceName_pr, sizeof(DefaultGPUDeviceName_pr)) != 0){
+    if(InitializeMetalDevices() != 0){
     ERROR_STRING("Something went wrong with METAL initialization")
     }
 
