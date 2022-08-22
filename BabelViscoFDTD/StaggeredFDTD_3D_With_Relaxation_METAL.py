@@ -346,9 +346,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][0])
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][2])
-                print(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
                 self.swift_fun.EncodeStress(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Stress", i, "successfully encoded!")
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
                 glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][0])
@@ -358,11 +356,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][2])
                 self.swift_fun.EncodeParticle(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Particle", i, "successfully encoded!")
 
             
             self.swift_fun.EncodeCommit()
-            print('Commit Success!')
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
 
                 glox_ptr = c_uint32(self.globalSensor[0])
@@ -373,7 +369,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locz_ptr = c_uint32(self.localSensor[2])
             
                 self.swift_fun.EncodeSensors(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Sensors Success!")
         self.swift_fun.SyncChange()
 
         for i in ['SqrAcc', 'SensorOutput']:
@@ -382,21 +377,34 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
             ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
-            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i].resize(Shape)
-            print(ArrayResCPU[i].shape)
-            print(Shape)
+            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
+            print(Shape, ArrayResCPU[i].shape)
             assert ArrayResCPU[i].shape == Shape
         
+        SizeBuffer = {1:0, 6:0, 7:0, 9:0}
+        for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz']:
+            SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size
+        
+        for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy", "Oz"]:
+            SizeBuffer[9] += arguments[i].size
+        
+        SizeBuffer[9] += ArrayResCPU['Pressure'].size
 
+        
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             Shape = ArrayResCPU[i].shape
-            ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
+            ArrayResOP[i] = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4)
-            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i].resize(Shape)
+            print(SizeCopy, Shape, i)
+            print(SizeBuffer[self._IndexDataMetal[i]])
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
+            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            print(ArrayResOP[i].size)
+            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
             assert ArrayResCPU[i].shape == Shape
 
 #        self.swift_fun.CopyFromGpuSnapshot.argtypes = []
@@ -424,5 +432,4 @@ def StaggeredFDTD_3D_METAL(arguments):
 
     Instance = StaggeredFDTD_3D_With_Relaxation_METAL(arguments)
     Results = Instance.Results
-    print(Results)
     return Results
