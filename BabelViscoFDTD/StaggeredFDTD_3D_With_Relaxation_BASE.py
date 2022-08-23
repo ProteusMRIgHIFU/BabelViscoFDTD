@@ -126,8 +126,6 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         N2=arguments['N2']
         N3=arguments['N3']
                     
-        # Might need to change the order to C for Swift, we'll see.
-
         ArrayResCPU={}
         for k in ['Sigma_xx','Sigma_yy','Sigma_zz','Pressure']:
             ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype,order='F')
@@ -159,10 +157,10 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         self._InitiateCommands(AllC)
 
         ArraysGPUOp={}
-        
-        for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
-                    'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
-            self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
+        if extra_params["BACKEND"] == "OPENCL":
+            for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
+                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
+                self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
         for k in ['V_x_x','V_y_x','V_z_x']:
             self._ownGpuCalloc(k,td,outparams['SizePMLxp1'],ArraysGPUOp)
         for k in ['V_x_y','V_y_y','V_z_y']:
@@ -183,6 +181,9 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         else:
             for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots']:
                 self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+            for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
+                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
+                self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
             for k in ['SensorOutput','SqrAcc']:
                 self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)
 

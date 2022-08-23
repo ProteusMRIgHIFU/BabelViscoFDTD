@@ -29,7 +29,7 @@ var stress_commandBuffer:MTLCommandBuffer!
 var SnapShotsBuffer:MTLBuffer?
 
 @_cdecl("InitializeMetalDevices")
-public func InitializeMetalDevices(leng:Int) -> Int {   
+public func InitializeMetalDevices() -> Int {   
     // Empties arrays from previous runs
     particle_funcs = []
     stress_funcs = []

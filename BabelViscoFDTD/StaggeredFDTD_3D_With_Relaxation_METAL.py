@@ -78,8 +78,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
         # Defines functions sent to Swift
-        self.swift_fun.InitializeMetalDevices.argtypes = [
-            ctypes.c_int]
+        self.swift_fun.InitializeMetalDevices.argtypes = []
         self.swift_fun.ConstantBuffers.argtypes = [
             ctypes.c_int,
             ctypes.c_int]
@@ -120,7 +119,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         
     def _PostInitScript(self, arguments, extra_params):
         print("Attempting Metal Initiation...")
-        if self.swift_fun.InitializeMetalDevices(c_int(len(arguments['DefaultGPUDeviceName']))) == -1:
+        if self.swift_fun.InitializeMetalDevices() == -1:
             raise ValueError("Something has gone horribly wrong.")
         if self.swift_fun.ConstantBuffers(c_int(self.LENGTH_CONST_UINT), c_int(self.LENGTH_CONST_MEX)) == -1:
             raise ValueError("Something has gone horribly wrong")
@@ -129,7 +128,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
     def _InitSymbol(self, IP,_NameVar,td, SCode):
         if td == "float":
             self.swift_fun.SymbolInitiation_mex(c_uint32(self.C_IND[_NameVar]), c_float(IP[_NameVar]))
-        elif td == "unsigned int": #No idea if this will work or if it needs to be changed
+        elif td == "unsigned int": 
             self.swift_fun.SymbolInitiation_uint(c_uint32(self.C_IND[_NameVar]), c_uint32(IP[_NameVar]))
         else:
             raise ValueError("Something was passed incorrectly in symbol initiation.")
@@ -176,7 +175,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
         self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(np.uint64(self._c_uint_type)), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
 
-        self._IndexManip() # This keeps segfaulting, I don't know how to write an equivalent function in Python
+        self._IndexManip()
 
         self.swift_fun.IndexDidModify(c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT), c_uint64(self.LENGTH_CONST_MEX), c_uint64(self.LENGTH_CONST_UINT))
 
@@ -229,6 +228,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             self.swift_fun.CompleteCopyMEX(c_int(SizeCopy), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_float)), c_uint64(self.HOST_INDEX_MEX[self.C_IND[Name]][0]), c_uint64(self._IndexDataMetal[Name]))
         elif td == "unsigned int":
             self.swift_fun.CompleteCopyUInt(c_int(SizeCopy), args[Name].ctypes.data_as(ctypes.POINTER(ctypes.c_uint32)), c_uint64(self.HOST_INDEX_UINT[self.C_IND[Name]][0]))
+        else:
+            raise RuntimeError("Something has gone horribly wrong.")
 
     def _CALC_USER_LOCAL(self, Name, Type):
         if Type == "STRESS":
@@ -337,6 +338,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
                 self._InitSymbol(InitDict, i, 'unsigned int', [])
+
             self.swift_fun.EncoderInit()
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
@@ -346,9 +348,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][0])
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][2])
-                print(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
                 self.swift_fun.EncodeStress(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Stress", i, "successfully encoded!")
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
                 glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][0])
@@ -358,11 +358,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][2])
                 self.swift_fun.EncodeParticle(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Particle", i, "successfully encoded!")
-
             
             self.swift_fun.EncodeCommit()
-            print('Commit Success!')
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
 
                 glox_ptr = c_uint32(self.globalSensor[0])
@@ -373,7 +370,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locz_ptr = c_uint32(self.localSensor[2])
             
                 self.swift_fun.EncodeSensors(glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
-                print("Sensors Success!")
+
         self.swift_fun.SyncChange()
 
         for i in ['SqrAcc', 'SensorOutput']:
@@ -382,29 +379,30 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
             ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
-            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i].resize(Shape)
-            print(ArrayResCPU[i].shape)
-            print(Shape)
+            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
             assert ArrayResCPU[i].shape == Shape
         
+        SizeBuffer = {1:0, 6:0, 7:0, 9:0}
+        for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz']:
+            SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size
+        
+        for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy", "Oz"]:
+            SizeBuffer[9] += arguments[i].size
+        
+        SizeBuffer[9] += ArrayResCPU['Pressure'].size
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             Shape = ArrayResCPU[i].shape
-            ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
+            ArrayResOP[i] = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4)
-            ArrayResCPU[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i].resize(Shape)
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
+            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
+            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
             assert ArrayResCPU[i].shape == Shape
-
-#        self.swift_fun.CopyFromGpuSnapshot.argtypes = []
-#        self.swift_fun.CopyFromGpuSnapshot.restype = ctypes.POINTER(c_float)       
-#        SizeCopy = ArrayResCPU['Snapshots'].size
-#        ArrayResCPU["Snapshots"] = (ctypes.c_float * SizeCopy)
-#        Buffer = self.swift_fun.CopyFromGpuSnapshot()
-#        ctypes.memmove(ArrayResCPU['Snapshots'], Buffer, SizeCopy)
 
         self.swift_fun.freeGPUextern.argtypes = []
         self.swift_fun.freeGPUextern.restype = None
@@ -424,5 +422,4 @@ def StaggeredFDTD_3D_METAL(arguments):
 
     Instance = StaggeredFDTD_3D_With_Relaxation_METAL(arguments)
     Results = Instance.Results
-    print(Results)
     return Results
