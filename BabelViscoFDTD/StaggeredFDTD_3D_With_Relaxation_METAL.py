@@ -171,7 +171,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             self._c_uint_type += SizeCopy
     
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
-
+        print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
         self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(np.uint64(self._c_uint_type)), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
 
@@ -208,8 +208,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         
         self.localSensor = [self.swift_fun.maxThreadSensor(), 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
-
-
 
     def _IndexManip(self):
         for i in range(self.LENGTH_INDEX_MEX):
@@ -418,7 +416,36 @@ def StaggeredFDTD_3D_METAL(arguments):
     os.environ['__BabelMetal'] =(os.path.dirname(os.path.abspath(__file__))+os.sep+'tools')
     print(os.environ['__BabelMetal'])
     os.environ['__BabelMetalDevice'] = arguments['DefaultGPUDeviceName']
-    IncludeDir=str(Path(__file__).parent.absolute())+os.sep
+
+    # Uncomment the following to compare the C implementation to the Python Implementation, to see if any variables are being sent incorrectly, etc.
+
+    # IncludeDir=str(Path(__file__).parent.absolute())+os.sep
+    # filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c']
+
+    # kernbinfile=IncludeDir+'tools'+os.sep+'Rayleigh.metallib'
+    
+    # if (type(arguments)!=dict):
+    #     raise TypeError( "The input parameter must be a dictionary")
+
+    # for key in arguments.keys():
+    #     if type(arguments[key])==np.ndarray:
+    #         if np.isfortran(arguments[key])==False:
+    #             #print "StaggeredFDTD_3D: Converting ndarray " + key + " to Fortran convention";
+    #             arguments[key] = np.asfortranarray(arguments[key]);
+    #     elif type(arguments[key])!=str:
+    #         arguments[key]=np.array((arguments[key]))
+    # t0 = time.time()
+    # arguments['PI_OCL_PATH']='' #unused in METAL but needed in the low level function for completeness
+    # arguments['kernelfile']=''
+    # arguments['kernbinfile']=kernbinfile
+    
+    # if arguments['DT'].dtype==np.dtype('float32'):
+    #     Results= FDTD_single.FDTDStaggered_3D(arguments)
+    # else:
+    #     raise SystemError("Metal backend only supports single precision")
+    # t0=time.time()-t0
+    # print ('Time to run low level FDTDStaggered_3D =', t0)
+    # return Results
 
     Instance = StaggeredFDTD_3D_With_Relaxation_METAL(arguments)
     Results = Instance.Results
