@@ -3,7 +3,7 @@ int NumberAlloc=0;
 #ifdef METAL
   PRINTF("Initializing Commands...\n");
 
-  extern int InitializeMetalDevices(const char[], int);
+  extern int InitializeMetalDevices();
   extern int ConstantBuffers(int, int);
   extern int BufferIndexCreator(unsigned long[], unsigned long, unsigned long, unsigned long);
   extern int IndexManipMEX(unsigned int, unsigned int, unsigned int);
@@ -187,7 +187,7 @@ int NumberAlloc=0;
 
     _PT  HOST_INDEX_UINT[LENGTH_INDEX_UINT][2];
 
-    if(InitializeMetalDevices(DefaultGPUDeviceName_pr, sizeof(DefaultGPUDeviceName_pr)) != 0){
+    if(InitializeMetalDevices() != 0){
     ERROR_STRING("Something went wrong with METAL initialization")
     }
 
@@ -409,7 +409,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   CreateAndCopyFromMXVarOnGPU(SensorOutput,mexType);
   CreateAndCopyFromMXVarOnGPU(SqrAcc,mexType);
 
-// FIX
 
 #ifdef METAL
 
@@ -424,19 +423,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
           unsigned int data2 = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
           IndexManipMEX(data, data2, j);
       }
-
-      /*
-      unsigned int * inData = static_cast<unsigned int *>(_INDEX_MEX.GetContents());
-      for (uint32_t j=0; j<LENGTH_INDEX_MEX; j++)
-      {
-          inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_MEX[j][0]);
-          inData[j*2+1] = (unsigned int) (HOST_INDEX_MEX[j][0]>>32);
-          
-          
-      }
-      _INDEX_MEX.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_MEX*2))
-      */
-      
   }
 
   {
@@ -446,21 +432,7 @@ InitSymbol(SensorStart,unsigned int,G_INT);
             unsigned int data2 = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
             IndexManipUInt(data, data2, j);
       }
-    /*
-      unsigned int * inData = static_cast< unsigned int *>(_INDEX_UINT.GetContents());
-      for (uint32_t j=0; j<LENGTH_INDEX_UINT; j++)
-      {
-           inData[j*2] =  (unsigned int) (0xFFFFFFFF & HOST_INDEX_UINT[j][0]);
-           inData[j*2+1] = (unsigned int) (HOST_INDEX_UINT[j][0]>>32);
-          
-      }
-      _INDEX_UINT.DidModify(ns::Range(0, sizeof(unsigned int) * LENGTH_INDEX_UINT*2));
-      */
   }
-  /*
-  _CONSTANT_BUFFER_UINT.DidModify(ns::Range(0, sizeof(unsigned int)*LENGTH_CONST_UINT));
-  _CONSTANT_BUFFER_MEX.DidModify(ns::Range(0,sizeof(mexType) * LENGTH_CONST_MEX));
-  */
   IndexDidModify(LENGTH_INDEX_MEX, LENGTH_INDEX_UINT, LENGTH_CONST_MEX, LENGTH_CONST_UINT);
 
   CompleteCopyToGpu(LambdaMiuMatOverH,mexType);
@@ -888,25 +860,6 @@ InitSymbol(SensorStart,unsigned int,G_INT);
   #if defined(METAL)
         InitSymbol(CurrSnap,unsigned int,G_INT);
         EncodeSnapShots((unsigned int)ceil((float)(INHOST(N1)+1) / 8), (unsigned int)ceil((float)(INHOST(N2)+1) / 8));
-        /*
-        mtlpp::CommandBuffer StresscommandBuffer = commandQueue.CommandBuffer();
-        mtlpp::ComputeCommandEncoder commandEncoderSnapShot = Strs, 0);
-        commandEncoderSnapShot.SetBuffer(_CONSTANT_BUFFER_MEX, 0, 1);
-        commandEncoderSnapShot.SetBuffer(_INDEX_MEX, 0, 2);
-        commandEncoderSnapShot.SetBuffer(_INDEX_UINT, 0, 3);
-        commandEncoderSnapShot.SetBuffer(_UINT_BUFFER, 0, 4);
-        for (_PT ii=0;ii<12;ii++)
-            commandEncoderSnapShot.SetBuffer(_MEX_BUFFER[ii], 0, 5+ii);
-        commandEncoderSnapShot.SetBuffer(gpu_Snapshots_pr, 0, 17);
-        commandEncoderSnapShot.SetComputePipelineState(computePipelineStateSnapShot);
-        commandEncoderSnapShot.DispatchThreadgroups(
-            mtlpp::Size(
-              (unsigned int)ceil((float)(INHOST(N1)+1) / 8),
-              (unsigned int)ceil((float)(INHOST(N2)+1) / 8),
-              1),
-            mtlpp::Size(8, 8,1));
-        commandEncoderSnapShot.EndEncoding();
-        */
   #endif
 
 				INHOST(CurrSnap)++;
