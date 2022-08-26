@@ -1,11 +1,11 @@
 State of the Project
 ====================
-Andrew Xie
-Visiting Summer Research Student
-Department of Bioengineering
-McGill University
-andrew.xie@mail.mcgill.ca
-August 26, 2022
+Andrew Xie  
+Visiting Summer Research Student  
+Department of Bioengineering  
+McGill University  
+andrew.xie@mail.mcgill.ca  
+August 26, 2022 
 
 **The purpose of this file is to discuss the state of the OOP migration to Python, as of August 26, 2022, for ease of future development on this project.**
 
