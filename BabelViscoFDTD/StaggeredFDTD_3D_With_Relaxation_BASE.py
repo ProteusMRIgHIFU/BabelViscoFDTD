@@ -111,8 +111,6 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
             if platform.system() != 'Windows': 
                 arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl' # Unused for Metal
         
-        
-
         # Check here for OpenCL on x86-64 Mac Devices
         if extra_params['BACKEND'] == 'OPENCL' and platform.system() == 'Darwin' and 'arm64' not in platform.platform():
             print("Executing with C backend...")
@@ -178,12 +176,14 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         if extra_params['BACKEND'] == 'OPENCL':
             for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots','SensorOutput','SqrAcc']:
                 self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
-        else:
-            for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots']:
-                self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+        else: # ORDER DOES MATTER FOR METAL, AS IT INVOLVES MANIPULATING AND READING _c_uint_type OR _c_mex_type******
             for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                         'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
+            
+            for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots']:
+                self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+
             for k in ['SensorOutput','SqrAcc']:
                 self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)
 
