@@ -589,7 +589,7 @@ class PropagationModel:
            print ("Q_cw_factor_long,Q_cw_factor_shear", np.unique(Q_cw_factor_long), np.unique(Q_cw_factor_shear))
            VLongMat=VLongInput*Q_cw_factor_long
            VShearMat=VShearInput*Q_cw_factor_shear
-           print ("VLongMat,VShearMat", np.unique(VLongMat), np.unique(VShearMat))
+           #", np.unique(VLongMat), np.unique(VShearMat))
         else:
            VLongMat=VLongInput.copy()
            VShearMat=VShearInput.copy()
@@ -634,7 +634,7 @@ class PropagationModel:
         else:
             dt=AlphaCFL*h*6.0/7.0/np.sqrt(3.0)/VMaxLong #%after: Bohlen, Thomas. "Parallel 3-D viscoelastic finite difference seismic modelling." Computers & Geosciences 28.8 (2002): 887-899.
 
-        print ("dt,VLongMat,VShearMat,TauLong,TauShear,TauSigma,VLongInput,VShearInput", dt, np.unique(VLongMat),  np.unique(VShearMat),np.unique(TauLong),np.unique(TauShear),np.unique(TauSigma),np.unique(VLongInput),np.unique(VShearInput))
+        #print ("dt,VLongMat,VShearMat,TauLong,TauShear,TauSigma,VLongInput,VShearInput", dt, np.unique(VLongMat),  np.unique(VShearMat),np.unique(TauLong),np.unique(TauShear),np.unique(TauSigma),np.unique(VLongInput),np.unique(VShearInput))
         return dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLong,TauShear,TauSigma,AnalysisQFactorLong,AnalysisQFactorShear
 
     ###########################################################
@@ -703,7 +703,7 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
 
     xp,fxp,iutsp,imodep,smodep = fmin_slsqp(fhp,[Tau,TauSigma],bounds=[(0,1),(0,1)],full_output=True,iprint=0)
 
-    print('2.0/QValue, x0, x, xp, TauSigma',2.0/QValue,x0,x,xp,TauSigma)
+   # print('2.0/QValue, x0, x, xp, TauSigma',2.0/QValue,x0,x,xp,TauSigma)
     
     Tau=x[0]
     #Tau=xp[0]
@@ -740,7 +740,7 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
     QresFormula=1.0/EvalQ(TauFormula,SpectrumToValidate,TauSigmaFormula);
     Error_Formula=np.sum((QresFormula-QValue)**2)/Qres.size
 
-    print('TauFormula, TauSigmaFormula',TauFormula, TauSigmaFormula)
+    # print('TauFormula, TauSigmaFormula',TauFormula, TauSigmaFormula)
 
     return Tau,TauSigma,Qres,SpectrumToValidate,Error_LSQ
     
@@ -760,7 +760,9 @@ def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
     QresTemp=[]
     Error_LSQTemp=np.zeros(IndAttNonZero.size)
     SpectrumToValidate=None
-
+    print('Calculating Relaxation coefficients for ',IndAttNonZero.size)
+    print(' Q unique entries ',len(np.unique(Q)))
+    
     for n in range(IndAttNonZero.size):
         Tau,Ts,Qres,SpectrumToValidateTemp,Error_LSQ=OptimalTauForQFactor(Q[n],Frequency)
         #%[Tau,Ts,Qres,SpectrumToValidateTemp,Error_LSQ]=OptimalTauAndTaueEpsForQFactor(Q(n),Frequency);
