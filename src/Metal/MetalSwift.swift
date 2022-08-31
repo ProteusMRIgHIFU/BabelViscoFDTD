@@ -473,11 +473,11 @@ public func SyncChange(){
 
 #if DRYTEST
 @_cdecl("CopyFromGPUMEX")
-
 public func CopyFromGPUMEX(index:UInt64) {
         print("CopyFromGPUMEX index",index)
 }
 #else
+@_cdecl("CopyFromGPUMEX")
 public func CopyFromGPUMEX(index:UInt64) -> UnsafeMutablePointer<Float32>{
     return mex_buffer[Int(index)]!.contents().assumingMemoryBound(to: Float32.self)
 

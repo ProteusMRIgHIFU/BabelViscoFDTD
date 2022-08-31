@@ -257,6 +257,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ManualGlobalSize[index] 
 
     def _CALC_USER_GROUP_MAIN(self, arguments, outparams):
+        self._outparams = outparams
         for Type in ['STRESS', 'PARTICLE']:
             for index in range(3):
                 self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]-outparams['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
@@ -307,9 +308,15 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             ctypes.c_uint32,
             ctypes.c_uint32,
             ctypes.c_uint32,
+            ctypes.c_uint32,
+            ctypes.c_uint32,
+            ctypes.c_uint32,
         ]
         self.swift_fun.EncodeParticle.argtypes = [
             ctypes.c_char_p,
+            ctypes.c_uint32,
+            ctypes.c_uint32,
+            ctypes.c_uint32,
             ctypes.c_uint32,
             ctypes.c_uint32,
             ctypes.c_uint32,
@@ -331,6 +338,17 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         ]
     
         InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
+        outparams=self._outparams
+        DimsKernel={}
+        DimsKernel['PML_1']=[outparams['PML_Thickness']*2,outparams['PML_Thickness']*2,outparams['PML_Thickness']*2]
+        DimsKernel['PML_2']=[outparams['PML_Thickness']*2,outparams['N2']-outparams['PML_Thickness']*2,outparams['N3']-outparams['PML_Thickness']*2]
+        DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,outparams['PML_Thickness']*2,outparams['N3']-outparams['PML_Thickness']*2]
+        DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,outparams['N2']-outparams['PML_Thickness']*2,outparams['PML_Thickness']*2]
+        DimsKernel['PML_5']=[outparams['PML_Thickness']*2,outparams['PML_Thickness']*2,outparams['N3']-outparams['PML_Thickness']*2]
+        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,outparams['PML_Thickness']*2,outparams['PML_Thickness']*2]
+        DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,outparams['N2']-outparams['PML_Thickness']*2,outparams['N3']-outparams['PML_Thickness']*2]
+        for k in DimsKernel:
+            DimsKernel[k]=[c_uint32(DimsKernel[k][0]),c_uint32(DimsKernel[k][1]),c_uint32(DimsKernel[k][2])]
 
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
@@ -338,6 +356,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 self._InitSymbol(InitDict, i, 'unsigned int', [])
 
             self.swift_fun.EncoderInit()
+
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
                 glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["STRESS"][0])
@@ -346,7 +365,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][0])
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["STRESS"][2])
-                self.swift_fun.EncodeStress(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
+                dk=DimsKernel[i]
+                self.swift_fun.EncodeStress(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr,dk[0],dk[1],dk[2])
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 str_ptr = ctypes.c_char_p(bytes(i, 'utf-8'))
                 glox_ptr = c_uint32(self.FUNCTION_GLOBALS[i]["PARTICLE"][0])
@@ -355,7 +375,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                 locx_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][0])
                 locy_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][1])
                 locz_ptr = c_uint32(self.FUNCTION_LOCALS[i]["PARTICLE"][2])
-                self.swift_fun.EncodeParticle(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr)
+                dk=DimsKernel[i]
+                self.swift_fun.EncodeParticle(str_ptr, glox_ptr, gloy_ptr, gloz_ptr, locx_ptr, locy_ptr, locz_ptr,dk[0],dk[1],dk[2])
             
             self.swift_fun.EncodeCommit()
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
@@ -375,11 +396,11 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
             ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
-            # Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            # ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
+            Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
             ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
             ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape,order='F')
             assert ArrayResCPU[i].shape == Shape
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
@@ -395,11 +416,11 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             Shape = ArrayResCPU[i].shape
             ArrayResOP[i] = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
-            # Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            # ctypes.memmove(ArrayResOP[i], Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
+            Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
+            ctypes.memmove(ArrayResOP[i], Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
             ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
             ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape)
+            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape,order='F')
             assert ArrayResCPU[i].shape == Shape
 
         self.swift_fun.freeGPUextern.argtypes = []
