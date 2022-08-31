@@ -53,7 +53,7 @@ def CompileRayleighMetal(build_temp,build_lib):
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
-        command=['swiftc','-emit-library','MetalSwift.swift']
+        command=['swiftc','-emit-library','-DDRYTEST','MetalSwift.swift']
         subprocess.check_call(command,cwd=build_temp)
         for fn in ['libRayleighMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
