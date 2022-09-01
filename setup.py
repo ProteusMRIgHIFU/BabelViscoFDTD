@@ -133,9 +133,6 @@ if 'Darwin' not in platform.system():
                     '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
                     '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
                     '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
-                    '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
-                    '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
-                    '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
                     '-DSTAGGERED_PYTHON_SUPPORT=ON',
                     '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
                     '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sconfig.get_config_var('EXT_SUFFIX'))[0]),
@@ -255,30 +252,6 @@ else:
             UnixCCompiler.link = patched_link
             super().initialize_options()
 
-        def build_extension(self, ext):
-            if ext.name =='pi_ocl':
-                try:
-                    out = subprocess.check_output(['cmake', '--version'])
-                except OSError:
-                    raise RuntimeError('Cannot find CMake executable')
-
-                cfg = 'Release'
-                extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-                cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
-                                '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir+os.sep+'BabelViscoFDTD')]
-                print('***\n\n\n\n\n\n\n\n\****')
-            # Config and build the extension
-
-                subprocess.check_call(['cmake', dir_path+os.sep+'pi_ocl'] + cmake_args,
-                                        cwd=self.build_temp)
-                subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
-                                    cwd=self.build_temp)
-            else:
-                if 'METAL' in  ext.name:
-                    ext.extra_objects=extra_obj
-                    print('ext.extra_objects', ext.extra_objects)
-                super().build_extension(ext)
-
         def build_extensions(self):
             print('building extension')
             CompileBabelMetal(self.build_temp,self.build_lib)
@@ -334,42 +307,9 @@ else:
                     define_macros=define_macros_omp,
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
-                    include_dirs=[npinc]),
-                Extension(c_module_name+'_METAL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("METAL",None)],
-                    include_dirs=[npinc],
-                    extra_compile_args=['-mmacosx-version-min=11.0'],
-                    extra_link_args=['-Wl',
-                                    '-framework',
-                                    'Metal',
-                                    '-Wl',
-                                    '-framework',
-                                    'MetalKit',
-                                    '-Wl',
-                                    '-framework',
-                                    'Cocoa',
-                                    '-Wl',
-                                    '-framework',
-                                    'CoreFoundation',
-                                    '-fobjc-link-runtime'])]
+                    include_dirs=[npinc])]
                     # extra_objects=extra_obj)]
     
-
-    if 'arm64' not in platform.platform():
-        ext_modules.append(Extension('pi_ocl',['pi_ocl/pi_ocl.c']))
-        ext_modules.append(Extension(c_module_name+'_OPENCL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]))
-        ext_modules.append(Extension(c_module_name+'_OPENCL_double', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]))
 
     if bIncludePagememory:
         ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory', 

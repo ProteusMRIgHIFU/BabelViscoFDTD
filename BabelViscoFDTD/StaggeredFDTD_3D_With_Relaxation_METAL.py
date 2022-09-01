@@ -4,7 +4,6 @@ from unicodedata import name
 import numpy as np
 import os
 from pathlib import Path
-import _FDTDStaggered3D_with_relaxation_METAL_single as FDTD_single;
 
 import time
 import tempfile
