@@ -219,7 +219,7 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 # Release notes
 * 0.9.9  Sep 1, 2022
-    * A lot of simplifications that allowed having a much straighforward code. Thanks to Andrew Xie (@IAmAndrewX) for a very productive summer trimming down code, replacing the old MTLPP by Swift and making a new class arrangement for the different GPU backends. Now BabelViscoFDTD is based completely on PyOpenCL and PyCUDA for the FDTD viscoelastic solver. For Metal, the Swift-based wrapper does the interfacing. The old C extension is still around just for the OpenMP backend.  
+    * A lot of simplifications that allowed having a much more straighforward code. Thanks to Andrew Xie (@IAmAndrewX) for a very productive summer trimming down code, replacing the old MTLPP by Swift and making a new class arrangement for the different GPU backends. Now BabelViscoFDTD is based completely on PyOpenCL and PyCUDA for the FDTD viscoelastic solver. For Metal, the Swift-based wrapper does the interfacing. The old C extension is still around just for the OpenMP backend.  
 * 0.9.7  July 7, 2022
     * The MTLPP C++ library is now replaced by a Swift interface to access the Metal implementation for the viscoelastic FDTD solution. This will ensure using a more standard Apple development language for the future, as MTLPP is not maintained anymore. While there is a new Apple-based C++ wrapper for Metal, using Swift is still preferred as we created now a C-linking compatible library that in the future can be also used directly in Python. In the longterm, we aim to eliminate the C code extension and use only Python code in tandem with pyopencl, pycuda and  Metal 
 * 0.9.6-post-10  June 27, 2022
