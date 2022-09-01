@@ -202,69 +202,6 @@ int mxcheck(int result, char const *const func, const char *const file, int cons
 
 
 #if defined(CUDA)
-//declaration of constant values for FDTD solution
-__constant__ mexType DT;
-__constant__ unsigned int N1;
-__constant__ unsigned int N2;
-__constant__ unsigned int N3;
-__constant__ unsigned int Limit_I_low_PML;
-__constant__ unsigned int Limit_J_low_PML;
-__constant__ unsigned int Limit_K_low_PML;
-__constant__ unsigned int Limit_I_up_PML;
-__constant__ unsigned int Limit_J_up_PML;
-__constant__ unsigned int Limit_K_up_PML;
-__constant__ unsigned int SizeCorrI;
-__constant__ unsigned int SizeCorrJ;
-__constant__ unsigned int SizeCorrK;
-__constant__ unsigned int PML_Thickness;
-__constant__ unsigned int NumberSources;
-__constant__ unsigned int LengthSource;
-__constant__ unsigned int NumberSensors;
-__constant__ unsigned int TimeSteps;
-
-__constant__ unsigned int SizePML;
-__constant__ unsigned int SizePMLxp1;
-__constant__ unsigned int SizePMLyp1;
-__constant__ unsigned int SizePMLzp1;
-__constant__ unsigned int SizePMLxp1yp1zp1;
-__constant__ unsigned int ZoneCount;
-
-__constant__ unsigned int SelRMSorPeak;
-__constant__ unsigned int SelMapsRMSPeak;
-__constant__ _PT IndexRMSPeak_ALLV;
-__constant__ _PT IndexRMSPeak_Vx;
-__constant__ _PT IndexRMSPeak_Vy;
-__constant__ _PT IndexRMSPeak_Vz;
-__constant__ _PT IndexRMSPeak_Sigmaxx;
-__constant__ _PT IndexRMSPeak_Sigmayy;
-__constant__ _PT IndexRMSPeak_Sigmazz;
-__constant__ _PT IndexRMSPeak_Sigmaxy;
-__constant__ _PT IndexRMSPeak_Sigmaxz;
-__constant__ _PT IndexRMSPeak_Sigmayz;
-__constant__ _PT IndexRMSPeak_Pressure;
-__constant__ _PT NumberSelRMSPeakMaps;
-
-__constant__ unsigned int SelMapsSensors;
-__constant__ _PT IndexSensor_ALLV;
-__constant__ _PT IndexSensor_Vx;
-__constant__ _PT IndexSensor_Vy;
-__constant__ _PT IndexSensor_Vz;
-__constant__ _PT IndexSensor_Sigmaxx;
-__constant__ _PT IndexSensor_Sigmayy;
-__constant__ _PT IndexSensor_Sigmazz;
-__constant__ _PT IndexSensor_Sigmaxy;
-__constant__ _PT IndexSensor_Sigmaxz;
-__constant__ _PT IndexSensor_Sigmayz;
-__constant__ _PT IndexSensor_Pressure;
-__constant__ _PT NumberSelSensorMaps;
-__constant__ _PT SensorSubSampling;
-__constant__ _PT SensorStart;
-
-__constant__ mexType gpuInvDXDTpluspr[MAX_SIZE_PML];
-__constant__ mexType gpuDXDTminuspr[MAX_SIZE_PML];
-__constant__ mexType gpuInvDXDTplushppr[MAX_SIZE_PML];
-__constant__ mexType gpuDXDTminushppr[MAX_SIZE_PML];
-
 //Calculate the block dimensions
 #define CUDA_GRID_BLOC_BASE(__KERNEL__)\
   dim3 dimBlock## __KERNEL__;  \

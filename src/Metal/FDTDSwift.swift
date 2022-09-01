@@ -3,7 +3,7 @@ import MetalPerformanceShaders
 import Accelerate
 import Foundation
 
-let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Rayleigh.metallib"
+let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Babel.metallib"
 
 // Defining global variables
 var device:MTLDevice!
@@ -28,8 +28,9 @@ var floatCounter:Int = 0
 var stress_commandBuffer:MTLCommandBuffer!
 var SnapShotsBuffer:MTLBuffer?
 
+
 @_cdecl("InitializeMetalDevices")
-public func InitializeMetalDevices(specDevice:UnsafeRawPointer, leng:Int) -> Int {   
+public func InitializeMetalDevices() -> Int {   
     // Empties arrays from previous runs
     particle_funcs = []
     stress_funcs = []
@@ -131,6 +132,7 @@ public func SymbolInitiation_mex(index: UInt32, data:Float32) -> Int{
     constant_buffer_mex!.contents().advanced(by:(Int(index) * MemoryLayout<Float32>.stride)).storeBytes(of:data, as:Float32.self)
     let r:Range = (Int(index) * MemoryLayout<Float32>.stride)..<((Int(index) + 1)*MemoryLayout<Float32>.stride)
     constant_buffer_mex!.didModifyRange(r)
+
     return 0
 }
 
@@ -156,16 +158,16 @@ public func BufferIndexCreator(c_mex_type:UnsafeMutablePointer<UInt64>, c_uint_t
     
     ll = MemoryLayout<UInt32>.stride * Int(length_index_uint) * 2
     index_uint = device.makeBuffer(length:ll, options:MTLResourceOptions.storageModeManaged)
-    
     return 0
 }
 
 @_cdecl("IndexManipMEX")
 public func IndexManipMEX(data:UInt32, data2:UInt32, index:UInt32) -> Int{
-    var ll = Int(index) * 2 * MemoryLayout<UInt32>.stride
-    index_mex!.contents().advanced(by:ll).storeBytes(of:data, as:UInt32.self)
-    ll = (Int(index) * 2 + 1) * MemoryLayout<UInt32>.stride
-    index_mex!.contents().advanced(by:ll).storeBytes(of:data2, as:UInt32.self)
+        var ll = Int(index) * 2 * MemoryLayout<UInt32>.stride
+        index_mex!.contents().advanced(by:ll).storeBytes(of:data, as:UInt32.self)
+        ll = (Int(index) * 2 + 1) * MemoryLayout<UInt32>.stride
+        index_mex!.contents().advanced(by:ll).storeBytes(of:data2, as:UInt32.self)
+
     return 0
 }
 @_cdecl("IndexManipUInt")
@@ -190,7 +192,7 @@ public func IndexDidModify(lenind_mex:UInt64, lenind_uint:UInt64, lenconstmex:UI
 
 @_cdecl("CompleteCopyMEX")
 public func CompleteCopyMEX(size:Int, ptr:UnsafeMutablePointer<Float32>, ind:UInt64, buff:UInt64) -> Int
-{
+{   
     let ll = size * MemoryLayout<Float32>.stride
     mex_buffer[Int(buff)]!.contents().advanced(by:(Int(ind) * MemoryLayout<Float32>.stride)).copyMemory(from: ptr, byteCount:ll)
     let r : Range = (Int(ind) * MemoryLayout<Float32>.stride)..<((Int(ind) * MemoryLayout<Float32>.stride) + ll )
@@ -214,14 +216,11 @@ public func GetFloatEntries(c_mex_type: UnsafeMutablePointer<UInt64>, c_uint_typ
     // This bit of code ensures that any errors in values due to CPU/GPU desynchronization is caught
     floatCounter = 0
     var ll = MemoryLayout<UInt64>.stride * 12
-    let c_mex_buffer:MTLBuffer? = device.makeBuffer(bytes:c_mex_type, length: ll, options:MTLResourceOptions.storageModeManaged)
-    let c_mex_array = UnsafeBufferPointer(start: c_mex_buffer!.contents().assumingMemoryBound(to: UInt64.self), count: 12)
     for i in (0...11) {
-        var r:Range = 0 ..< (Int(c_mex_array[i]) ) * MemoryLayout<Float32>.stride
+        var r:Range = 0 ..< (Int(c_mex_type[i]) ) * MemoryLayout<Float32>.stride
         mex_buffer[i]!.didModifyRange(r)
-        floatCounter += Int(c_mex_array[i]) 
+        floatCounter += Int(c_mex_type[i]) 
     }
-    c_mex_buffer!.setPurgeableState(MTLPurgeableState.empty)
     var r:Range = 0 ..< (Int(c_uint_type) ) * MemoryLayout<UInt32>.stride
     uint_buffer!.didModifyRange(r)
     return UInt64(floatCounter)
@@ -255,6 +254,7 @@ public func GetThreadExecutionWidth(fun:UnsafeMutablePointer<CChar>, id:Int)-> U
             break
         }
     }
+
     if id == 0{
         return UInt32(stress_funcs[index]!.threadExecutionWidth)
     }
@@ -265,14 +265,14 @@ public func GetThreadExecutionWidth(fun:UnsafeMutablePointer<CChar>, id:Int)-> U
 
 @_cdecl("EncoderInit")
 public func EncoderInit(){
-        stress_commandBuffer = commandQueue.makeCommandBuffer()!
-    
+    stress_commandBuffer = commandQueue.makeCommandBuffer()!    
 }
 
 @_cdecl("EncodeStress")
 public func EncodeStress(fun:UnsafeRawPointer, i:UInt32, j:UInt32, 
                         k:UInt32, x:UInt32, y:UInt32, z:UInt32,
                         Gx:UInt32,Gy:UInt32,Gz:UInt32){
+
     let func_name = NSString(bytes:fun, length: 5, encoding:String.Encoding.utf8.rawValue)
     var ind:Int!
     for name in func_names{
@@ -326,9 +326,8 @@ public func EncodeParticle(fun:UnsafeRawPointer, i:UInt32, j:UInt32, k:UInt32, x
 
 @_cdecl("EncodeCommit")
 public func EncodeCommit(){
-        stress_commandBuffer.commit()
-        stress_commandBuffer.waitUntilCompleted()
-    
+    stress_commandBuffer.commit()
+    stress_commandBuffer.waitUntilCompleted()
 }
 
 @_cdecl("CreateAndCopyFromMXVarOnGPUSnapShot")
@@ -373,6 +372,7 @@ public func EncodeSensors(i:UInt32, j:UInt32, k:UInt32, x:UInt32, y:UInt32, z:UI
     computeCommandEncoder.endEncoding()
     SensorsCommandBuffer.commit()
     SensorsCommandBuffer.waitUntilCompleted()
+
 }
 
 @_cdecl("SyncChange")
@@ -391,8 +391,8 @@ public func SyncChange(){
 @_cdecl("CopyFromGPUMEX")
 public func CopyFromGPUMEX(index:UInt64) -> UnsafeMutablePointer<Float32>{
     return mex_buffer[Int(index)]!.contents().assumingMemoryBound(to: Float32.self)
-}
 
+}
 @_cdecl("CopyFromGPUUInt")
 public func CopyFromGPUUInt() -> UnsafeMutablePointer<UInt32>{
     return uint_buffer!.contents().assumingMemoryBound(to: UInt32.self)
@@ -418,5 +418,5 @@ public func freeGPUextern() {
     uint_buffer!.setPurgeableState(MTLPurgeableState.empty)
     index_mex!.setPurgeableState(MTLPurgeableState.empty)
     index_uint!.setPurgeableState(MTLPurgeableState.empty)
-    SnapShotsBuffer!.setPurgeableState(MTLPurgeableState.empty)
+//    SnapShotsBuffer!.setPurgeableState(MTLPurgeableState.empty)
 }

@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.7'
+version = '0.9.9'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -27,41 +27,41 @@ c_module_name = '_FDTDStaggered3D_with_relaxation'
 
 extra_obj =[]
 
-bRayleighMetalCompiled=False
+bBabelMetalCompiled=False
 
 if os.path.isdir(dir_path+"build"): #can't find a better way to ensure in-tree builds won't fail
     rmtree(dir_path+"build")
-def CompileRayleighMetal(build_temp,build_lib):
-    global bRayleighMetalCompiled
+def CompileBabelMetal(build_temp,build_lib):
+    global bBabelMetalCompiled
     global extra_obj
-    if not bRayleighMetalCompiled:
-        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
+    if not bBabelMetalCompiled:
+        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libFDTDSwift.dylib")
 
-        print('Compiling Metal Rayleigh')
+        print('Compiling Metal')
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
-        print('Compiling Rayleigh Metal interface')
+        print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
         for fn in ['Indexing.h','GPU_KERNELS.h','kernelparamsMetal.h','StressKernel.h',
                     'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
-            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
+            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/BabelMetal/'+fn)
 
-        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
+        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
-        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
+        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
-        command=['swiftc','-emit-library','MetalSwift.swift']
+        command=['swiftc','-emit-library','FDTDSwift.swift']
         subprocess.check_call(command,cwd=build_temp)
-        for fn in ['libRayleighMetal.dylib']:
+        for fn in ['libBabelMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        for fn in ['Rayleigh.metallib']:
-            copyfile(build_temp+'/Sources/RayleighMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        for fn in ['libMetalSwift.dylib']:
+        for fn in ['Babel.metallib']:
+            copyfile(build_temp+'/Sources/BabelMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
+        for fn in ['libFDTDSwift.dylib']:
             copyfile(build_temp+'/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        bRayleighMetalCompiled=True
+        bBabelMetalCompiled=True
 
 def PrepareOpenCLKernel():
     #this function merges the kernel code to be usable for opencl
@@ -119,7 +119,7 @@ if 'Darwin' not in platform.system():
                 raise RuntimeError('Cannot find CMake executable')
 
             if platform.system() in ['Darwin']:
-                CompileRayleighMetal(self.build_temp,self.build_lib)
+                CompileBabelMetal(self.build_temp,self.build_lib)
                 ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
                 ## since the compilation is very simple, we can do this manually
                 
@@ -133,9 +133,6 @@ if 'Darwin' not in platform.system():
                     '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
                     '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
                     '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
-                    '-DSTAGGERED_CUDA_SUPPORT=%s' % ('ON' if 'CUDA' in ext.name else 'OFF') ,
-                    '-DSTAGGERED_OPENCL_SUPPORT=%s' % ('ON' if 'OPENCL' in ext.name else 'OFF') ,
-                    '-DSTAGGERED_METAL_SUPPORT=%s' % ('ON' if 'METAL' in ext.name else 'OFF') ,
                     '-DSTAGGERED_PYTHON_SUPPORT=ON',
                     '-DSTAGGERED_MACOS=%s' % ('ON' if platform.system()=='Darwin' else 'OFF') ,
                     '-DSTAGGERED_PYTHON_C_MODULE_NAME=%s%s' % (ext.name,path.splitext(sconfig.get_config_var('EXT_SUFFIX'))[0]),
@@ -184,9 +181,9 @@ if 'Darwin' not in platform.system():
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
-    print('Adding CUDA')
-    ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
-            CMakeExtension(c_module_name+'_CUDA_double')]
+    # print('Adding CUDA')
+    # ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
+    #         CMakeExtension(c_module_name+'_CUDA_double')]
     install_requires.append('pycuda>=2020.1')
 
     cmdclass= {'build_ext': CMakeBuild}
@@ -255,33 +252,9 @@ else:
             UnixCCompiler.link = patched_link
             super().initialize_options()
 
-        def build_extension(self, ext):
-            if ext.name =='pi_ocl':
-                try:
-                    out = subprocess.check_output(['cmake', '--version'])
-                except OSError:
-                    raise RuntimeError('Cannot find CMake executable')
-
-                cfg = 'Release'
-                extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-                cmake_args =['-DCMAKE_BUILD_TYPE=%s' % cfg,
-                                '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}'.format(cfg.upper(), extdir+os.sep+'BabelViscoFDTD')]
-                print('***\n\n\n\n\n\n\n\n\****')
-            # Config and build the extension
-
-                subprocess.check_call(['cmake', dir_path+os.sep+'pi_ocl'] + cmake_args,
-                                        cwd=self.build_temp)
-                subprocess.check_call(['cmake', '--build', '.', '--config', cfg],
-                                    cwd=self.build_temp)
-            else:
-                if 'METAL' in  ext.name:
-                    ext.extra_objects=extra_obj
-                    print('ext.extra_objects', ext.extra_objects)
-                super().build_extension(ext)
-
         def build_extensions(self):
             print('building extension')
-            CompileRayleighMetal(self.build_temp,self.build_lib)
+            CompileBabelMetal(self.build_temp,self.build_lib)
             super().build_extensions()
             
     class PostInstallCommand(install):
@@ -294,7 +267,7 @@ else:
                         if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
                             pathInstall=site.getsitepackages()[0]
                             metal_python = os.path.join(root,file)
-                            command=['install_name_tool','-change','libMetalSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libMetalSwift.dylib'), metal_python]
+                            command=['install_name_tool','-change','libFDTDSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libFDTDSwift.dylib'), metal_python]
                             subprocess.check_call(command)
                             break
 
@@ -334,42 +307,9 @@ else:
                     define_macros=define_macros_omp,
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
-                    include_dirs=[npinc]),
-                Extension(c_module_name+'_METAL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("METAL",None)],
-                    include_dirs=[npinc],
-                    extra_compile_args=['-mmacosx-version-min=11.0'],
-                    extra_link_args=['-Wl',
-                                    '-framework',
-                                    'Metal',
-                                    '-Wl',
-                                    '-framework',
-                                    'MetalKit',
-                                    '-Wl',
-                                    '-framework',
-                                    'Cocoa',
-                                    '-Wl',
-                                    '-framework',
-                                    'CoreFoundation',
-                                    '-fobjc-link-runtime'])]
+                    include_dirs=[npinc])]
                     # extra_objects=extra_obj)]
     
-
-    if 'arm64' not in platform.platform():
-        ext_modules.append(Extension('pi_ocl',['pi_ocl/pi_ocl.c']))
-        ext_modules.append(Extension(c_module_name+'_OPENCL_single', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("SINGLE_PREC",None),
-                                ("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]))
-        ext_modules.append(Extension(c_module_name+'_OPENCL_double', 
-                    ["src/FDTDStaggered3D_with_relaxation_python.c"],
-                    define_macros=[("OPENCL",None)],
-                    extra_link_args=['-Wl','-framework','OpenCL'],
-                    include_dirs=[npinc]))
 
     if bIncludePagememory:
         ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory', 
@@ -401,7 +341,3 @@ setup(name="BabelViscoFDTD",
             "Operating System :: Microsoft :: Windows",
             "Operating System :: POSIX :: Linux",
         ])
-
-# command = ["install_name_tool", "-change", "libMetalSwift.dylib", "@loader_path/BabelViscoFDTD/tools/libMetalSwift.dylib", 
-# #"/Users/andrewxie/miniconda3/envs/Babel/lib/python3.9/site-packages/_FDTDStaggered3D_with_relaxation_METAL_single.cpython-39-darwin.so"]
-# subprocess.check_call(command)
