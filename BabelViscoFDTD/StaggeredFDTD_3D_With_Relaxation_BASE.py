@@ -150,29 +150,32 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
                         'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
         for k in ['V_x_x','V_y_x','V_z_x']:
-            self._ownGpuCalloc(k,td,outparams['SizePMLxp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,td,outparams['SizePMLxp1']*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['V_x_y','V_y_y','V_z_y']:
-            self._ownGpuCalloc(k,td,outparams['SizePMLyp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,td,outparams['SizePMLyp1']*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['V_x_z','V_y_z','V_z_z']:
-            self._ownGpuCalloc(k,td,outparams['SizePMLzp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,td,outparams['SizePMLzp1']*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['Sigma_x_xx','Sigma_y_xx','Sigma_z_xx','Sigma_x_yy','Sigma_y_yy','Sigma_z_yy','Sigma_x_zz','Sigma_y_zz','Sigma_z_zz']:
-            self._ownGpuCalloc(k,td,outparams['SizePML'],ArraysGPUOp)
+            self._ownGpuCalloc(k,td,outparams['SizePML']*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['Sigma_x_xy','Sigma_y_xy','Sigma_x_xz','Sigma_z_xz','Sigma_y_yz','Sigma_z_yz']:
-            self._ownGpuCalloc(k,td,outparams['SizePMLxp1yp1zp1'],ArraysGPUOp)
+            self._ownGpuCalloc(k,td,outparams['SizePMLxp1yp1zp1']*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['Rxx','Ryy','Rzz']:
-            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xx'].size,ArraysGPUOp)
+            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xx'].size*outparams['ZoneCount'],ArraysGPUOp)
         for k in ['Rxy','Rxz','Ryz']:
-            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xy'].size,ArraysGPUOp)
+            self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xy'].size*outparams['ZoneCount'],ArraysGPUOp)
         if extra_params['BACKEND'] in ['OPENCL','CUDA']:
-            for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots','SensorOutput','SqrAcc']:
-                self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+            for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots']:
+                self._ownGpuCalloc(k,td,ArrayResCPU[k].size*outparams['ZoneCount'],ArraysGPUOp)
+            for k in ['SensorOutput','SqrAcc']:
+                self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)
+            
         else: # ORDER DOES MATTER FOR METAL, AS IT INVOLVES MANIPULATING AND READING _c_uint_type OR _c_mex_type******
             for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                         'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
             
             for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots']:
-                self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
+                self._ownGpuCalloc(k,td,ArrayResCPU[k].size*outparams['ZoneCount'],ArraysGPUOp)
 
             for k in ['SensorOutput','SqrAcc']:
                 self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)

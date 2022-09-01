@@ -243,8 +243,14 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
 
         bFirstCopy=True
         events=[]
-        for k in ['SqrAcc','Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
-            'Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots','SensorOutput']:
+        for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
+            'Sigma_xy','Sigma_xz','Sigma_yz','Pressure']:
+            sz=ArrayResCPU[k].shape
+            tempArray=np.zeros((sz[0],sz[1],sz[2],arguments['SPP_ZONES']),dtype=ArrayResCPU[k].dtype,order='F')
+            cuda.memcpy_dtoh( tempArray, ArraysGPUOp[k])
+            ArrayResCPU[k][:,:,:]=tempArray.sum(axis=3)/arguments['SPP_ZONES']
+
+        for k in ['SqrAcc','Snapshots','SensorOutput']:
             cuda.memcpy_dtoh( ArrayResCPU[k], ArraysGPUOp[k])
             
         self.context.synchronize()

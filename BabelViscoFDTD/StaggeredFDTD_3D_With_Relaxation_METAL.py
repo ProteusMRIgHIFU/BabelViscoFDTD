@@ -149,11 +149,11 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             pass
         elif td == "float":
             self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims * self.ZoneCount) # Not sure if dims is equivalent to _size * INHOST(ZoneCount)
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims ) 
             self._c_mex_type[self._IndexDataMetal[Name]] += dims
         elif td == "unsigned int":
             self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims * self.ZoneCount)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims)
             self._c_uint_type += dims
 
     
@@ -394,43 +394,40 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         for i in ['SqrAcc', 'SensorOutput']:
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
-            ArrayResOP[i] = (ctypes.c_float * SizeCopy)()
+            tempArray = (ctypes.c_float * SizeCopy)()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            ctypes.memmove(ArrayResOP[i], Buffer, SizeCopy * 4) # Metal only supports single precision
-            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape,order='F')
-            assert ArrayResCPU[i].shape == Shape
+            ctypes.memmove(tempArray, Buffer, SizeCopy * 4) # Metal only supports single precision
+            tempArray = np.ctypeslib.as_array(tempArray)
+            tempArray = tempArray[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            ArrayResCPU[i][:,:,:] = np.reshape(tempArray, Shape,order='F')
+     
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz']:
-            SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size
+            SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size* self.ZoneCount
         
         for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy", "Oz"]:
             SizeBuffer[9] += arguments[i].size
         
-        SizeBuffer[9] += ArrayResCPU['Pressure'].size
+        SizeBuffer[9] += ArrayResCPU['Pressure'].size* self.ZoneCount
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
-            Shape = ArrayResCPU[i].shape
-            ArrayResOP[i] = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
+            sz=ArrayResCPU[k].shape
+            Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
+            tempArray = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
-            ctypes.memmove(ArrayResOP[i], Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
-            ArrayResOP[i] = np.ctypeslib.as_array(ArrayResOP[i])
-            ArrayResCPU[i] = ArrayResOP[i][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i] = np.reshape(ArrayResCPU[i], Shape,order='F')
-            assert ArrayResCPU[i].shape == Shape
+            ctypes.memmove(tempArray, Buffer, SizeBuffer[self._IndexDataMetal[i]] * 4)
+            tempArray = np.ctypeslib.as_array(tempArray)
+            tempArray=tempArray[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            tempArray=np.reshape(tempArray,Shape,order='F')
+            ArrayResCPU[i][:,:,:] = np.sum(tempArray,axis=3)/self.ZoneCount
+          
 
         self.swift_fun.freeGPUextern.argtypes = []
         self.swift_fun.freeGPUextern.restype = None
 
         self.swift_fun.freeGPUextern()
-
-
-
-        
-
 
 def StaggeredFDTD_3D_METAL(arguments):
     os.environ['__BabelMetal'] =(os.path.dirname(os.path.abspath(__file__))+os.sep+'tools')

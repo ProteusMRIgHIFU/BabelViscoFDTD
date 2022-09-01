@@ -115,11 +115,18 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
 
         bFirstCopy=True
         events=[]
-        for k in ['SqrAcc','Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
-            'Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots','SensorOutput']:
-            events.append(cl.enqueue_copy(self.queue, ArrayResCPU[k], ArraysGPUOp[k]))
+        for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
+            'Sigma_xy','Sigma_xz','Sigma_yz','Pressure']:
+            sz=ArrayResCPU[k].shape
+            tempArray=np.zeros((sz[0],sz[1],sz[2],arguments['SPP_ZONES']),dtype=ArrayResCPU[k].dtype,order='F')
+            events.append(cl.enqueue_copy(self.queue, tempArray, ArraysGPUOp[k]))
+            cl.wait_for_events(events)
+            ArrayResCPU[k][:,:,:]=tempArray.sum(axis=3)/arguments['SPP_ZONES']
             
+        for k in ['SqrAcc','Snapshots','SensorOutput']:
+            events.append(cl.enqueue_copy(self.queue, ArrayResCPU[k], ArraysGPUOp[k]))
         cl.wait_for_events(events)
+          
         self.queue.finish()
         
         
