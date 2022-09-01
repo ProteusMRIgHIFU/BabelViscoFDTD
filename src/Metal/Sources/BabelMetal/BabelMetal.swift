@@ -4,7 +4,7 @@ import Accelerate
 import Foundation
 
 
-let metallib : String = (ProcessInfo.processInfo.environment["__RayleighMetal"] ?? "the lat in the dictionary was nil!") + "/Rayleigh.metallib"
+let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Babel.metallib"
 
 
 @available(macOS 10.13, *)
@@ -29,7 +29,7 @@ var deviceCapture : MTLDevice!
 @_cdecl("StartCapture")
 public func StartCapture() -> Int {
 
-    let deviceName : String = ProcessInfo.processInfo.environment["__RayleighMetalDevice"]!
+    let deviceName : String = ProcessInfo.processInfo.environment["__BabelMetalDevice"]!
 
     // print("deviceName =" + deviceName)
 
@@ -99,7 +99,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
     do {
         // print("Beginning")
         //let deviceName = String (cString:deviceNamepr)
-        let deviceName : String = ProcessInfo.processInfo.environment["__RayleighMetalDevice"]!
+        let deviceName : String = ProcessInfo.processInfo.environment["__BabelMetalDevice"]!
 
         // print("deviceName =" + deviceName)
 

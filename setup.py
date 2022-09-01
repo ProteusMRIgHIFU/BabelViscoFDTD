@@ -27,41 +27,41 @@ c_module_name = '_FDTDStaggered3D_with_relaxation'
 
 extra_obj =[]
 
-bRayleighMetalCompiled=False
+bBabelMetalCompiled=False
 
 if os.path.isdir(dir_path+"build"): #can't find a better way to ensure in-tree builds won't fail
     rmtree(dir_path+"build")
-def CompileRayleighMetal(build_temp,build_lib):
-    global bRayleighMetalCompiled
+def CompileBabelMetal(build_temp,build_lib):
+    global bBabelMetalCompiled
     global extra_obj
-    if not bRayleighMetalCompiled:
+    if not bBabelMetalCompiled:
         extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
 
-        print('Compiling Metal Rayleigh')
+        print('Compiling Metal')
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
-        print('Compiling Rayleigh Metal interface')
+        print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
         for fn in ['Indexing.h','GPU_KERNELS.h','kernelparamsMetal.h','StressKernel.h',
                     'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
-            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/RayleighMetal/'+fn)
+            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/BabelMetal/'+fn)
 
-        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/RayleighMetal/Rayleigh.metal','-o', 'Sources/RayleighMetal/Rayleig.air']
+        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
-        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/RayleighMetal/Rayleig.air','-o', 'Sources/RayleighMetal/Rayleigh.metallib']
+        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
         command=['swiftc','-emit-library','MetalSwift.swift']
         subprocess.check_call(command,cwd=build_temp)
-        for fn in ['libRayleighMetal.dylib']:
+        for fn in ['libBabelMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        for fn in ['Rayleigh.metallib']:
-            copyfile(build_temp+'/Sources/RayleighMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
+        for fn in ['Babel.metallib']:
+            copyfile(build_temp+'/Sources/BabelMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         for fn in ['libMetalSwift.dylib']:
             copyfile(build_temp+'/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        bRayleighMetalCompiled=True
+        bBabelMetalCompiled=True
 
 def PrepareOpenCLKernel():
     #this function merges the kernel code to be usable for opencl
@@ -119,7 +119,7 @@ if 'Darwin' not in platform.system():
                 raise RuntimeError('Cannot find CMake executable')
 
             if platform.system() in ['Darwin']:
-                CompileRayleighMetal(self.build_temp,self.build_lib)
+                CompileBabelMetal(self.build_temp,self.build_lib)
                 ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
                 ## since the compilation is very simple, we can do this manually
                 
@@ -281,7 +281,7 @@ else:
 
         def build_extensions(self):
             print('building extension')
-            CompileRayleighMetal(self.build_temp,self.build_lib)
+            CompileBabelMetal(self.build_temp,self.build_lib)
             super().build_extensions()
             
     class PostInstallCommand(install):

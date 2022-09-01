@@ -3,7 +3,7 @@ import MetalPerformanceShaders
 import Accelerate
 import Foundation
 
-let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Rayleigh.metallib"
+let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Babel.metallib"
 
 // Defining global variables
 var device:MTLDevice!

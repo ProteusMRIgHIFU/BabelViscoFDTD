@@ -443,7 +443,7 @@ def StaggeredFDTD_3D_METAL(arguments):
     # IncludeDir=str(Path(__file__).parent.absolute())+os.sep
     # filenames = [IncludeDir+'_indexing.h',IncludeDir+'_gpu_kernel.c']
 
-    # kernbinfile=IncludeDir+'tools'+os.sep+'Rayleigh.metallib'
+    # kernbinfile=IncludeDir+'tools'+os.sep+'Babel.metallib'
     
     # if (type(arguments)!=dict):
     #     raise TypeError( "The input parameter must be a dictionary")

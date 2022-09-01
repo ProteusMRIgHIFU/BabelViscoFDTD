@@ -178,9 +178,9 @@ if sys.platform == "darwin":
     ctx = None
 
     # Loads METAL interface
-    os.environ['__RayleighMetal'] =os.path.dirname(os.path.abspath(__file__))
-    print('loading',os.path.dirname(os.path.abspath(__file__))+"/libRayleighMetal.dylib")
-    swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libRayleighMetal.dylib")
+    os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
+    print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
+    swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
 
     swift_fun.ForwardSimpleMetal.argtypes = [
         ctypes.POINTER(ctypes.c_int),
@@ -202,7 +202,7 @@ if sys.platform == "darwin":
     print("loaded Metal",str(swift_fun))
 
     def StartMetaCapture(deviceName='M1'):
-        os.environ['__RayleighMetalDevice'] =deviceName
+        os.environ['__BabelMetalDevice'] =deviceName
         swift_fun.StartCapture()
 
     def Stopcapture():
@@ -577,7 +577,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
     return u2
 
 def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
-    os.environ['__RayleighMetalDevice'] =deviceName
+    os.environ['__BabelMetalDevice'] =deviceName
     bUseMappedMemory=0
     if np.__version__ >="1.22.0":
         if 'arm64' in platform.platform() and\
