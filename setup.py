@@ -184,9 +184,9 @@ if 'Darwin' not in platform.system():
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
-    print('Adding CUDA')
-    ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
-            CMakeExtension(c_module_name+'_CUDA_double')]
+    # print('Adding CUDA')
+    # ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
+    #         CMakeExtension(c_module_name+'_CUDA_double')]
     install_requires.append('pycuda>=2020.1')
 
     cmdclass= {'build_ext': CMakeBuild}

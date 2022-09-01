@@ -44,7 +44,8 @@ typedef _PT tIndex ;
 #endif
 
 #if defined(CUDA)
-#define __PRE_MAT p->
+//#define __PRE_MAT p->
+#define __PRE_MAT 
 #elif defined(METAL)
 #define __PRE_MAT k_
 #else

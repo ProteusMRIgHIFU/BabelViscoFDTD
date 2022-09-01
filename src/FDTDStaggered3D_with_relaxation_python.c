@@ -55,30 +55,9 @@
 #include <malloc.h>
 #endif
 
-#ifdef OPENCL
-#include <sys/types.h>
-#ifdef __APPLE__
-#include <OpenCL/opencl.h>
-#include <unistd.h>
-#else
-#include <CL/cl.h>
-#ifndef WIN32
-#include <unistd.h>
-#endif
-#endif
-#endif
 
+#define INHOST(_VarName) _VarName
 
-// #ifdef CUDA  // disabling this in the current release, it may be renable later if we find a a way to improve performance
-// #define USE_MINI_KERNELS_CUDA
-// #endif
-
-//////////////////////////////////////////GPU-SPECIFIC
-#if defined(CUDA) || defined(METAL)
-	#define INHOST(_VarName) h ## _VarName
-#else
-	#define INHOST(_VarName) _VarName
-#endif
 
 unsigned int	INHOST(SILENT);
 
@@ -493,18 +472,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 
 INHOST(SelK)=INHOST(N3)/2;
 
-#if defined(CUDA) || defined(OPENCL) || defined(METAL)
-  #include "FDTD3D_GPU_VERSION.h"
-#else
-// #ifndef MATLAB_MEX
-//  	Py_BEGIN_ALLOW_THREADS;
-// #endif
-	//////////BEGIN CPU SPECIFC
-  #include "FDTD3D_CPU_VERSION.h"
-//    #ifndef MATLAB_MEX
-//  	Py_END_ALLOW_THREADS;
-//  #endif
-#endif
+#include "FDTD3D_CPU_VERSION.h"
 
    ////END CPU
    time(&end_t);

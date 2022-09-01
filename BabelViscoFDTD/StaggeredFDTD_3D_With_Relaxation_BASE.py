@@ -75,7 +75,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         self._PostInitScript(arguments, extra_params)
         
-        if extra_params["BACKEND"] == "OPENCL":
+        if extra_params["BACKEND"] in ["OPENCL","CUDA"]:
             SCode = extra_params["SCode"]
             with open(index_src) as f:
                 SCode+=f.readlines()
@@ -102,23 +102,13 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         for k in LParamArray:
             self._InitSymbolArray(outparams,k,td,SCode)
 
-        if extra_params["BACKEND"] == "OPENCL":
+        if extra_params["BACKEND"] in ["OPENCL","CUDA"]:
             with open(gpu_kernelSrc) as f:
                 SCode+=f.readlines()
             AllC=''
             for l in SCode:
                 AllC+=l
-            if platform.system() != 'Windows': 
-                arguments['PI_OCL_PATH']=IncludeDir+'pi_ocl' # Unused for Metal
         
-        # Check here for OpenCL on x86-64 Mac Devices
-        if extra_params['BACKEND'] == 'OPENCL' and platform.system() == 'Darwin' and 'arm64' not in platform.platform():
-            print("Executing with C backend...")
-            self._OpenCL_86_64(arguments, AllC)
-            t0=time.time()-t0
-            print ('Time to run low level FDTDStaggered_3D =', t0)
-            AllC = ''
-            return
 
         N1=arguments['N1']
         N2=arguments['N2']
@@ -155,7 +145,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         self._InitiateCommands(AllC)
 
         ArraysGPUOp={}
-        if extra_params["BACKEND"] == "OPENCL":
+        if extra_params["BACKEND"] in ["OPENCL","CUDA"]:
             for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                         'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
@@ -173,7 +163,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
             self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xx'].size,ArraysGPUOp)
         for k in ['Rxy','Rxz','Ryz']:
             self._ownGpuCalloc(k,td,ArrayResCPU['Sigma_xy'].size,ArraysGPUOp)
-        if extra_params['BACKEND'] == 'OPENCL':
+        if extra_params['BACKEND'] in ['OPENCL','CUDA']:
             for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Pressure','Sigma_xy','Sigma_xz','Sigma_yz','Snapshots','SensorOutput','SqrAcc']:
                 self._ownGpuCalloc(k,td,ArrayResCPU[k].size,ArraysGPUOp)
         else: # ORDER DOES MATTER FOR METAL, AS IT INVOLVES MANIPULATING AND READING _c_uint_type OR _c_mex_type******
@@ -209,7 +199,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
     def _InitSymbolArray(self, IP,_NameVar,td,SCode=[]):
         raise NotImplementedError("This block must be implemented in a child class!")
     
-    def _ownGpuCalloc(self, Name,ctx,td,dims,ArraysGPUOp,flags):
+    def _ownGpuCalloc(self, Name,td,dims,ArraysGPUOp,flags):
         raise NotImplementedError("This block must be implemented in a child class")
     
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ctx,ArraysGPUOp,ArrayResCPU,flags):

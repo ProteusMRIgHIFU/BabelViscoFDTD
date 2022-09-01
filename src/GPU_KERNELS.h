@@ -35,7 +35,9 @@
 #define _ST_PML_6
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
-__global__ void PML_1_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_1_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -60,7 +62,9 @@ kernel void PML_1_StressKernel(
 
 #define _PML_KERNEL_LEFT_RIGHT
 #ifdef CUDA
-__global__ void PML_2_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_2_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -85,7 +89,9 @@ kernel void PML_2_StressKernel(
 
 #define _PML_KERNEL_TOP_BOTTOM
 #ifdef CUDA
-__global__ void PML_3_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_3_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -110,7 +116,9 @@ kernel void PML_3_StressKernel(
 
 #define _PML_KERNEL_FRONT_BACK
 #ifdef CUDA
-__global__ void PML_4_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_4_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -135,7 +143,9 @@ kernel void PML_4_StressKernel(
 
 #define _PML_KERNEL_LEFT_RIGHT_RODS
 #ifdef CUDA
-__global__ void PML_5_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_5_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -160,7 +170,9 @@ kernel void PML_5_StressKernel(
 
 #define _PML_KERNEL_BOTTOM_TOP_RODS
 #ifdef CUDA
-__global__ void PML_6_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_6_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -205,7 +217,9 @@ kernel void PML_6_StressKernel(
 #define _ST_PML_6
 #endif
 #ifdef CUDA
-__global__ void MAIN_1_StressKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void MAIN_1_StressKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -248,7 +262,9 @@ kernel void MAIN_1_StressKernel(
 #define _PR_PML_3
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
-__global__ void PML_1_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_1_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -273,7 +289,9 @@ kernel void PML_1_ParticleKernel(
 
 #define _PML_KERNEL_LEFT_RIGHT
 #ifdef CUDA
-__global__ void PML_2_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_2_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -298,7 +316,9 @@ kernel void PML_2_ParticleKernel(
 
 #define _PML_KERNEL_TOP_BOTTOM
 #ifdef CUDA
-__global__ void PML_3_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_3_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -323,7 +343,9 @@ kernel void PML_3_ParticleKernel(
 
 #define _PML_KERNEL_FRONT_BACK
 #ifdef CUDA
-__global__ void PML_4_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_4_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -348,7 +370,9 @@ kernel void PML_4_ParticleKernel(
 
 #define _PML_KERNEL_LEFT_RIGHT_RODS
 #ifdef CUDA
-__global__ void PML_5_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_5_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -373,7 +397,9 @@ kernel void PML_5_ParticleKernel(
 
 #define _PML_KERNEL_BOTTOM_TOP_RODS
 #ifdef CUDA
-__global__ void PML_6_ParticleKernel(InputDataKernel *p,unsigned int nStep, unsigned int TypeSource)
+__global__ void PML_6_ParticleKernel(
+	#include "kernelparamsOpenCL.h"
+	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -411,8 +437,9 @@ kernel void PML_6_ParticleKernel(
 #define _PR_PML_3
 #endif
 #if defined(CUDA)
-__global__ void MAIN_1_ParticleKernel(InputDataKernel * p,
-			unsigned int nStep,unsigned int TypeSource)
+__global__ void MAIN_1_ParticleKernel(
+			#include "kernelparamsOpenCL.h"
+			,unsigned int nStep,unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
@@ -501,9 +528,11 @@ kernel void SnapShot(
 }
 
 #if defined(CUDA)
-__global__ void SensorsKernel(InputDataKernel * p,
-													  unsigned int * IndexSensorMap_pr,
-														unsigned int nStep)
+__global__ void SensorsKernel(
+	#include "kernelparamsOpenCL.h"
+	,mexType * SensorOutput_pr,
+	unsigned int * IndexSensorMap_pr,
+	unsigned int nStep)
 {
 	unsigned int sj =blockIdx.x * blockDim.x + threadIdx.x;
 #endif

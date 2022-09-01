@@ -14,27 +14,6 @@ from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxat
 from distutils.sysconfig import get_python_inc
 import platform
 
-if platform.system() =='Darwin' and 'arm64' not in platform.platform():
-    import _FDTDStaggered3D_with_relaxation_OPENCL_single as FDTD_single;
-    import _FDTDStaggered3D_with_relaxation_OPENCL_double as FDTD_double;
-
-MASKID={}
-MASKID['ALLV']=0x0000000001
-MASKID['Vx']  =0x0000000002
-MASKID['Vy']  =0x0000000004
-MASKID['Vz']  =0x0000000008
-MASKID['Sigmaxx'] =0x0000000010
-MASKID['Sigmayy'] =0x0000000020
-MASKID['Sigmazz'] =0x0000000040
-MASKID['Sigmaxy'] =0x0000000080
-MASKID['Sigmaxz'] =0x0000000100
-MASKID['Sigmayz'] =0x0000000200
-MASKID['Pressure']=0x0000000400
-MASKID['SEL_RMS']=0x0000000001
-MASKID['SEL_PEAK']=0x0000000002
-
-NumberSelRMSPeakMaps=0
-NumberSelSensorMaps=0
 TotalAllocs=0
 AllC=''
 
@@ -44,6 +23,8 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         super().__init__(arguments, extra_params)
 
     def _PostInitScript(self, arguments, extra_params):
+        global TotalAllocs
+        TotalAllocs=0
         SCode = []
         platforms = cl.get_platforms()
         devices=platforms[0].get_devices()  
@@ -108,23 +89,6 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
         print('Allocating for',Name,ArrayResCPU[Name].size,'elements')
         ArraysGPUOp[Name]=cl.Buffer(self.ctx, flags,hostbuf=ArrayResCPU[Name])
         TotalAllocs+=1
-
-    def _OpenCL_86_64(self, arguments, AllC):
-        handle, kernelfile = tempfile.mkstemp(suffix='.cu',dir=os.getcwd(), text=True)
-        with os.fdopen(handle,'w') as ft:
-            ft.write(AllC)
-        handle, kernbinfile = tempfile.mkstemp(suffix='.BIN',dir=os.getcwd())
-        os.close(handle)
-        arguments['kernelfile']=kernelfile
-        arguments['kernbinfile']=kernbinfile
-        if arguments['DT'].dtype==np.dtype('float32'):
-            Results= FDTD_single.FDTDStaggered_3D(arguments)
-        else:
-            Results= FDTD_double.FDTDStaggered_3D(arguments)
-        os.remove(kernelfile) 
-        if os.path.isfile(kernbinfile):
-            os.remove(kernbinfile) 
-        self.Results = Results
 
     def _Execution(self, arguments, ArrayResCPU, ArraysGPUOp):
         TimeSteps=arguments['TimeSteps']
