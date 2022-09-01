@@ -413,7 +413,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
-            sz=ArrayResCPU[k].shape
+            sz=ArrayResCPU[i].shape
             Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
             tempArray = (ctypes.c_float * SizeBuffer[self._IndexDataMetal[i]])()
             Buffer = self.swift_fun.CopyFromGPUMEX(c_uint64(self._IndexDataMetal[i]))
