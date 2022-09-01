@@ -35,7 +35,7 @@ def CompileBabelMetal(build_temp,build_lib):
     global bBabelMetalCompiled
     global extra_obj
     if not bBabelMetalCompiled:
-        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libMetalSwift.dylib")
+        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libFDTDSwift.dylib")
 
         print('Compiling Metal')
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
@@ -53,13 +53,13 @@ def CompileBabelMetal(build_temp,build_lib):
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
-        command=['swiftc','-emit-library','MetalSwift.swift']
+        command=['swiftc','-emit-library','FDTDSwift.swift']
         subprocess.check_call(command,cwd=build_temp)
         for fn in ['libBabelMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         for fn in ['Babel.metallib']:
             copyfile(build_temp+'/Sources/BabelMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        for fn in ['libMetalSwift.dylib']:
+        for fn in ['libFDTDSwift.dylib']:
             copyfile(build_temp+'/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         bBabelMetalCompiled=True
 
@@ -294,7 +294,7 @@ else:
                         if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
                             pathInstall=site.getsitepackages()[0]
                             metal_python = os.path.join(root,file)
-                            command=['install_name_tool','-change','libMetalSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libMetalSwift.dylib'), metal_python]
+                            command=['install_name_tool','-change','libFDTDSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libFDTDSwift.dylib'), metal_python]
                             subprocess.check_call(command)
                             break
 

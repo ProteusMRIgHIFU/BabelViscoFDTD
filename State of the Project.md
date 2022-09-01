@@ -23,7 +23,7 @@ should throw an error.
 ## Metal
 Although the Python version of the Metal backend is able to run, it has been giving us a bad output. I've spent a good amount of time on this, however, I still haven't been able to find the source of this bad output. It is likely caused by a faulty data transfer, or somewhere in the code I'm missing a 1:1 translation from C to Python.
 
-One of the things I found was that the library `ctypes` (used to transmit data from Python to `MetalSwift.swift`) may send some weird data when trying to do certain things, such as translating an `np.uint64` to a `ctypes.c_uint32`. This may be a source of the error, or it may not be; I've fixed any data transfers that look weird due to the ctypes translation, however there may be one I missed.
+One of the things I found was that the library `ctypes` (used to transmit data from Python to `FDTDSwift.swift`) may send some weird data when trying to do certain things, such as translating an `np.uint64` to a `ctypes.c_uint32`. This may be a source of the error, or it may not be; I've fixed any data transfers that look weird due to the ctypes translation, however there may be one I missed.
 
 Another source may be that I translated one of the constants incorrectly from `Indexing.h` or other files in the C implementation. Although I have checked multiple times, this may be the source of the error as well. All these constants are mostly in the `__init__` of the child class.
 

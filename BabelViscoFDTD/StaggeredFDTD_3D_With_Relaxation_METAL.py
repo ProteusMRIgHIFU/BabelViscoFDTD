@@ -23,8 +23,8 @@ from math import ceil
 class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self, arguments):
         #Begin with initializing Swift Functions, etc.
-        print('loading',os.path.dirname(os.path.abspath(__file__))+"/tools/libMetalSwift.dylib") # No idea if this is correct, I'll test when I get in the lab
-        self.swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/tools/libMetalSwift.dylib")
+        print('loading',os.path.dirname(os.path.abspath(__file__))+"/tools/libFDTDSwift.dylib") # No idea if this is correct, I'll test when I get in the lab
+        self.swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/tools/libFDTDSwift.dylib")
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
