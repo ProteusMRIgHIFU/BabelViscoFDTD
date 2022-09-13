@@ -14,7 +14,7 @@ import ctypes
 from ctypes import c_byte, c_int, c_uint32, c_float, c_wchar_p, c_uint64
 
 from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
-
+import metalcompute as mc
 #we will generate the _kernel-opencl.c file when importing
 from distutils.sysconfig import get_python_inc
 from math import ceil
@@ -23,7 +23,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
     def __init__(self, arguments):
         #Begin with initializing Swift Functions, etc.
         print('loading',os.path.dirname(os.path.abspath(__file__))+"/tools/libFDTDSwift.dylib") # No idea if this is correct, I'll test when I get in the lab
-        self.swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/tools/libFDTDSwift.dylib")
+        # self.swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/tools/libFDTDSwift.dylib")
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
@@ -76,70 +76,93 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         self.LENGTH_CONST_UINT = 56
         self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
-        # Defines functions sent to Swift
-        self.swift_fun.InitializeMetalDevices.argtypes = []
-        self.swift_fun.ConstantBuffers.argtypes = [
-            ctypes.c_int,
-            ctypes.c_int]
-        self.swift_fun.SymbolInitiation_uint.argtypes = [
-            c_uint32,
-            c_uint32]
-        self.swift_fun.SymbolInitiation_mex.argtypes = [
-            c_uint32,
-            c_float]
-        self.swift_fun.CompleteCopyMEX.argtypes = [
-            c_int,
-            ctypes.POINTER(ctypes.c_float),
-            c_uint64,
-            c_uint64]
-        self.swift_fun.CompleteCopyUInt.argtypes = [
-            c_int,
-            ctypes.POINTER(c_uint32),
-            c_uint64]
-        self.swift_fun.IndexManipMEX.argtypes = [
-            c_uint32,
-            c_uint32,
-            c_uint32]
-        self.swift_fun.IndexManipUInt.argtypes = [
-            c_uint32,
-            c_uint32,
-            c_uint32]
-        self.swift_fun.IndexDidModify.argtypes = [
-            c_uint64,
-            c_uint64,
-            c_uint64,
-            c_uint64]
-        self.swift_fun.GetMaxTotalThreadsPerThreadgroup.argtypes = [ctypes.c_char_p, ctypes.c_int]
-        self.swift_fun.GetMaxTotalThreadsPerThreadgroup.restype = ctypes.c_uint32
-        self.swift_fun.GetThreadExecutionWidth.argtypes = [ctypes.c_char_p, ctypes.c_int]
-        self.swift_fun.GetThreadExecutionWidth.restype = ctypes.c_uint32 
+        # # Defines functions sent to Swift
+        # self.swift_fun.InitializeMetalDevices.argtypes = []
+        # self.swift_fun.ConstantBuffers.argtypes = [
+        #     ctypes.c_int,
+        #     ctypes.c_int]
+        # self.swift_fun.SymbolInitiation_uint.argtypes = [
+        #     c_uint32,
+        #     c_uint32]
+        # self.swift_fun.SymbolInitiation_mex.argtypes = [
+        #     c_uint32,
+        #     c_float]
+        # self.swift_fun.CompleteCopyMEX.argtypes = [
+        #     c_int,
+        #     ctypes.POINTER(ctypes.c_float),
+        #     c_uint64,
+        #     c_uint64]
+        # self.swift_fun.CompleteCopyUInt.argtypes = [
+        #     c_int,
+        #     ctypes.POINTER(c_uint32),
+        #     c_uint64]
+        # self.swift_fun.IndexManipMEX.argtypes = [
+        #     c_uint32,
+        #     c_uint32,
+        #     c_uint32]
+        # self.swift_fun.IndexManipUInt.argtypes = [
+        #     c_uint32,
+        #     c_uint32,
+        #     c_uint32]
+        # self.swift_fun.IndexDidModify.argtypes = [
+        #     c_uint64,
+        #     c_uint64,
+        #     c_uint64,
+        #     c_uint64]
+        # self.swift_fun.GetMaxTotalThreadsPerThreadgroup.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        # self.swift_fun.GetMaxTotalThreadsPerThreadgroup.restype = ctypes.c_uint32
+        # self.swift_fun.GetThreadExecutionWidth.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        # self.swift_fun.GetThreadExecutionWidth.restype = ctypes.c_uint32 
         extra_params = {"BACKEND":"METAL"}
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
         print("Attempting Metal Initiation...")
-        if self.swift_fun.InitializeMetalDevices() == -1:
-            raise ValueError("Something has gone horribly wrong.")
-        if self.swift_fun.ConstantBuffers(c_int(self.LENGTH_CONST_UINT), c_int(self.LENGTH_CONST_MEX)) == -1:
-            raise ValueError("Something has gone horribly wrong")
+        # if self.swift_fun.InitializeMetalDevices() == -1:
+        #     raise ValueError("Something has gone horribly wrong.")
+        # if self.swift_fun.ConstantBuffers(c_int(self.LENGTH_CONST_UINT), c_int(self.LENGTH_CONST_MEX)) == -1:
+        #     raise ValueError("Something has gone horribly wrong")
+
+        devices = mc.get_devices()
+        SelDevice=None
+        for n,dev in enumerate(devices):
+            if arguments['DefaultGPUDeviceName'] in dev.deviceName:
+                SelDevice=dev
+                break
+        if SelDevice is None:
+            raise SystemError("No Metal device containing name [%s]" %(arguments['DefaultGPUDeviceName']))
+        else:
+            print('Selecting device: ', dev.deviceName)
+        SCode = []
+        SCode.append("#define mexType " + extra_params['td'] +"\n")
+        SCode.append("#define METAL\n")
+        extra_params['SCode'] = SCode
+        self.ctx = mc.Device(n)
+        self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
+        self.ConstantBufferMEX=np.zeros(self.LENGTH_CONST_MEX,np.float32)
+        print(self.ctx)
     
 
     def _InitSymbol(self, IP,_NameVar,td, SCode):
         if td == "float":
-            self.swift_fun.SymbolInitiation_mex(c_uint32(self.C_IND[_NameVar]), c_float(IP[_NameVar]))
+            # self.swift_fun.SymbolInitiation_mex(c_uint32(self.C_IND[_NameVar]), c_float(IP[_NameVar]))
+            self.ConstantBufferMEX[self.C_IND[_NameVar]]=IP[_NameVar]
         elif td == "unsigned int": 
-            self.swift_fun.SymbolInitiation_uint(c_uint32(self.C_IND[_NameVar]), c_uint32(IP[_NameVar]))
+            self.ConstantBufferUINT[self.C_IND[_NameVar]]=IP[_NameVar]]
+            # self.swift_fun.SymbolInitiation_uint(c_uint32(self.C_IND[_NameVar]), c_uint32(IP[_NameVar]))
         else:
             raise ValueError("Something was passed incorrectly in symbol initiation.")
         
     
     def _InitSymbolArray(self, IP,_NameVar,td, SCode):
         if td == "float":
-            for i in range(IP[_NameVar].size):
-                self.swift_fun.SymbolInitiation_mex(c_uint32(self.C_IND[_NameVar] + i), c_float(IP[_NameVar][i])) #Double check second arg
+            self.ConstantBufferMEX[self.C_IND[_NameVar]:self.C_IND[_NameVar]+IP[_NameVar].size]=IP[_NameVar]
+            # for i in range(IP[_NameVar].size):
+            #     self.swift_fun.SymbolInitiation_mex(c_uint32(self.C_IND[_NameVar] + i), c_float(IP[_NameVar][i])) #Double check second arg
         elif td == "unsigned int": 
-            for i in range(IP[_NameVar].size):
-                self.swift_fun.SymbolInitiation_uint(c_uint32(self.C_IND[_NameVar] + i), c_uint32(IP[_NameVar][i]))  #Second arg
+            self.ConstantBufferUINT[self.C_IND[_NameVar]:self.C_IND[_NameVar]+IP[_NameVar].size]=IP[_NameVar]          
+            # for i in range(IP[_NameVar].size):
+            #     self.swift_fun.SymbolInitiation_uint(c_uint32(self.C_IND[_NameVar] + i), c_uint32(IP[_NameVar][i]))  #Second arg
         # I think this way runs faster since it's not doing the if check every loop?
 
 
@@ -171,12 +194,18 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
     
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
-        self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
-        self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(np.uint64(self._c_uint_type)), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
+        # self.swift_fun.BufferIndexCreator.argtypes = [ctypes.POINTER(c_uint64), c_uint64, c_uint64, c_uint64]
+        # self.swift_fun.BufferIndexCreator(self._c_mex_type.ctypes.data_as(ctypes.POINTER(c_uint64)),c_uint64(np.uint64(self._c_uint_type)), c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT))
+        self.mex_buffer=[]
+        for n in self._c_mex_type:
+            self.mex_buffer.append(self.ctx.buffer(n*4))
+        self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
+        self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
+        self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
 
         self._IndexManip()
 
-        self.swift_fun.IndexDidModify(c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT), c_uint64(self.LENGTH_CONST_MEX), c_uint64(self.LENGTH_CONST_UINT))
+        # self.swift_fun.IndexDidModify(c_uint64(self.LENGTH_INDEX_MEX), c_uint64(self.LENGTH_INDEX_UINT), c_uint64(self.LENGTH_CONST_MEX), c_uint64(self.LENGTH_CONST_UINT))
 
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                     'Ox','Oy','Oz','SourceFunctions']:
@@ -209,15 +238,20 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
 
     def _IndexManip(self):
+        index=np.zeros((self.LENGTH_INDEX_MEX,2),np.uint32)
         for i in range(self.LENGTH_INDEX_MEX):
-            data = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
-            data2 = np.uint64([self.HOST_INDEX_MEX[i][0]])>>32
-            self.swift_fun.IndexManipMEX(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
-
+            index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
+            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
+            #self.swift_fun.IndexManipMEX(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
+        self.index_mex=self.ctx.buffer(index)
+        
+        index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
+       
         for i in range(self.LENGTH_INDEX_UINT):
-            data = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            data2 = np.uint64([self.HOST_INDEX_MEX[i][0]])>>32
-            self.swift_fun.IndexManipUInt(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
+            index[i,0] = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
+            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
+            #self.swift_fun.IndexManipUInt(c_uint32(np.uint32(data)), c_uint32(np.uint32(data2[0])), c_uint32(i))
+        self.index_uint=self.ctx.buffer(index)
 
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
