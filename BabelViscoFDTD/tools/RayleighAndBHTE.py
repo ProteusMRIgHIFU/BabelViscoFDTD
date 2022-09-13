@@ -20,14 +20,14 @@ info = get_paths()
 
 KernelCoreSourceBHTE="""
     #define Tref 43.0
-    int DzDy=outerDimz*outerDimy;
-    int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
+     unsigned int DzDy=outerDimz*outerDimy;
+     unsigned int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
     
     float R1,R2,dtp;
     if(gtidx > 0 && gtidx < outerDimx-1 && gtidy > 0 && gtidy < outerDimy-1 && gtidz > 0 && gtidz < outerDimz-1)
     {
 
-            const int label = d_labels[coord];
+            const  unsigned int label = d_labels[coord];
 
             d_output[coord] = d_input[coord] + d_bhArr[label] * ( 
                      d_input[coord + 1] + d_input[coord - 1] + d_input[coord + outerDimz] + d_input[coord - outerDimz] +
@@ -77,13 +77,20 @@ KernelCoreSourceBHTE="""
 
 if sys.platform == "darwin":
     import pyopencl as cl
+    import metalcompute as mc
     
-    RayleighOpenCLSource="""
+    RayleighOpenCLMetalSource="""
+    #ifdef _METAL
+    #include <metal_stdlib>
+    using namespace metal;
+    #endif
+
     #define pi 3.141592653589793
     #define ppCos &pCos
 
     typedef float FloatingType;
 
+    #ifdef _OPENCL
     __kernel  void ForwardPropagationKernel(  const int mr2,
                                               const FloatingType c_wvnb_real,
                                               const FloatingType c_wvnb_imag,
@@ -99,6 +106,7 @@ if sys.platform == "darwin":
                                              )
         {
         int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
+    
         FloatingType dx,dy,dz,R,r2x,r2y,r2z;
         FloatingType temp_r,tr ;
         FloatingType temp_i,ti,pCos,pSin ;
@@ -141,9 +149,11 @@ if sys.platform == "darwin":
             py_data_u2_imag[si2]=temp_i/(2*pi);
         }
         }
+    #endif
       """
 
-    OpenCLHeaderBHTE="""
+    OpenCLMetalHeaderBHTE="""
+    #ifdef _OPENCL
         __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
                                         __global float 		*d_output2,
                                         __global const float 			*d_input, 
@@ -153,24 +163,56 @@ if sys.platform == "darwin":
                                         __global const unsigned int		*d_labels,
                                         __global const float 			*d_Qarr,
                                             const float 			CoreTemp,
-                                            const  int				sonication,
-                                            const  int				outerDimx, 
-                                            const  int              outerDimy, 
-                                            const  int              outerDimz,
+                                            const  unsigned int				sonication,
+                                            const  unsigned int				outerDimx, 
+                                            const  unsigned int              outerDimy, 
+                                            const  unsigned int              outerDimz,
                                             const float 			dt,
                                             __global  float 	*d_MonitorSlice,
-                                            const  int TotalStepsMonitoring,
-                                            const  int nFactorMonitoring,
-                                            const  int n_Step,
-                                            const int SelJ,
+                                            const  unsigned int TotalStepsMonitoring,
+                                            const  unsigned int nFactorMonitoring,
+                                            const  unsigned int n_Step,
+                                            const unsigned int SelJ,
                                             const unsigned int StartIndexQ)	
         {
             const int gtidx =  get_global_id(0);
             const int gtidy =  get_global_id(1);
             const int gtidz =  get_global_id(2);
+    #endif
+    #ifdef _METAL
+           kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]], 
+                                        device float 		*d_output2 [[ buffer(1) ]],
+                                        device const float 			*d_input [[ buffer(2) ]], 
+                                        device const float 			*d_input2 [[ buffer(3) ]],
+                                        device const float 			*d_bhArr [[ buffer(4) ]],
+                                        device const float 			*d_perfArr [[ buffer(5) ]], 
+                                        device const unsigned int		*d_labels [[ buffer(6) ]],
+                                        device const float 			*d_Qarr [[ buffer(7) ]],
+                                        device  float 	*d_MonitorSlice [[ buffer(8) ]],
+                                         constant float * floatParams [[ buffer(9) ]],
+                                         constant unsigned int * intparams [[ buffer(10) ]],
+                                         uint gid[[thread_position_in_grid]])	
+        {
+
+            #define CoreTemp floatParams[0]
+            #define dt floatParams[1]
+            #define sonication intparams[0]
+            #define outerDimx intparams[1]
+            #define outerDimy intparams[2]
+            #define outerDimz intparams[3]
+            #define TotalStepsMonitoring intparams[4]
+            #define nFactorMonitoring intparams[5]
+            #define n_Step intparams[6]
+            #define SelJ intparams[7]
+            #define StartIndexQ intparams[8]
+            const int gtidx =  gid/(outerDimy*outerDimz);
+            const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
+            const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
+
+    #endif
         """
 
-    OpenCLKernelBHTE =OpenCLHeaderBHTE + KernelCoreSourceBHTE
+    OpenCLKernelBHTE =OpenCLMetalHeaderBHTE + KernelCoreSourceBHTE
 
     Platforms=None
     queue = None
@@ -459,8 +501,27 @@ def InitOpenCL(DeviceName='AMD'):
         print('Selecting device: ', SelDevice.name)
     ctx = cl.Context([SelDevice])
     queue = cl.CommandQueue(ctx)
-    prgcl = cl.Program(ctx, RayleighOpenCLSource+OpenCLKernelBHTE).build()
+    prgcl = cl.Program(ctx, '#define _OPENCL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE).build()
 
+def InitMetal(DeviceName='AMD'):
+    global ctx
+    global prgcl 
+
+    devices = mc.get_devices()
+    SelDevice=None
+    for n,dev in enumerate(devices):
+        if DeviceName in dev.deviceName:
+            SelDevice=dev
+            break
+    if SelDevice is None:
+        raise SystemError("No Metal device containing name [%s]" %(DeviceName))
+    else:
+        print('Selecting device: ', dev.deviceName)
+    
+    ctx = mc.Device(n)
+    print(ctx)
+
+    prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
     
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
     if u0step!=0:
@@ -846,8 +907,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
         queue.finish()
 
-    else:
-        assert(Backend=='CUDA')
+    elif Backend=='CUDA':
 
         dimBlockBHTE = (4,4,4)
 
@@ -942,6 +1002,80 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cuda.memcpy_dtoh(T1,ResTemp) 
         cuda.memcpy_dtoh(Dose1,ResDose) 
         cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice) 
+
+    else:
+        assert(Backend=='Metal')
+
+        d_perfArr=ctx.buffer(perfArr)
+        d_bhArr=ctx.buffer(bhArr)
+        d_Qarr=ctx.buffer(Qarr)
+        d_MaterialMap=ctx.buffer(MaterialMap)
+
+
+        d_T0 = ctx.buffer(initTemp)
+        d_T1 = ctx.buffer(T1)
+
+        
+        d_Dose0 = ctx.buffer(Dose0)
+        d_Dose1 = ctx.buffer(Dose1)
+
+        d_MonitorSlice = ctx.buffer(MonitorSlice.nbytes)
+
+        knl = prgcl.function('BHTEFDTDKernel')
+
+        floatparams = np.array([stableTemp,dt],dtype=np.float32)
+        d_floatparams= ctx.buffer(floatparams)
+        for n in range(TotalDurationSteps):
+            if n<nStepsOn:
+                dUS=1
+            else:
+                dUS=0
+            intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,0],dtype=np.uint32)
+            d_intparams= ctx.buffer(intparams)
+            if (n%2==0):
+                handle=knl(N1*N2*N3,
+                    d_T1,
+                    d_Dose1,
+                    d_T0,
+                    d_Dose0,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_Qarr,
+                    d_MonitorSlice,
+                    d_floatparams,
+                    d_intparams)
+
+            else:
+                handle=knl(N1*N2*N3,
+                    d_T0,
+                    d_Dose0,
+                    d_T1,
+                    d_Dose1,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_Qarr,
+                    d_MonitorSlice,
+                    d_floatparams,
+                    d_intparams)
+            del handle
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+
+
+        print('Done BHTE')                               
+        T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
+        Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
+        MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        
     return T1,Dose1,MonitorSlice,Qarr
 
 
