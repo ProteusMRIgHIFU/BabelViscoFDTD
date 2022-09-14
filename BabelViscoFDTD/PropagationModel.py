@@ -26,11 +26,11 @@ try:
     print ("StaggeredFDTD_3D_OPENCL loaded")
 except:
      print ("StaggeredFDTD_3D_OPENCL NOT loaded")
-try:
-    from .StaggeredFDTD_3D_With_Relaxation_METAL import StaggeredFDTD_3D_METAL
-    print ("StaggeredFDTD_3D_METAL loaded")
-except:
-    print ("StaggeredFDTD_3D_METAL NOT loaded")
+# try:
+from .StaggeredFDTD_3D_With_Relaxation_METAL import StaggeredFDTD_3D_METAL
+print ("StaggeredFDTD_3D_METAL loaded")
+# except:
+#     print ("StaggeredFDTD_3D_METAL NOT loaded")
 
 #############################################################################################################
 #This global dictionary specifies the order in the MaterialProperties array (Nx5) where N is the numbe of materials

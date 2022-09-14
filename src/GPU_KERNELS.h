@@ -19,11 +19,9 @@
 	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],\
 	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],\
 	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],\
-	uint3 gid[[thread_position_in_grid]])\
-{\
-  _PT i = (_PT) gid.x;\
-  _PT j = (_PT) gid.y;\
-  _PT k = (_PT) gid.z;
+	uint gid[[thread_position_in_grid]])\
+{
+  
 #endif
 /// PMLS
 #if defined(METAL)  || defined(USE_MINI_KERNELS_CUDA)
@@ -55,6 +53,12 @@ __kernel void PML_1_StressKernel(
 #ifdef METAL
 kernel void PML_1_StressKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+    _PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -82,6 +86,12 @@ __kernel void PML_2_StressKernel(
 #ifdef METAL
 kernel void PML_2_StressKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+    _PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -109,6 +119,12 @@ __kernel void PML_3_StressKernel(
 #ifdef METAL
 kernel void PML_3_StressKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -136,6 +152,12 @@ __kernel void PML_4_StressKernel(
 #ifdef METAL
 kernel void PML_4_StressKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -163,6 +185,12 @@ __kernel void PML_5_StressKernel(
 #ifdef METAL
 kernel void PML_5_StressKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -190,6 +218,12 @@ __kernel void PML_6_StressKernel(
 #ifdef METAL
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -237,6 +271,12 @@ __kernel void MAIN_1_StressKernel(
 #ifdef METAL
 kernel void MAIN_1_StressKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 }
@@ -282,6 +322,12 @@ __kernel void PML_1_ParticleKernel(
 #ifdef METAL
 kernel void PML_1_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+    _PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -309,6 +355,12 @@ __kernel void PML_2_ParticleKernel(
 #ifdef METAL
 kernel void PML_2_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+    _PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -336,6 +388,12 @@ __kernel void PML_3_ParticleKernel(
 #ifdef METAL
 kernel void PML_3_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -363,6 +421,12 @@ __kernel void PML_4_ParticleKernel(
 #ifdef METAL
 kernel void PML_4_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -390,6 +454,12 @@ __kernel void PML_5_ParticleKernel(
 #ifdef METAL
 kernel void PML_5_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -417,6 +487,12 @@ __kernel void PML_6_ParticleKernel(
 #ifdef METAL
 kernel void PML_6_ParticleKernel(
 	METAL_PARAMS
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 }
@@ -458,6 +534,13 @@ __kernel void MAIN_1_ParticleKernel(
 #ifdef METAL
 kernel void MAIN_1_ParticleKernel(
 	METAL_PARAMS
+
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	_PT k = (_PT) (gid/(nN1*nN2));
+  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 #endif
 	#include "ParticleKernel.h"
 }
