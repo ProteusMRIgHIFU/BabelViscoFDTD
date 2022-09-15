@@ -317,6 +317,7 @@ else:
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
     cmdclass = {'build_ext':DarwinInteropBuildExt, 'install':PostInstallCommand}
+    install_requires.append('metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git')
 
 
 setup(name="BabelViscoFDTD",

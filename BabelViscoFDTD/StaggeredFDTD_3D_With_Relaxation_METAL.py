@@ -440,8 +440,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     '''
     def __init__(self, arguments):
         global mc
-        import metalcompute
-        mc = metalcompute
+        import metalcomputebabel
+        mc = metalcomputebabel
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
@@ -512,6 +512,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         SCode = []
         SCode.append("#define mexType " + extra_params['td'] +"\n")
         SCode.append("#define METAL\n")
+        SCode.append("#define METALCOMPUTE\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
         self.ctx = mc.Device(n)

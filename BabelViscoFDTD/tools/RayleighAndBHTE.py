@@ -77,7 +77,7 @@ KernelCoreSourceBHTE="""
 
 if sys.platform == "darwin":
     import pyopencl as cl
-    import metalcompute as mc
+    import metalcomputebabel as mc
     
     RayleighOpenCLMetalSource="""
     #ifdef _METAL
@@ -1032,6 +1032,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                 dUS=0
             intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,0],dtype=np.uint32)
             d_intparams= ctx.buffer(intparams)
+            ctx.init_command_buffer()
             if (n%2==0):
                 handle=knl(N1*N2*N3,
                     d_T1,
@@ -1059,6 +1060,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_MonitorSlice,
                     d_floatparams,
                     d_intparams)
+            ctx.commit_command_buffer()
+            ctx.wait_command_buffer()
             del handle
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
