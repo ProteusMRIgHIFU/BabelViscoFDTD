@@ -46,7 +46,7 @@ def CompileBabelMetal(build_temp,build_lib):
                     'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
             copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/BabelMetal/'+fn)
 
-        command=['xcrun','-sdk', 'macosx', 'metal','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
+        command=['xcrun','-sdk', 'macosx', 'metal','-ffast-math','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
         command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)

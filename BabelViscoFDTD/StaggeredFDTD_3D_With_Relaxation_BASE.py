@@ -75,10 +75,14 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         self._PostInitScript(arguments, extra_params)
         
+        if extra_params["BACKEND"] in ["OPENCL","CUDA"] or 'arm64' in platform.platform():
+            SCode = extra_params["SCode"]
+            with open(index_src) as f:
+                SCode+=f.readlines()
+        else:
+            SCode = []
+            AllC = ''
         
-        SCode = extra_params["SCode"]
-        with open(index_src) as f:
-            SCode+=f.readlines()
     
         LParamFloat = ['DT']
         LParamInt=["N1","N2", "N3", "Limit_I_low_PML", "Limit_J_low_PML", "Limit_K_low_PML", "Limit_I_up_PML","Limit_J_up_PML",\
@@ -99,11 +103,12 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         for k in LParamArray:
             self._InitSymbolArray(outparams,k,td,SCode)
 
-        with open(gpu_kernelSrc) as f:
-            SCode+=f.readlines()
-        AllC=''
-        for l in SCode:
-            AllC+=l
+        if extra_params["BACKEND"] in ["OPENCL","CUDA"] or 'arm64' in platform.platform():
+            with open(gpu_kernelSrc) as f:
+                SCode+=f.readlines()
+            AllC=''
+            for l in SCode:
+                AllC+=l
     
 
         N1=arguments['N1']

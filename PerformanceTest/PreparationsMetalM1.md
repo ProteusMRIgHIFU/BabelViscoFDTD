@@ -32,7 +32,7 @@ optional arguments:
 ## OpenCL test
 * `python SimpleBenchmark.py M1 OpenCL ` 
 
-In in a M1 Max, it should report a wall-time around 3s
+In a M1 Max, it should report a wall-time around 3s
 ```
 ...
 time to do low level calculations 3.1081128120422363
