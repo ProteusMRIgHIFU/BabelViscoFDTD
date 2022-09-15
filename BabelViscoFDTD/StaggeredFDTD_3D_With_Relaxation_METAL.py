@@ -10,13 +10,17 @@ import tempfile
 from shutil import copyfile
 
 from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
-import metalcompute as mc
 
 from distutils.sysconfig import get_python_inc
 from math import ceil
 
-class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BASE):
+mc = None
+
+class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self, arguments):
+        global mc
+        import metalcompute
+        mc = metalcompute
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
@@ -304,7 +308,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
             for i in ['nStep', 'TypeSource']:
                 self._UpdateSymbol(InitDict, i, 'unsigned int', [])
 
-            self.ctx.init_single_command_buffer()
+            self.ctx.init_command_buffer()
             AllHandles=[]
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
@@ -348,12 +352,13 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                                                self.mex_buffer[11])
 
                 AllHandles.append(handle)
-            self.ctx.commit_single_command_buffer()
+            self.ctx.commit_command_buffer()
+            self.ctx.wait_command_buffer()
             while len(AllHandles)>0:
                 handle = AllHandles.pop(0) 
                 del handle
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.ctx.init_single_command_buffer()
+                self.ctx.init_command_buffer()
                 handle=self.SensorsKernel(np.prod(self.globalSensor),
                                 self.constant_buffer_uint,
                                 self.constant_buffer_mex,
@@ -372,8 +377,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL(StaggeredFDTD_3D_With_Relaxation_BA
                                 self.mex_buffer[9],
                                 self.mex_buffer[10],
                                 self.mex_buffer[11])
-                self.ctx.commit_single_command_buffer()   
-                AllHandles.append(handle)
+                self.ctx.commit_command_buffer()   
+                self.ctx.wait_command_buffer()
+                del handle
  
         
         for i in ['SqrAcc', 'SensorOutput']:
@@ -414,6 +420,6 @@ def StaggeredFDTD_3D_METAL(arguments):
     print(os.environ['__BabelMetal'])
     os.environ['__BabelMetalDevice'] = arguments['DefaultGPUDeviceName']
 
-    Instance = StaggeredFDTD_3D_With_Relaxation_METAL(arguments)
+    Instance = StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(arguments)
     Results = Instance.Results
     return Results
