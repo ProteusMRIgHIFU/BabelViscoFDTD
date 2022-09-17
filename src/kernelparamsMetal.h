@@ -26,7 +26,6 @@
 
 #define SelRMSorPeak p_CONSTANT_BUFFER_UINT[CInd_SelRMSorPeak]
 #define SelMapsRMSPeak p_CONSTANT_BUFFER_UINT[CInd_SelMapsRMSPeak]
-#define IndexRMSPeak_ALLV p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_ALLV]
 #define IndexRMSPeak_Vx p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vx]
 #define IndexRMSPeak_Vy p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vy]
 #define IndexRMSPeak_Vz p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vz]
@@ -40,7 +39,6 @@
 #define NumberSelRMSPeakMaps p_CONSTANT_BUFFER_UINT[CInd_NumberSelRMSPeakMaps]
 
 #define SelMapsSensors p_CONSTANT_BUFFER_UINT[CInd_SelMapsSensors]
-#define IndexSensor_ALLV p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_ALLV]
 #define IndexSensor_Vx p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vx]
 #define IndexSensor_Vy p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vy]
 #define IndexSensor_Vz p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vz]

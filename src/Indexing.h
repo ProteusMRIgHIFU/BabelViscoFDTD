@@ -267,20 +267,17 @@ typedef _PT tIndex ;
 #define DXDThp_K 		(IsOnLowPML_I(k) ? DXDTminushp_pr[kPML(k)] : DXDTminus_pr[kPML(k)])
 #endif
 
+#define MASK_Vx   		0x0000000001
+#define MASK_Vy   		0x0000000002
+#define MASK_Vz   		0x0000000004
+#define MASK_Sigmaxx    0x0000000008
+#define MASK_Sigmayy    0x0000000010
+#define MASK_Sigmazz    0x0000000020
+#define MASK_Sigmaxy    0x0000000040
+#define MASK_Sigmaxz    0x0000000080
+#define MASK_Sigmayz    0x0000000100
+#define MASK_Pressure   0x0000000200
 
-#define MASK_ALLV		0x0000000001
-#define MASK_Vx   		0x0000000002
-#define MASK_Vy   		0x0000000004
-#define MASK_Vz   		0x0000000008
-#define MASK_Sigmaxx    0x0000000010
-#define MASK_Sigmayy    0x0000000020
-#define MASK_Sigmazz    0x0000000040
-#define MASK_Sigmaxy    0x0000000080
-#define MASK_Sigmaxz    0x0000000100
-#define MASK_Sigmayz    0x0000000200
-#define MASK_Pressure   0x0000000400
-
-#define IS_ALLV_SELECTED(_Value) 				(_Value &MASK_ALLV)
 #define IS_Vx_SELECTED(_Value) 					(_Value &MASK_Vx)
 #define IS_Vy_SELECTED(_Value) 					(_Value &MASK_Vy)
 #define IS_Vz_SELECTED(_Value) 					(_Value &MASK_Vz)
@@ -294,7 +291,6 @@ typedef _PT tIndex ;
 
 #define COUNT_SELECTIONS(_VarName,_Value) \
 				{ _VarName =0;\
-					_VarName += IS_ALLV_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Vx_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Vy_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Vz_SELECTED(_Value) ? 1 : 0; \
@@ -347,41 +343,39 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_ZoneCount 21
 #define CInd_SelRMSorPeak 22
 #define CInd_SelMapsRMSPeak 23
-#define CInd_IndexRMSPeak_ALLV 24
-#define CInd_IndexRMSPeak_Vx 25
-#define CInd_IndexRMSPeak_Vy 26
-#define CInd_IndexRMSPeak_Vz 27
-#define CInd_IndexRMSPeak_Sigmaxx 28
-#define CInd_IndexRMSPeak_Sigmayy 29
-#define CInd_IndexRMSPeak_Sigmazz 30
-#define CInd_IndexRMSPeak_Sigmaxy 31
-#define CInd_IndexRMSPeak_Sigmaxz 32
-#define CInd_IndexRMSPeak_Sigmayz 33
-#define CInd_NumberSelRMSPeakMaps 34
-#define CInd_SelMapsSensors 35
-#define CInd_IndexSensor_ALLV 36
-#define CInd_IndexSensor_Vx 37
-#define CInd_IndexSensor_Vy 38
-#define CInd_IndexSensor_Vz 39
-#define CInd_IndexSensor_Sigmaxx 40
-#define CInd_IndexSensor_Sigmayy 41
-#define CInd_IndexSensor_Sigmazz 42
-#define CInd_IndexSensor_Sigmaxy 43
-#define CInd_IndexSensor_Sigmaxz 44
-#define CInd_IndexSensor_Sigmayz 45
-#define CInd_NumberSelSensorMaps 46
-#define CInd_SensorSubSampling 47
-#define CInd_nStep 48
-#define CInd_TypeSource 49
-#define CInd_CurrSnap 50
-#define CInd_LengthSource 51
-#define CInd_SelK 52
-#define CInd_IndexRMSPeak_Pressure 53
-#define CInd_IndexSensor_Pressure 54
-#define CInd_SensorStart 55
+#define CInd_IndexRMSPeak_Vx 24
+#define CInd_IndexRMSPeak_Vy 25
+#define CInd_IndexRMSPeak_Vz 26
+#define CInd_IndexRMSPeak_Sigmaxx 27
+#define CInd_IndexRMSPeak_Sigmayy 28
+#define CInd_IndexRMSPeak_Sigmazz 29
+#define CInd_IndexRMSPeak_Sigmaxy 30
+#define CInd_IndexRMSPeak_Sigmaxz 31
+#define CInd_IndexRMSPeak_Sigmayz 32
+#define CInd_NumberSelRMSPeakMaps 33
+#define CInd_SelMapsSensors 34
+#define CInd_IndexSensor_Vx 35
+#define CInd_IndexSensor_Vy 36
+#define CInd_IndexSensor_Vz 37
+#define CInd_IndexSensor_Sigmaxx 38
+#define CInd_IndexSensor_Sigmayy 39
+#define CInd_IndexSensor_Sigmazz 40
+#define CInd_IndexSensor_Sigmaxy 41
+#define CInd_IndexSensor_Sigmaxz 42
+#define CInd_IndexSensor_Sigmayz 43
+#define CInd_NumberSelSensorMaps 44
+#define CInd_SensorSubSampling 45
+#define CInd_nStep 46
+#define CInd_TypeSource 47
+#define CInd_CurrSnap 48
+#define CInd_LengthSource 49
+#define CInd_SelK 50
+#define CInd_IndexRMSPeak_Pressure 51
+#define CInd_IndexSensor_Pressure 52
+#define CInd_SensorStart 53
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 56
+#define LENGTH_CONST_UINT 54
 
 //Indexes for float
 #define CInd_DT 0

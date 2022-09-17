@@ -66,7 +66,7 @@ class PropagationModel:
                                          CheckOnlyParams=False,
                                          TypeSource=0,
                                          SelRMSorPeak=1,
-                                         SelMapsRMSPeakList=['ALLV'],
+                                         SelMapsRMSPeakList=['Pressure'],
                                          SelMapsSensorsList=['Vx','Vy','Vz'],
                                          SensorSubSampling=2,
                                          SensorStart=0,
@@ -296,7 +296,7 @@ class PropagationModel:
         IndexSensorMaps={}
         curMask=int(0x0001)
         #Do not modify the order of this search without matching the low level functions!
-        for pMap in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
+        for pMap in ['Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
             if pMap in  SelMapsRMSPeakList:
                 SelMapsRMSPeak=SelMapsRMSPeak | curMask
                 IndexRMSMaps[pMap]=curIndexRMS
@@ -407,9 +407,6 @@ class PropagationModel:
         for key,index in IndexSensorMaps.items():
             if index>=0:
                 RetValueSensors[key]=SensorOutput_orig[:,0:len(RetValueSensors['time']),index]
-        if 'ALLV' in RetValueSensors:
-            #for sensor ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
-            RetValueSensors['ALLV'] =np.sqrt(RetValueSensors['ALLV'] )
 
         if (IntervalSnapshots>0):
             RetSnap=SnapShots
@@ -448,11 +445,6 @@ class PropagationModel:
             ii,jj,kk=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
             RetValueSensors['Pressure']*=np.repeat(pFactor[ii,jj,kk].reshape([RetValueSensors['Pressure'].shape[0],1]),
                                                   RetValueSensors['Pressure'].shape[1],axis=1)
-        
-        if 'ALLV' in RetValuePeak:
-            #for peak ALLV we collect the sum of squares of Vx, Vy and Vz, so we just need to calculate the sqr rootS
-            RetValuePeak['ALLV'] =np.sqrt(RetValuePeak['ALLV'] )
-
         if  IntervalSnapshots>0:
             if len(RetValueRMS)>0 and len(RetValuePeak)>0:
                 return RetValueSensors,V,RetValueRMS,RetValuePeak,InputParam,RetSnap
