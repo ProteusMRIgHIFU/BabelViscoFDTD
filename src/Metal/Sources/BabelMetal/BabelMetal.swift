@@ -314,17 +314,13 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             computeCommandEncoder.setBuffer(u0stepsVectorBuffer, offset:0, index:11)
             computeCommandEncoder.setBuffer(n2BaseStepsBuffer, offset:0, index:12)
             
-            let maxTotalThreadsPerThreadgroup = computePipelineState.maxTotalThreadsPerThreadgroup
-            let threadExecutionWidth = computePipelineState.threadExecutionWidth
-            let width  = maxTotalThreadsPerThreadgroup / threadExecutionWidth * threadExecutionWidth
-            let height = 1
-            let depth  = 1
-            
-            // 1D
-            let threadsPerGroup = MTLSize(width:width, height: height, depth: depth)
-            let numThreadgroups = MTLSize(width: (n2Limit + width - 1) / width, height: 1, depth: 1)
-            
-            computeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+            let w = computePipelineState.threadExecutionWidth
+            let h = computePipelineState.maxTotalThreadsPerThreadgroup / w
+
+            let numThreadgroups = MTLSize(width: (Int(n2Limit)+(w*h-1))/(w*h), height: 1, depth: 1)
+            let threadsPerThreadgroup = MTLSize(width: w*h, height: 1, depth: 1)
+
+            computeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerThreadgroup)
             computeCommandEncoder.endEncoding()
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
