@@ -466,17 +466,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             "SensorOutput":11
             }
         self.C_IND = {
-            "N1":0, "N2":1, "N3":2, "Limit_I_low_PML":3, "Limit_J_low_PML":4, "Limit_K_low_PML":5, "Limit_I_up_PML":6, "Limit_J_up_PML":7, "Limit_K_up_PML":8, 
-            "SizeCorrI":9, "SizeCorrJ":10, "SizeCorrK":11, "PML_Thickness":12, "NumberSources":13, "NumberSensors":14, "TimeSteps":15, 
-            "SizePML":16, "SizePMLxp1":17, "SizePMLyp1":18, "SizePMLzp1":19, "SizePMLxp1yp1zp1":20, "ZoneCount":21, "SelRMSorPeak":22, "SelMapsRMSPeak":23, "IndexRMSPeak_ALLV":24, 
-            "IndexRMSPeak_Vx":25, "IndexRMSPeak_Vy":26, "IndexRMSPeak_Vz":27, "IndexRMSPeak_Sigmaxx":28, "IndexRMSPeak_Sigmayy":29, "IndexRMSPeak_Sigmazz":30,
-            "IndexRMSPeak_Sigmaxy":31, "IndexRMSPeak_Sigmaxz":32, "IndexRMSPeak_Sigmayz":33, "NumberSelRMSPeakMaps":34, "SelMapsSensors":35, "IndexSensor_ALLV":36,
-            "IndexSensor_Vx":37, "IndexSensor_Vy":38, "IndexSensor_Vz":39, "IndexSensor_Sigmaxx":40, "IndexSensor_Sigmayy":41, "IndexSensor_Sigmazz":42, "IndexSensor_Sigmaxy":43,
-            "IndexSensor_Sigmaxz":44, "IndexSensor_Sigmayz":45, "NumberSelSensorMaps":46, "SensorSubSampling":47, "nStep":48, "TypeSource":49, "CurrSnap":50, "LengthSource":51, "SelK":52,
-            "IndexRMSPeak_Pressure":53, "IndexSensor_Pressure":54, "SensorStart":55,
             "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,
-            # MEX
-            "DT":0, "InvDXDTplus":1, "DXDTminus":1+self.MAX_SIZE_PML, "InvDXDTplushp":1+self.MAX_SIZE_PML*2, "DXDTminushp":1+self.MAX_SIZE_PML*3,
+            "nStep":0, "TypeSource":1, 
             "V_x_x":0, "V_y_x":1, "V_z_x":2, "V_x_y":3, "V_y_y":4, "V_z_y":5, "V_x_z":6, "V_y_z":7, "V_z_z":8, "Vx":9, "Vy":10, "Vz":11, "Rxx":12, "Ryy":13, "Rzz":14, "Rxy":15, "Rxz":16, "Ryz":17,
             "Sigma_x_xx":18, "Sigma_y_xx":19, "Sigma_z_xx":20, "Sigma_x_yy":21, "Sigma_y_yy":22, "Sigma_z_yy":23, "Sigma_x_zz":24, "Sigma_y_zz":25, "Sigma_z_zz":26, 
             "Sigma_x_xy":27, "Sigma_y_xy":28, "Sigma_x_xz":29, "Sigma_z_xz":30, "Sigma_y_yz":31, "Sigma_z_yz":32, "Sigma_xy":33, "Sigma_xz":34, "Sigma_yz":35, "Sigma_xx":36, "Sigma_yy":37, "Sigma_zz": 38,
@@ -491,8 +482,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
             self.FUNCTION_GLOBALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
                 
-        self.LENGTH_CONST_UINT = 56
-        self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
+        self.LENGTH_CONST_UINT = 2
+        # self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
         extra_params = {"BACKEND":"METAL"}
         super().__init__(arguments, extra_params)
@@ -517,18 +508,31 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         extra_params['SCode'] = SCode
         self.ctx = mc.Device(n)
         self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
-        self.ConstantBufferMEX=np.zeros(self.LENGTH_CONST_MEX,np.float32)
+        # self.ConstantBufferMEX=np.zeros(self.LENGTH_CONST_MEX,np.float32)
         print(self.ctx)
     
-
-    def _InitSymbol(self, IP,_NameVar,td, SCode):
-        if td == "float":
-            self.ConstantBufferMEX[self.C_IND[_NameVar]]=IP[_NameVar]
-        elif td == "unsigned int": 
-            self.ConstantBufferUINT[self.C_IND[_NameVar]]=IP[_NameVar]
+    def _InitSymbol(self, IP,_NameVar,td,SCode):
+        if td in ['float','double']:
+            res = 'constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
         else:
-            raise ValueError("Something was passed incorrectly in symbol initiation.")
+            lType =' _PT '
+            res = 'constant '+ lType  + _NameVar + ' = %i;\n' %(IP[_NameVar])
+        SCode.append(res)
         
+    def _InitSymbolArray(self, IP,_NameVar,td,SCode):
+        res =  "constant "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
+        for n in range(IP[_NameVar].size):
+            if td in ['float','double']:
+                res+="%.9g" % (IP[_NameVar][n])
+            else:
+                res+="%i" % (IP[_NameVar][n])
+            if n<IP[_NameVar].size-1:
+                res+=',\n'
+            else:
+                res+='};\n'
+        SCode.append(res)   
+
+
     def _UpdateSymbol(self, IP, _NameVar,td, SCode):
         if td == "float":
             self.constant_buffer_mex.modify(np.array([IP[_NameVar]],dtype=np.float32),int(self.C_IND[_NameVar]),1)
@@ -536,12 +540,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             self.constant_buffer_uint.modify(np.array(IP[_NameVar],dtype=np.uint32),int(self.C_IND[_NameVar]),1)
         else:
             raise ValueError("Something was passed incorrectly in symbol initiation.")
-    
-    def _InitSymbolArray(self, IP,_NameVar,td, SCode):
-        if td == "float":
-            self.ConstantBufferMEX[self.C_IND[_NameVar]:self.C_IND[_NameVar]+IP[_NameVar].size]=IP[_NameVar].flatten(order='F')
-        elif td == "unsigned int": 
-            self.ConstantBufferUINT[self.C_IND[_NameVar]:self.C_IND[_NameVar]+IP[_NameVar].size]=IP[_NameVar].flatten(order='F') 
 
 
     def _ownGpuCalloc(self, Name,td,dims,ArraysGPUOp):
@@ -577,7 +575,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             self.mex_buffer.append(self.ctx.buffer(nSizes*4))
         self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
-        self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
+        # self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
 
         self._IndexManip()
 
@@ -735,7 +733,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
-                                               self.constant_buffer_mex,
                                                self.index_mex,
                                                self.index_uint, 
                                                self.uint_buffer,
@@ -756,7 +753,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
-                                               self.constant_buffer_mex,
                                                self.index_mex,
                                                self.index_uint, 
                                                self.uint_buffer,
@@ -783,7 +779,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                 self.ctx.init_command_buffer()
                 handle=self.SensorsKernel(np.prod(self.globalSensor),
                                 self.constant_buffer_uint,
-                                self.constant_buffer_mex,
                                 self.index_mex,
                                 self.index_uint, 
                                 self.uint_buffer,
@@ -829,7 +824,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
           
         del self.constant_buffer_uint
-        del self.constant_buffer_mex
+        # del self.constant_buffer_mex
         del self.index_mex
         del self.index_uint 
         del self.uint_buffer

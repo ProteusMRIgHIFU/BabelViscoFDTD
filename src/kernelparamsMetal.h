@@ -1,3 +1,4 @@
+#ifndef METALCOMPUTE
 #define N1 p_CONSTANT_BUFFER_UINT[CInd_N1]
 #define N2 p_CONSTANT_BUFFER_UINT[CInd_N2]
 #define N3 p_CONSTANT_BUFFER_UINT[CInd_N3]
@@ -63,6 +64,10 @@
 #define DXDTminus_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminus)
 #define InvDXDTplushp_pr (p_CONSTANT_BUFFER_MEX + CInd_InvDXDTplushp)
 #define DXDTminushp_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminushp)
+#else
+#define nStep p_CONSTANT_BUFFER_UINT[CInd_nStep]
+#define TypeSource p_CONSTANT_BUFFER_UINT[CInd_TypeSource]
+#endif
 
 #define __def_MEX_VAR_0(__NameVar)  (&p_MEX_BUFFER_0[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
 #define __def_MEX_VAR_1(__NameVar)  (&p_MEX_BUFFER_1[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 

@@ -322,6 +322,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
  	 curMapIndex++; }
 
 #if defined(METAL)
+#ifndef METALCOMPUTE
 #define CInd_N1 0
 #define CInd_N2 1
 #define CInd_N3 2
@@ -390,6 +391,11 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_DXDTminushp (1+MAX_SIZE_PML*3)
 //Make LENGTH_CONST_MEX one value larger than the last index
 #define LENGTH_CONST_MEX (1+MAX_SIZE_PML*4)
+#else
+#define CInd_nStep 0
+#define CInd_TypeSource 1
+#define LENGTH_CONST_UINT 2
+#endif
 
 #define CInd_V_x_x 0
 #define CInd_V_y_x 1
