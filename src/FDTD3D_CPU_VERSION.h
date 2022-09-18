@@ -93,6 +93,7 @@
 #define _PR_MAIN_1
 #define _PR_MAIN_2
 #define _PR_MAIN_3
+#define CPU
 
 	unsigned int SensorEntry=0;
 	for (unsigned int nStep=0;nStep<INHOST(TimeSteps);nStep++)
@@ -105,13 +106,13 @@
 		//First we do the constrains tensors
 		//********************************
 		#pragma omp parallel for private(jj,ii,CurZone)
-		for(kk=0; kk<(N3+1); kk++)
+		for(kk=0; kk<(N3); kk++)
 		{
 			_PT k= (_PT)kk;
-			for(jj=0; jj<N2+1; jj++)
+			for(jj=0; jj<N2; jj++)
 			{
 				_PT j= (_PT)jj;
-				for(ii=0; ii<N1+1; ii++)
+				for(ii=0; ii<N1; ii++)
 				{
 					_PT i= (_PT)ii;
 
@@ -160,13 +161,13 @@
 			//Then we do the particle displacements
 			//********************************
 			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<N3+1; kk++)
+			for(kk=0; kk<N3; kk++)
 			{
 				_PT k= (_PT)kk;
-				for(jj=0; jj<N2+1; jj++)
+				for(jj=0; jj<N2; jj++)
 				{
 					_PT j= (_PT)jj;
-					for(ii=0; ii<N1+1; ii++)
+					for(ii=0; ii<N1; ii++)
 					{
 						_PT i= (_PT)ii;
 						#include "ParticleKernel.h"
@@ -213,28 +214,28 @@
 			}
 		#endif
 
-		if (INHOST(CurrSnap)>=0 && INHOST(CurrSnap) <NumberSnapshots)
-			if(nStep==SnapshotsPos_pr[INHOST(CurrSnap)]-1 )
-			{
+		// if (INHOST(CurrSnap)>=0 && INHOST(CurrSnap) <NumberSnapshots)
+		// 	if(nStep==SnapshotsPos_pr[INHOST(CurrSnap)]-1 )
+		// 	{
 
-				#pragma omp parallel for private(jj,ii,CurZone)
-				for(jj=0; jj<N2; jj++)
-				{
-					_PT j= (_PT)jj;
-					for(ii=0; ii<N1; ii++)
-					{
-						_PT i= (_PT)ii;
-						mexType accum=0.0;
-						for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)
-						{
-							_PT index=Ind_Sigma_xx(i,j,N3/2);
-							accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
-						}
-						Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
-					}
-				}
-				INHOST(CurrSnap)++;
-			}
+		// 		#pragma omp parallel for private(jj,ii,CurZone)
+		// 		for(jj=0; jj<N2; jj++)
+		// 		{
+		// 			_PT j= (_PT)jj;
+		// 			for(ii=0; ii<N1; ii++)
+		// 			{
+		// 				_PT i= (_PT)ii;
+		// 				mexType accum=0.0;
+		// 				for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)
+		// 				{
+		// 					_PT index=Ind_Sigma_xx(i,j,N3/2);
+		// 					accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
+		// 				}
+		// 				Snapshots_pr[IndN1N2Snap(i,j)+INHOST(CurrSnap)*N1*N2]=accum/INHOST(ZoneCount);
+		// 			}
+		// 		}
+		// 		INHOST(CurrSnap)++;
+		// 	}
 
 		//Finally, the sensors
 		if (((nStep % INHOST(SensorSubSampling))==0) && ((nStep / INHOST(SensorSubSampling))>=INHOST(SensorStart)) &&

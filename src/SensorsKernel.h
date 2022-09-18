@@ -14,11 +14,11 @@ for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
     i=j%(N1);
     j=j/N1;
 
-    if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vx_SELECTED(SelMapsSensors))
+    if ( IS_Vx_SELECTED(SelMapsSensors))
         accumX+=EL(Vx,i,j,k);
-    if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vy_SELECTED(SelMapsSensors))
+    if ( IS_Vy_SELECTED(SelMapsSensors))
         accumY+=EL(Vy,i,j,k);
-    if (IS_ALLV_SELECTED(SelMapsSensors) || IS_Vz_SELECTED(SelMapsSensors))
+    if (IS_Vz_SELECTED(SelMapsSensors))
         accumZ+=EL(Vz,i,j,k);
 
     index3=Ind_Sigma_xx(i,j,k);
@@ -70,9 +70,6 @@ accumXZ/=ZoneCount;
 accumYZ/=ZoneCount;
 accum_p/=ZoneCount;
 //ELD(SensorOutput,index)=accumX*accumX+accumY*accumY+accumZ*accumZ;
-if (IS_ALLV_SELECTED(SelMapsSensors))
-      ELD(SensorOutput,index+subarrsize*IndexSensor_ALLV)=
-        (accumX*accumX*+accumY*accumY+accumZ*accumZ);
 if (IS_Vx_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Vx)=accumX;
 if (IS_Vy_SELECTED(SelMapsSensors))

@@ -336,8 +336,6 @@ _PT  CurZone;
 			index2=N1*N2*N3;
 			if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
 			{
-				// if (IS_ALLV_SELECTED(SelMapsRMSPeak)) #we need later to see how to tackle this in case of need
-				// 	ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)+=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z;
 				#if defined(_PR_MAIN_1)
 				if (IS_Vx_SELECTED(SelMapsRMSPeak))
 					ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;
@@ -356,11 +354,6 @@ _PT  CurZone;
 					index+=index2*NumberSelRMSPeakMaps;
 			if (SelRMSorPeak & SEL_PEAK)
 			{
-				// if (IS_ALLV_SELECTED(SelMapsRMSPeak))
-				// {
-				// 	value=accum_x*accum_x  +  accum_y*accum_y  +  accum_z*accum_z; //in the Python function we will do the final sqr root`
-				// 	ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV)=value > ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV) ? value : ELD(SqrAcc,index+index2*IndexRMSPeak_ALLV);
-				// }
 				#if defined(_PR_MAIN_1)
 				if (IS_Vx_SELECTED(SelMapsRMSPeak))
 						ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)=accum_x > ELD(SqrAcc,index+index2*IndexRMSPeak_Vx) ? accum_x : ELD(SqrAcc,index+index2*IndexRMSPeak_Vx);

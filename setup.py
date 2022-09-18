@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.9'
+version = '0.9.9.20'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -35,16 +35,11 @@ def CompileBabelMetal(build_temp,build_lib):
     global bBabelMetalCompiled
     global extra_obj
     if not bBabelMetalCompiled:
-        extra_obj.append(build_lib+"/BabelViscoFDTD/tools/libFDTDSwift.dylib")
-
         print('Compiling Metal')
         ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
         print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
-        for fn in ['Indexing.h','GPU_KERNELS.h','kernelparamsMetal.h','StressKernel.h',
-                    'ParticleKernel.h','SensorsKernel.h','kernelparamsMetal.h']:
-            copyfile(dir_path+'src'+os.sep+fn,build_temp+'/Sources/BabelMetal/'+fn)
 
         command=['xcrun','-sdk', 'macosx', 'metal','-ffast-math','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
@@ -53,14 +48,10 @@ def CompileBabelMetal(build_temp,build_lib):
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
-        command=['swiftc','-emit-library','FDTDSwift.swift']
-        subprocess.check_call(command,cwd=build_temp)
         for fn in ['libBabelMetal.dylib']:
             copyfile(build_temp+'/.build/release/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         for fn in ['Babel.metallib']:
             copyfile(build_temp+'/Sources/BabelMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
-        for fn in ['libFDTDSwift.dylib']:
-            copyfile(build_temp+'/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         bBabelMetalCompiled=True
 
 def PrepareOpenCLKernel():
@@ -257,19 +248,19 @@ else:
             CompileBabelMetal(self.build_temp,self.build_lib)
             super().build_extensions()
             
-    class PostInstallCommand(install):
-        def run(self):
-            import site
-            install.run(self)
-            for p in sys.path:
-                for root, dirs, files in os.walk(p):
-                    for file in files:
-                        if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
-                            pathInstall=site.getsitepackages()[0]
-                            metal_python = os.path.join(root,file)
-                            command=['install_name_tool','-change','libFDTDSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libFDTDSwift.dylib'), metal_python]
-                            subprocess.check_call(command)
-                            break
+    # class PostInstallCommand(install):
+    #     def run(self):
+    #         import site
+    #         install.run(self)
+    #         for p in sys.path:
+    #             for root, dirs, files in os.walk(p):
+    #                 for file in files:
+    #                     if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
+    #                         pathInstall=site.getsitepackages()[0]
+    #                         metal_python = os.path.join(root,file)
+    #                         command=['install_name_tool','-change','libFDTDSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libFDTDSwift.dylib'), metal_python]
+    #                         subprocess.check_call(command)
+    #                         break
 
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
@@ -316,7 +307,7 @@ else:
                             ["src/page_memory.c"],
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
-    cmdclass = {'build_ext':DarwinInteropBuildExt, 'install':PostInstallCommand}
+    cmdclass = {'build_ext':DarwinInteropBuildExt}#, 'install':PostInstallCommand}
     install_requires.append('metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git')
 
 

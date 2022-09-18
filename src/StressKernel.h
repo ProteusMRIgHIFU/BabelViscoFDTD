@@ -162,7 +162,7 @@ _PT CurZone;
 
 for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
-      index=Ind_MaterialMap(i,j,k);
+	  index=Ind_MaterialMap(i,j,k);
       MaterialID=ELD(MaterialMap,index);
 
 	  #if  defined(_ST_PML_4) ||  defined(_ST_MAIN_2)  

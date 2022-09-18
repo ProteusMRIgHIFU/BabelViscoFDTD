@@ -1,3 +1,4 @@
+#ifndef METALCOMPUTE
 #define N1 p_CONSTANT_BUFFER_UINT[CInd_N1]
 #define N2 p_CONSTANT_BUFFER_UINT[CInd_N2]
 #define N3 p_CONSTANT_BUFFER_UINT[CInd_N3]
@@ -25,7 +26,6 @@
 
 #define SelRMSorPeak p_CONSTANT_BUFFER_UINT[CInd_SelRMSorPeak]
 #define SelMapsRMSPeak p_CONSTANT_BUFFER_UINT[CInd_SelMapsRMSPeak]
-#define IndexRMSPeak_ALLV p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_ALLV]
 #define IndexRMSPeak_Vx p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vx]
 #define IndexRMSPeak_Vy p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vy]
 #define IndexRMSPeak_Vz p_CONSTANT_BUFFER_UINT[CInd_IndexRMSPeak_Vz]
@@ -39,7 +39,6 @@
 #define NumberSelRMSPeakMaps p_CONSTANT_BUFFER_UINT[CInd_NumberSelRMSPeakMaps]
 
 #define SelMapsSensors p_CONSTANT_BUFFER_UINT[CInd_SelMapsSensors]
-#define IndexSensor_ALLV p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_ALLV]
 #define IndexSensor_Vx p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vx]
 #define IndexSensor_Vy p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vy]
 #define IndexSensor_Vz p_CONSTANT_BUFFER_UINT[CInd_IndexSensor_Vz]
@@ -63,6 +62,10 @@
 #define DXDTminus_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminus)
 #define InvDXDTplushp_pr (p_CONSTANT_BUFFER_MEX + CInd_InvDXDTplushp)
 #define DXDTminushp_pr (p_CONSTANT_BUFFER_MEX + CInd_DXDTminushp)
+#else
+#define nStep p_CONSTANT_BUFFER_UINT[CInd_nStep]
+#define TypeSource p_CONSTANT_BUFFER_UINT[CInd_TypeSource]
+#endif
 
 #define __def_MEX_VAR_0(__NameVar)  (&p_MEX_BUFFER_0[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
 #define __def_MEX_VAR_1(__NameVar)  (&p_MEX_BUFFER_1[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 

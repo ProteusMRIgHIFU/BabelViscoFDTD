@@ -13,18 +13,17 @@ from distutils.sysconfig import get_python_inc
 TotalAllocs=0
 
 MASKID={}
-MASKID['ALLV']=0x0000000001
-MASKID['Vx']  =0x0000000002
-MASKID['Vy']  =0x0000000004
-MASKID['Vz']  =0x0000000008
-MASKID['Sigmaxx'] =0x0000000010
-MASKID['Sigmayy'] =0x0000000020
-MASKID['Sigmazz'] =0x0000000040
-MASKID['Sigmaxy'] =0x0000000080
-MASKID['Sigmaxz'] =0x0000000100
-MASKID['Sigmayz'] =0x0000000200
-MASKID['Pressure']=0x0000000400
-MASKID['SEL_RMS']=0x0000000001
+MASKID['Vx']=0x0000000001
+MASKID['Vy']  =0x0000000002
+MASKID['Vz']  =0x0000000004
+MASKID['Sigmaxx']  =0x0000000008
+MASKID['Sigmayy'] =0x0000000010
+MASKID['Sigmazz'] =0x0000000020
+MASKID['Sigmaxy'] =0x0000000040
+MASKID['Sigmaxz'] =0x0000000080
+MASKID['Sigmayz'] =0x0000000100
+MASKID['Pressure'] =0x0000000200
+MASKID['SEL_RMS'] =0x0000000001
 MASKID['SEL_PEAK']=0x0000000002
 
 class StaggeredFDTD_3D_With_Relaxation_BASE():
@@ -75,22 +74,19 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         self._PostInitScript(arguments, extra_params)
         
-        if extra_params["BACKEND"] in ["OPENCL","CUDA"] or 'arm64' in platform.platform():
-            SCode = extra_params["SCode"]
-            with open(index_src) as f:
-                SCode+=f.readlines()
-        else:
-            SCode = []
-            AllC = ''
+        
+        SCode = extra_params["SCode"]
+        with open(index_src) as f:
+            SCode+=f.readlines()
         
     
         LParamFloat = ['DT']
         LParamInt=["N1","N2", "N3", "Limit_I_low_PML", "Limit_J_low_PML", "Limit_K_low_PML", "Limit_I_up_PML","Limit_J_up_PML",\
                 "Limit_K_up_PML","SizeCorrI","SizeCorrJ","SizeCorrK","PML_Thickness","NumberSources", "LengthSource","ZoneCount",\
                 "SizePMLxp1","SizePMLyp1","SizePMLzp1","SizePML","SizePMLxp1yp1zp1","NumberSensors","TimeSteps","SelRMSorPeak",\
-                "SelMapsRMSPeak", "IndexRMSPeak_ALLV","IndexRMSPeak_Vx","IndexRMSPeak_Vy", "IndexRMSPeak_Vz", "IndexRMSPeak_Sigmaxx",\
+                "SelMapsRMSPeak","IndexRMSPeak_Vx","IndexRMSPeak_Vy", "IndexRMSPeak_Vz", "IndexRMSPeak_Sigmaxx",\
                 "IndexRMSPeak_Sigmayy","IndexRMSPeak_Sigmazz","IndexRMSPeak_Sigmaxy","IndexRMSPeak_Sigmaxz","IndexRMSPeak_Sigmayz",\
-                "IndexRMSPeak_Pressure","NumberSelRMSPeakMaps","SelMapsSensors","IndexSensor_ALLV","IndexSensor_Vx","IndexSensor_Vy",\
+                "IndexRMSPeak_Pressure","NumberSelRMSPeakMaps","SelMapsSensors","IndexSensor_Vx","IndexSensor_Vy",\
                 "IndexSensor_Vz","IndexSensor_Sigmaxx","IndexSensor_Sigmayy","IndexSensor_Sigmazz","IndexSensor_Sigmaxy",\
                 "IndexSensor_Sigmaxz","IndexSensor_Sigmayz","IndexSensor_Pressure","NumberSelSensorMaps","SensorSubSampling",
                 "SensorStart"]
@@ -103,12 +99,11 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         for k in LParamArray:
             self._InitSymbolArray(outparams,k,td,SCode)
 
-        if extra_params["BACKEND"] in ["OPENCL","CUDA"] or 'arm64' in platform.platform():
-            with open(gpu_kernelSrc) as f:
-                SCode+=f.readlines()
-            AllC=''
-            for l in SCode:
-                AllC+=l
+        with open(gpu_kernelSrc) as f:
+            SCode+=f.readlines()
+        AllC=''
+        for l in SCode:
+            AllC+=l
     
 
         N1=arguments['N1']
@@ -245,7 +240,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         outparams['SizePMLzp1']= arguments['N1']*(arguments['N2'])*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
         outparams['SizePMLxp1yp1zp1']= (arguments['N1']+1)*(arguments['N2']+1)*(arguments['N3']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']*outparams['SizeCorrK']+1
 
-        for k in ['ALLV','Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
+        for k in ['Vx','Vy','Vz','Sigmaxx','Sigmayy','Sigmazz','Sigmaxy','Sigmaxz','Sigmayz','Pressure']:
             outparams['IndexRMSPeak_'+k]=0
             outparams['IndexSensor_'+k]=0
             if arguments['SelMapsRMSPeak'] & MASKID[k]:

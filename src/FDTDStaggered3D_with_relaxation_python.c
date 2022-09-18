@@ -80,7 +80,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(SensorStart),
 								INHOST(NumberSelRMSPeakMaps),
 								INHOST(NumberSelSensorMaps),
-								INHOST(IndexRMSPeak_ALLV)=0,
 								INHOST(IndexRMSPeak_Vx)=0,
 								INHOST(IndexRMSPeak_Vy)=0,
 								INHOST(IndexRMSPeak_Vz)=0,
@@ -91,7 +90,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 								INHOST(IndexRMSPeak_Sigmaxz)=0,
 								INHOST(IndexRMSPeak_Sigmayz)=0,
 								INHOST(IndexRMSPeak_Pressure)=0,
-								INHOST(IndexSensor_ALLV)=0,
 								INHOST(IndexSensor_Vx)=0,
 								INHOST(IndexSensor_Vy)=0,
 								INHOST(IndexSensor_Vz)=0,
@@ -324,7 +322,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 		ERROR_STRING("NumberSelSensorMaps must select at least one type of map to track");
 	//We detect how many maps we need to keep track
 	unsigned int curMapIndex =0;
-	ACCOUNT_RMSPEAK(ALLV);
 	ACCOUNT_RMSPEAK(Vx);
 	ACCOUNT_RMSPEAK(Vy);
 	ACCOUNT_RMSPEAK(Vz);
@@ -343,7 +340,6 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	}
 
 	curMapIndex =0;
-	ACCOUNT_SENSOR(ALLV);
 	ACCOUNT_SENSOR(Vx);
 	ACCOUNT_SENSOR(Vy);
 	ACCOUNT_SENSOR(Vz);
