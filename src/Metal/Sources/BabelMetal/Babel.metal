@@ -70,9 +70,3 @@ kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
             py_data_u2_imag[si2]=temp_i/(2*pi);
         }
 }
-
-#define mexType float
-#define METAL
-#define MAX_SIZE_PML 101
-#include "Indexing.h"
-#include "GPU_KERNELS.h"

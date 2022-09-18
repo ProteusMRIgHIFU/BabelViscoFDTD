@@ -175,7 +175,7 @@ Overall, Metal requires a bit more coding to prepare the pipelines for compute e
 While Metal offers better performance overall over OpenCL in AMD processors, some issues remains. Extensive testing has indicated that the Python process freezes after running a few tens of thousands of kernel calls. For many applications, this won't be an issue, but if running very long extensive parametric studies, be aware you may need to split your execution in chunks that can be called in separate `python <Myprogram.py>` calls. I suspect some driver issue limiting the number of consecutive kernels calls in a single process.
 
 ## Single precision performance comparison
-Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [249,249,426] grid size and over 2262 temporal steps was used to benchmark multiple backends and systems.
+Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences, especially when comparing Metal and OpenCL backends. A simulation for a domain of  [414, 219 , 375] grid size and over 2841 temporal steps was used to benchmark multiple backends and systems.
 
 * Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
 * AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
@@ -218,6 +218,13 @@ Given the simplicity of the kernel, for the Rayleigh integral we use `pycuda` an
 
 
 # Release notes
+* 0.9.20 Sep 17, 2022
+    * A lot of important improvements to make the final line  
+        - Metal is (finally) running as fast (sometimes slightly faster) than OpenCL in Apple processors. It took a lot of testing and fine tuning.
+        - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with PyOpenCL and PyCUDA. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because this new approach, the old Swift interface to the FDTD code was removed.
+        - Add Metal backend for BHTE tool. This version runs way faster than OpenCL in Apple processors (like a 10x factor, need to investigate more if we can replicate such gain)
+
+
 * 0.9.9  Sep 1, 2022
     * A lot of simplifications allowed having a much more straightforward code. Thanks to Andrew Xie (@IAmAndrewX) for a very productive summer trimming down code, replacing the old MTLPP with Swift, and making a new class arrangement for the different GPU backends. Now BabelViscoFDTD is based completely on PyOpenCL and PyCUDA for the FDTD viscoelastic solver. For Metal, the Swift-based wrapper does the interfacing. The old C extension is still around just for the OpenMP backend.  
 * 0.9.7  July 7, 2022
