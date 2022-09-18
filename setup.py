@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.9.20'
+version = '0.9.9.20-1'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -308,8 +308,7 @@ else:
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
     cmdclass = {'build_ext':DarwinInteropBuildExt}#, 'install':PostInstallCommand}
-    install_requires.append('metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git')
-
+    
 
 setup(name="BabelViscoFDTD",
         version=version,

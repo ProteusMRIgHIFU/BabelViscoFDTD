@@ -62,11 +62,16 @@ latest version of `pip`
 * pydicom>=1.3.0
 * setuptools >=51.0.0
 * pyopencl>=2020 (if in Windows, install manually a wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl)
-* pycuda>=2020 (only in Linux and Windows)
-* metalcomputebabel - Modified version of py-metal-compute (see release notes below for v0.9.9.20). 
+* pycuda>=2020 (only in Linux and Windows) 
 
-`h5py`, `hdf5plugin`, `pydicom`, `pyopencl`, `pycuda` and `metalcomputebabel` are installed automatically as requirements if they are no present in the Python enviroment..
+`h5py`, `hdf5plugin`, `pydicom`, `pyopencl`, `pycuda`  are installed automatically as requirements if they are no present in the Python enviroment..
 
+### MacOS systems: Manual installation of modified `metalcompute`
+As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid causing confusion with the original library, the modified version needs to be installed manually with
+
+`pip install  git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git`
+
+This modified version will be installed with a different library name (metalcomputebabel) that is different from the original (metalcompute) to avoid conflicts.
 
 ### Extra dependencies required in some of the tutorials
 * matplotlib
