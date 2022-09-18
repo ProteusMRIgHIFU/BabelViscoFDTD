@@ -255,6 +255,7 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
             
         self.context.synchronize()
         
+        self.context.pop()
         
         for k in ArraysGPUOp:
             ArraysGPUOp[k].free()

@@ -25,8 +25,10 @@ optional arguments:
 
 import numpy as np
 import argparse
+import platform
 from BabelViscoFDTD.PropagationModel import PropagationModel
-from BabelViscoFDTD.tools.RayleighAndBHTE import StartMetaCapture, Stopcapture
+if 'Darwin'  in platform.system():
+    from BabelViscoFDTD.tools.RayleighAndBHTE import StartMetaCapture, Stopcapture
 
 
 def RunTest2(GPU_ID, Backend, EnableMetalCapture, ShortRun):

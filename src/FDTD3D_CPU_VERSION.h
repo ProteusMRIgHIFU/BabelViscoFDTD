@@ -161,13 +161,13 @@
 			//Then we do the particle displacements
 			//********************************
 			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<N3+1; kk++)
+			for(kk=0; kk<N3; kk++)
 			{
 				_PT k= (_PT)kk;
-				for(jj=0; jj<N2+1; jj++)
+				for(jj=0; jj<N2; jj++)
 				{
 					_PT j= (_PT)jj;
-					for(ii=0; ii<N1+1; ii++)
+					for(ii=0; ii<N1; ii++)
 					{
 						_PT i= (_PT)ii;
 						#include "ParticleKernel.h"
