@@ -1,7 +1,7 @@
 BabelViscoFDTD
 =============
 Samuel Pichardo, Ph.D  
-Assistant Professor  
+Associate Professor  
 Radiology and Clinical Neurosciences, Hotchkiss Brain Institute  
 Cumming School of Medicine,  
 University of Calgary   
