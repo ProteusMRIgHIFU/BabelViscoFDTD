@@ -8,7 +8,7 @@ University of Calgary
 samuel.pichardo@ucalgary.ca  
 www.neurofus.ca
 
-**Software library for FDTD of viscoelastic equation using a staggered grid arrangement and including the superposition method, with multiple CPU- and GPU-based backends (OpenMP, CUDA, OpenCL and Metal)**
+**Software library for FDTD of the viscoelastic equation using a staggered grid arrangement and including the superposition method, with multiple CPU- and GPU-based backends (OpenMP, CUDA, OpenCL and Metal)**
 
 This tool solves in the time domain the viscoelastic equation for wave propagation using a staggered grid solution. The solution is primarily based on a paper from Virieux (Virieux, J., 1986. P-SV wave propagation in heterogeneous media: Velocity-stress finite-difference method. Geophysics, 51(4), pp.889-901.), who implemented for the first time the staggered grid solution for the viscoelastic equation.
  While the underlying equations and methods were developed primarily for seismic simulation, the BabelViscoFDTD library was developed for biomedical applications to study the ultrasound transmission through bone material, with skull bone as the primary target for study.
@@ -41,8 +41,8 @@ Please note that not every backend is available in a given combination of OS+Pyt
 
 
 # Requirements
-## Python 3.8 and up 
-Use of virtual environments is recommended. Anaconda Python and Enthought EDM are great choices as main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for latest versions of pyopencl are available for Python >=3.8. For Apple Silicon systems, it is recommended to use a native Python for arm64 (see below details).
+## Python 3.8 and up
+The use of virtual environments is recommended. Anaconda Python and Enthought EDM are great choices as the main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for the latest versions of pyopencl are available for Python >=3.8. For Apple Silicon systems, it is recommended to use a native Python for arm64 (see below details).
 
 ## CUDA (For Windows and Linux)
 The code has been verified to work from CUDA 9 to CUDA 11. Highly likely older versions of CUDA (7, 8) should work without a problem. Be sure of installing the CUDA samples and take note of the location where they were installed.
@@ -67,7 +67,7 @@ latest version of `pip`
 `h5py`, `hdf5plugin`, `pydicom`, `pyopencl`, `pycuda`  are installed automatically as requirements if they are no present in the Python enviroment..
 
 ### macOS systems: Manual installation of modified `metalcompute`
-As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid causing confusion with the original library, the modified version needs to be installed manually with
+As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library, the modified version needs to be installed manually with
 
 `pip install  git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git`
 
@@ -95,7 +95,7 @@ BabelViscoFDTD is available via `pip`
  pip install BabelViscoFDTD
 ```
 
-If you prefer trying experimental versions, you can clone https://github.com/ProteusMRIgHIFU/BabelViscoFDTD.git and install with at the cloned directory:
+If you prefer trying experimental versions, you can clone https://github.com/ProteusMRIgHIFU/BabelViscoFDTD.git and install within the cloned directory:
 
 ```
 pip install .
@@ -119,7 +119,7 @@ You will need a VStudio installation that is compatible with your CUDA version; 
 ### macOS
 Any recent version of macOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in macOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental; by default, it will run only single-thread. See below for details on how to enable it. For ARM64 version will have OpenMP fully enabled by default.
 
-The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There is, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. Overall, Metal is the recommended backend for M1 processors and AMD GPUs. 
+The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There are, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. Overall, Metal is the recommended backend for M1 processors and AMD GPUs. 
 
 Best scenario for both X64 and ARM64-based systems is to use fully native Python distributions using homebrew:
 1. Install  [homebrew](https://brew.sh/)
@@ -133,7 +133,7 @@ Best scenario for both X64 and ARM64-based systems is to use fully native Python
 `pip install BabelViscoFDTD`
 
 #### macOS experimental OpenMP in X86-64
-Thanks to the people who have reported the mitigated success with OpenMP. In my own current systems I didn't have problems, but later some users reported having  issues with OpenMP. Then, we turned this feature as **experimental** the time we can figure out a more stable approach.
+Thanks to the people who have reported the mitigated success with OpenMP. In my current systems, I didn't have problems, but later some users reported having issues with OpenMP. Then, we turned this feature as **experimental**, the time we can figure out a more stable approach.
 For X86-64, `libomp` and `mkl` must be installed first, otherwise compilation and execution for OpenMP will fail.
 * Install `libomp` with `brew install libomp`  
 * Install `mkl` with `pip install mkl` or `conda install mkl`
@@ -163,13 +163,13 @@ Model=PropagationModel()
 ```
 
 ### Multi-platform single code
-The underlying GPU code (start at `StaggeredFDTD_3D_With_Relaxation_<xx>.py` files) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless if using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
+The underlying GPU code (start at `StaggeredFDTD_3D_With_Relaxation_<xx>.py` files) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless of using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
 
 Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled. pycuda, pyopencl and metalcompute libraries help to minimize the amount the coding while still providing best performance possible with each backend.
 
 # Important information specific to the different environments for use
 ### macOS notes
-macOS support for HPC has shifted in recent years significantly. In modern macOS versions the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For macOS, Metal backend is recommended for AMD processors. OpenCL in macOS X86_64 may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For ARM64 processors, OpenCL drivers can support 64 bits addressing. For an AMD W6800 (32 GB RAM) it only supports 32 bits. The `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers support 64 bits addressing. The OpenCL implementation with ARM64 processors works only with a native Python arm64 installation. 
+macOS support for HPC has shifted in recent years significantly. In modern macOS versions, the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For macOS, Metal backend is recommended for AMD processors. OpenCL in macOS X86_64 may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For ARM64 processors, OpenCL drivers can support 64 bit addressing. For an AMD W6800 (32 GB RAM) it only supports 32 bits. The `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers support 64 bits addressing. The OpenCL implementation with ARM64 processors works only with a native Python arm64 installation. 
 
 ### Metal support
 Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are now becoming widespread available, it is interesting to see how well these devices stand quite well compared to Nvidia or AMD-based systems. There are some limitations such as the maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM for Metal-supported GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. We explored the use of Metal Argument Buffers, but it ended in poorer performance than packing multiple arrays logically. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and ARM64-based processors with 32 or more GB of RAM. 
@@ -180,9 +180,9 @@ While Metal offers better performance overall over OpenCL in both Apple and AMD 
 Performance between modern AMD, NVIDIA and Apple Silicon GPUs can show important differences. A simulation for a domain of  [414, 219 , 375] grid size and over 2841 temporal steps was used to benchmark multiple backends and systems.
 
 * Nvidia RTX A6000 (48 GB RAM, 10752 CUDA Cores, theoretical 38.7 SP TFLOP , memory bandwidth 768 GB/s)
-* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP , memory bandwidth 512 GB/s) 
-* AMD Vega 56 (8 GB RAM, 3584  stream processors, theoretical 10.5 SP TFLOP , memory bandwidth  410 GB/s) 
-* M1 Max  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP , memory bandwidth 400 GB/s)
+* AMD Radeon Pro W6800 (32 GB RAM, 3840  stream processors, theoretical 17.83 SP TFLOP, memory bandwidth 512 GB/s) 
+* AMD Vega 56 (8 GB RAM, 3584  stream processors, theoretical 10.5 SP TFLOP, memory bandwidth  410 GB/s) 
+* M1 Max  (64 GB RAM, 10 CPU cores, 32 GPU Cores, 4096 execution units (which PR material says translates into a theoretical 98304 simultaneous threads), theoretical 10.4 SP TFLOP, memory bandwidth 400 GB/s)
 
 RTX A6000 test was done in 128 GB Xeon W-2125 CPU (4x2 cores) @ 4.00GHz Dell system. AMD Vega 64 and AMD Radeon Pro W6800 were tested in an 128 GB iMac Pro system (10x2 Core Intel Xeon W). The Vega 64 GPU is part of the iMac system, while the Pro W6800 is connected via a Thunderbolt 3 external enclosure. Please note that GPU connectivity should not have an important effect given memory transfers between GPU and CPU are minimal. The M1 Max was configured with 64 GB and installed in a 2021 MacBook Pro system. The Dell system, iMac Pro and MacBook Pro were also used for OpenMP benchmarks. Python 3.9 was used in all systems. The Dell system test used CUDA 11.4 and Visual Studio 2019 Community edition. The latest versions of pycuda and pyopencl at the time of testing (Sep 18, 2022) were used. macOS Monterey 12.5.1 with XCode 14 were used for both iMac Pro and MacBook Pro. 
 
@@ -199,7 +199,7 @@ Wall-time was measured from the moment preparations to run GPU code started (ini
 | iMac Pro (Xeon W) | - | - | - | 2982 s  (20 threads)|
 
 #### Discussion of results
-The number of computing units is becoming a bit useless to compare. There are few interesting aspects worth mentioning:
+The number of computing units is becoming a bit useless to compare. There are a few interesting aspects worth mentioning:
 * The ratio of performance between M1 Max and A6000 (CUDA vs. Metal) is not even close to the theoretical difference of raw SP TFLOPS%.
 * Metal and OpenCL performances of the M1 Max are pretty much equal, outmatching the A6000 performance. 
 * Multiple tryouts on the CUDA code to adjust grid and block sizes didn't improve performance in the A6000. On the contrary, wall-time was increased, indicating that the recommended method by Nvidia to calculate maximal occupancy used by default in BabelViscoFDTD provided the best performance with the A6000.
@@ -210,7 +210,7 @@ The number of computing units is becoming a bit useless to compare. There are fe
 All three GPU backends have analogous control to split the calculations in the GPU multiprocessors. BabelViscoFDTD uses the methods that are recommended for each backend to ensure maximal GPU occupancy. However, manual adjustments can provide improvement to the performance. You can specify manually the grid and thread block dimensions with the optional parameters `ManualGroupSize` and `ManualLocalSize`, respectively. Please consult the guidelines of each backend (CUDA, OpenCL and Metal) on how to calculate this correctly, otherwise there is a risk of specifying a too large or too short grid and thread size dimensions. For example, for both CUDA and Metal, the multiplication of `ManualGroupSize` and `ManualLocalSize` must be equal or larger than the domain size ([N1,N2,N3]) to ensure all the domain is covered; for example for a domain of size [231,220,450], `ManualGroupSize=[60,60,115]` with `ManualLocalSize=[4,4,4]` will ensure covering the domain size. For `OpenCL` each entry in `ManualGroupSize` must be equal or larger than [N1,N2,N3] and each entry must be a multiple of its corresponding entry in `ManualLocalSize`; for example for a domain of size [231,220,450], `ManualGroupSize=[240,240,460]` with `ManualLocalSize=[4,4,4]`. Be sure of specifying these parameters as an np.array of type np.int32, such as `ManualLocalSize=np.array([4,4,4]).astype(np.int32)`. 
 
 # Supported platforms for Rayleigh integral
-Since v0.9.2 Rayleigh-Sommerfeld integral was added a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as Rayleigh integral benefits considerably of a GPU as the Rayleigh-Sommerfeld integral is hyperparallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS. 
+Since v0.9.2 Rayleigh-Sommerfeld integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS. 
 
 
 
@@ -218,31 +218,31 @@ Since v0.9.2 Rayleigh-Sommerfeld integral was added a tool (see tutorial `Tutori
 * 0.9.20 Sep 17, 2022
     * A lot of important improvements to make the final line  
         - Metal is (finally) running as fast (sometimes slightly faster) than OpenCL in Apple processors. It took a lot of testing and fine tuning.
-        - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with pyopencl and pycuda. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because this new approach, the old Swift interface to the FDTD code was removed.
+        - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with pyopencl and pycuda. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because of this new approach, the old Swift interface to the FDTD code was removed.
         - Add Metal backend for BHTE tool. This version runs way faster than OpenCL in Apple processors (like a 10x factor, need to investigate more if we can replicate such gain)
         - Benchmark metrics above were refreshed
-        - Moving forward, OpenCL is not recommended for macOS in X64 systems. Because the limitation of the underlying 32 bit addressing, pyopencl does not catch easily when a simulation goes beyond 4GB. However, Metal for AMD in macOS runs quite well, so no need to stick with OpenCL
+        - Moving forward, OpenCL is not recommended for macOS in X64 systems. Because of the limitation of the underlying 32-bit addressing, pyopencl does not catch easily when a simulation goes beyond 4GB. However, Metal for AMD in macOS runs quite well, so no need to stick with OpenCL
 
 * 0.9.9  Sep 1, 2022
     * A lot of simplifications allowed having a much more straightforward code. Thanks to Andrew Xie (@IAmAndrewX) for a very productive summer trimming down code, replacing the old MTLPP with Swift, and making a new class arrangement for the different GPU backends. Now BabelViscoFDTD is based completely on pyopencl and pycuda for the FDTD viscoelastic solver. For Metal, the Swift-based wrapper does the interfacing. The old C extension is still around just for the OpenMP backend.  
 * 0.9.7  July 7, 2022
-    * The MTLPP C++ library is now replaced by a Swift interface to access the Metal implementation for the viscoelastic FDTD solution. This will ensure using a more standard Apple development language for the future, as MTLPP is not maintained anymore. While there is a new Apple-based C++ wrapper for Metal, using Swift is still preferred as we created now a C-linking compatible library that in the future can be also used directly in Python. In the longterm, we aim to eliminate the C code extension and use only Python code in tandem with pyopencl, pycuda and  Metal 
+    * The MTLPP C++ library is now replaced by a Swift interface to access the Metal implementation for the viscoelastic FDTD solution. This will ensure using a more standard Apple development language for the future, as MTLPP is not maintained anymore. While there is a new Apple-based C++ wrapper for Metal, using Swift is still preferred as we created now a C-linking compatible library that in the future can be also used directly in Python. In the long term, we aim to eliminate the C code extension and use only Python code in tandem with pyopencl, pycuda and  Metal 
 * 0.9.6-post-10  June 27, 2022
     * A fix for OpenCL in X64 Mac system that was missing the new kernel names
-    * OpenMP for X64 in Mac is being turned back as experimental feature as some systems are unable to run with it correclty and there is not a clear path how to ensure this will be stable. The feature will remain accessible if installing the library with the BABEL_MAC_OPENMP_X64 option enabled.
+    * OpenMP for X64 in Mac is being turned back as experimental feature as some systems are unable to run with it correctly and there is not a clear path on how to ensure this will be stable. The feature will remain accessible if installing the library with the BABEL_MAC_OPENMP_X64 option enabled.
 * 0.9.6  Feb 5, 2022.
     * Improved performance in Metal-based devices by using mini-kernels.
-    * Minor fixes for Rayleigh-Somerfeld in Metal
+    * Minor fixes for Rayleigh-Sommerfeld in Metal
 * 0.9.5  Jan 18, 2022.
     * Very first pip-registered version
-    * Possibility of user-specified dimensions of blocks for computations for fine-tuning of performance
-    * Cleaning some minor bugs and add BHTE code using pycuda and pyopencl.
+    * Possibility of user-specified dimensions of blocks for computations for fine-tuning performance
+    * Cleaning some minor bugs and adding BHTE code using pycuda and pyopencl.
     
 * 0.9.3  Sep 29, 2021.
     * Improved support for both Metal and OpenCL. For Metal, stable operation is now feasible for large domains using all available memory in modern high-end GPUs. OpenCL is now supported in all OSs.
 * 0.9.2  June 13, 2021.
-    * Add Rayleigh integral support in homogenous medium with CUDA, OpenCL and Metal backends.
+    * Add Rayleigh integral support in a homogenous medium with CUDA, OpenCL and Metal backends.
     * Support for stress sources
-    * Able to select device in multiple GPU systems with CUDA
+    * Able to select devices in multiple GPU systems with CUDA
 * 0.9.1  Feb 17, 2021. Pressure calculation added in low-level function.
-* 0.9.0  Dec 2020. First porting from private repository and big reorganization to make it more user friendly
+* 0.9.0  Dec 2020. First porting from the private repository and big reorganization to make it more user friendly

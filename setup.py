@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.9.20-1'
+version = '0.9.9.21'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -172,9 +172,6 @@ if 'Darwin' not in platform.system():
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
-    # print('Adding CUDA')
-    # ext_modules+=[CMakeExtension(c_module_name+'_CUDA_single'),
-    #         CMakeExtension(c_module_name+'_CUDA_double')]
     install_requires.append('pycuda>=2020.1')
 
     cmdclass= {'build_ext': CMakeBuild}
@@ -248,19 +245,6 @@ else:
             CompileBabelMetal(self.build_temp,self.build_lib)
             super().build_extensions()
             
-    # class PostInstallCommand(install):
-    #     def run(self):
-    #         import site
-    #         install.run(self)
-    #         for p in sys.path:
-    #             for root, dirs, files in os.walk(p):
-    #                 for file in files:
-    #                     if "_FDTDStaggered3D_with_relaxation_METAL_single" in file:
-    #                         pathInstall=site.getsitepackages()[0]
-    #                         metal_python = os.path.join(root,file)
-    #                         command=['install_name_tool','-change','libFDTDSwift.dylib','@loader_path'+os.path.join(pathInstall,'/BabelViscoFDTD/tools/libFDTDSwift.dylib'), metal_python]
-    #                         subprocess.check_call(command)
-    #                         break
 
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
@@ -299,7 +283,7 @@ else:
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc])]
-                    # extra_objects=extra_obj)]
+                    
     
 
     if bIncludePagememory:
