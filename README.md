@@ -215,7 +215,9 @@ Since v0.9.2 Rayleigh-Sommerfeld integral was added as a tool (see tutorial `Tut
 
 
 # Release notes
-* 0.9.20 Sep 17, 2022
+* 0.9.10 Oct 28, 2022
+    * Fix issue with mapping of unique values when attenuation is used, it could cause some divisions by zero
+* 0.9.9.20 Sep 17, 2022
     * A lot of important improvements to make the final line  
         - Metal is (finally) running as fast (sometimes slightly faster) than OpenCL in Apple processors. It took a lot of testing and fine tuning.
         - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with pyopencl and pycuda. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because of this new approach, the old Swift interface to the FDTD code was removed.

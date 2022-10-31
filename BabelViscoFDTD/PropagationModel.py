@@ -491,38 +491,17 @@ class PropagationModel:
 
         UniqueMaterial=np.unique(MaterialMap.flatten())
 
-        if np.max(UniqueMaterial)+1 > MaterialProperties.shape[0]:
+        if np.max(UniqueMaterial) >= MaterialProperties.shape[0]:
             raise ValueError('The map in MaterialMap must have as many different values as materials identified in MaterialProperties (number of rows)');
 
 
-        VShearUnique=VShear[UniqueMaterial]
-        VLongUnique=VLong[UniqueMaterial]
-        RhoUnique=rho[UniqueMaterial]
-        ALongUnique=ALong[UniqueMaterial]
-        AShearUnique=AShear[UniqueMaterial]
+        VShearUnique=VShear
+        VLongUnique=VLong
+        RhoUnique=rho
+        ALongUnique=ALong
+        AShearUnique=AShear
 
-        dt,RhoVec,MiuVec, LambdaMiuVec, LambdaVec,TauLongVec,TauShearVec,TauSigmaVec,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateLambdaMiuMatrices(VLongUnique,VShearUnique,RhoUnique,ALongUnique,AShearUnique,Frequency,QfactorCorrection,h,AlphaCFL)
-
-        RhoMat=np.zeros(MaterialProperties.shape[0])
-        RhoMat[UniqueMaterial]=RhoVec
-
-        MiuMat=np.zeros(MaterialProperties.shape[0])
-        MiuMat[UniqueMaterial]=MiuVec
-
-        LambdaMiuMat=np.zeros(MaterialProperties.shape[0])
-        LambdaMiuMat[UniqueMaterial]=LambdaMiuVec
-
-        LambdaMat=np.zeros(MaterialProperties.shape[0])
-        LambdaMat[UniqueMaterial]=LambdaVec
-
-        TauLongMat=np.zeros(MaterialProperties.shape[0])
-        TauLongMat[UniqueMaterial]=TauLongVec
-
-        TauShearMat=np.zeros(MaterialProperties.shape[0])
-        TauShearMat[UniqueMaterial]=TauShearVec
-
-        TauSigmaMat=np.zeros(MaterialProperties.shape[0])
-        TauSigmaMat[UniqueMaterial]=TauSigmaVec
+        dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLongMat,TauShearMat,TauSigmaMat,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateLambdaMiuMatrices(VLongUnique,VShearUnique,RhoUnique,ALongUnique,AShearUnique,Frequency,QfactorCorrection,h,AlphaCFL)
 
         return dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLongMat,TauShearMat,TauSigmaMat,AnalysisQFactorLong,AnalysisQFactorShear
 
