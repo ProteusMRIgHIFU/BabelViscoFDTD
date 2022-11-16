@@ -17,6 +17,14 @@ import platform
 TotalAllocs=0
 AllC=''
 
+def ListDevices():
+    devicesIDs=[]
+    platforms = cl.get_platforms()
+    devices=platforms[0].get_devices() 
+    for device in devices:
+        devicesIDs.append(device.name)
+    return devicesIDs
+
 class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self, arguments):
         extra_params = {"BACKEND":"OPENCL"}

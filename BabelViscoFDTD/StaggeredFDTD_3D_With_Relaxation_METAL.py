@@ -18,6 +18,14 @@ from ctypes import c_byte, c_int, c_uint32, c_float, c_wchar_p, c_uint64
 
 mc = None
 
+def ListDevices():
+    import metalcomputebabel 
+    devicesIDs=[]
+    devices = metalcomputebabel.get_devices()
+    for dev in devices:
+        devicesIDs.append(dev.deviceName)
+    return devicesIDs
+
 class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_Relaxation_BASE):
     '''
     This version is mainly for Mx processors and which is based in a modified+forked version of metalcompute. As X64 will be phased out, in the future the metalcompute version will take over

@@ -10,6 +10,21 @@ from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxat
 import struct
 import pycuda.driver as cuda
 TotalAllocs=0
+
+_bCudaInit = False
+
+def ListDevices():
+    global _bCudaInit
+    devicesIDs=[]
+    if not _bCudaInit:
+        cuda.init()
+        _bCudaInit=True
+    devCount = cuda.Device.count()
+    for deviceID in range(0, devCount):
+        device = cuda.Device(deviceID)
+        devicesIDs.append(device.name())
+    return devicesIDs
+
 class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BASE):
     def __init__(self, arguments):
         extra_params = {"BACKEND":"CUDA"}
@@ -17,8 +32,11 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
 
     def _PostInitScript(self, arguments, extra_params):
         global TotalAllocs
+        global _bCudaInit
         TotalAllocs=0
-        cuda.init()
+        if not _bCudaInit:
+            cuda.init()
+            _bCudaInit=True
         devCount = cuda.Device.count()
         print("Number of CUDA devices found:", devCount)
         if devCount == 0:
