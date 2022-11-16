@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '0.9.10'
+version = '0.9.10-1'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library

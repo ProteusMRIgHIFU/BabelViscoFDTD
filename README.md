@@ -209,14 +209,16 @@ The number of computing units is becoming a bit useless to compare. There are a 
 ## Possibility of manual adjustments to improve performance
 All three GPU backends have analogous control to split the calculations in the GPU multiprocessors. BabelViscoFDTD uses the methods that are recommended for each backend to ensure maximal GPU occupancy. However, manual adjustments can provide improvement to the performance. You can specify manually the grid and thread block dimensions with the optional parameters `ManualGroupSize` and `ManualLocalSize`, respectively. Please consult the guidelines of each backend (CUDA, OpenCL and Metal) on how to calculate this correctly, otherwise there is a risk of specifying a too large or too short grid and thread size dimensions. For example, for both CUDA and Metal, the multiplication of `ManualGroupSize` and `ManualLocalSize` must be equal or larger than the domain size ([N1,N2,N3]) to ensure all the domain is covered; for example for a domain of size [231,220,450], `ManualGroupSize=[60,60,115]` with `ManualLocalSize=[4,4,4]` will ensure covering the domain size. For `OpenCL` each entry in `ManualGroupSize` must be equal or larger than [N1,N2,N3] and each entry must be a multiple of its corresponding entry in `ManualLocalSize`; for example for a domain of size [231,220,450], `ManualGroupSize=[240,240,460]` with `ManualLocalSize=[4,4,4]`. Be sure of specifying these parameters as an np.array of type np.int32, such as `ManualLocalSize=np.array([4,4,4]).astype(np.int32)`. 
 
-# Supported platforms for Rayleigh integral
-Since v0.9.2 Rayleigh-Sommerfeld integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS. 
+# Supported platforms for Rayleigh's integral
+Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS. 
 
 
 
 # Release notes
+* 0.9.10-1 Nov 16, 2022
+    * Add functions to list devices supported by computing backends 
 * 0.9.10 Oct 28, 2022
-    * Fix issue with mapping of unique values when attenuation is used, it could cause some divisions by zero
+    * Fix the issue with mapping of unique values when attenuation is used, it could cause some divisions by zero
 * 0.9.9.20 Sep 17, 2022
     * A lot of important improvements to make the final line  
         - Metal is (finally) running as fast (sometimes slightly faster) than OpenCL in Apple processors. It took a lot of testing and fine tuning.
