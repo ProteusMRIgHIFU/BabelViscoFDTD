@@ -65,6 +65,11 @@ KernelCoreSourceBHTE="""
             {
                  d_MonitorSlice[gtidx*outerDimz*TotalStepsMonitoring+gtidz*TotalStepsMonitoring+ n_Step/nFactorMonitoring] =d_output[coord];
             }
+
+            if (d_pointsMonitoring[coord])>0
+            {
+                d_Temppoints[TotalSteps*(d_pointsMonitoring[coord]-1)+n_Step]=d_output[coord];
+            }
         }
         else if(gtidx < outerDimx && gtidy < outerDimy && gtidz < outerDimz){
             d_output[coord] = d_input[coord];
@@ -162,6 +167,7 @@ if sys.platform == "darwin":
                                         __global const float 			*d_perfArr, 
                                         __global const unsigned int		*d_labels,
                                         __global const float 			*d_Qarr,
+                                        __global const unsigned int		*d_pointsMonitoring,
                                             const float 			CoreTemp,
                                             const  unsigned int				sonication,
                                             const  unsigned int				outerDimx, 
@@ -169,11 +175,13 @@ if sys.platform == "darwin":
                                             const  unsigned int              outerDimz,
                                             const float 			dt,
                                             __global  float 	*d_MonitorSlice,
+                                            __global float      *d_Temppoints,
                                             const  unsigned int TotalStepsMonitoring,
                                             const  unsigned int nFactorMonitoring,
                                             const  unsigned int n_Step,
                                             const unsigned int SelJ,
-                                            const unsigned int StartIndexQ)	
+                                            const unsigned int StartIndexQ,
+                                            const  unsigned TotalSteps)	
         {
             const int gtidx =  get_global_id(0);
             const int gtidy =  get_global_id(1);
@@ -187,10 +195,12 @@ if sys.platform == "darwin":
                                         device const float 			*d_bhArr [[ buffer(4) ]],
                                         device const float 			*d_perfArr [[ buffer(5) ]], 
                                         device const unsigned int		*d_labels [[ buffer(6) ]],
-                                        device const float 			*d_Qarr [[ buffer(7) ]],
-                                        device  float 	*d_MonitorSlice [[ buffer(8) ]],
-                                         constant float * floatParams [[ buffer(9) ]],
-                                         constant unsigned int * intparams [[ buffer(10) ]],
+                                        device const unsigned int		*d_pointsMonitoring [[ buffer(7) ]],
+                                        device const float 			*d_Qarr [[ buffer(8) ]],
+                                        device  float 	*d_MonitorSlice [[ buffer(9) ]],
+                                        device  float 	*d_Temppoints [[ buffer(10) ]],
+                                         constant float * floatParams [[ buffer(11) ]],
+                                         constant unsigned int * intparams [[ buffer(12) ]],
                                          uint gid[[thread_position_in_grid]])	
         {
 
@@ -205,6 +215,7 @@ if sys.platform == "darwin":
             #define n_Step intparams[6]
             #define SelJ intparams[7]
             #define StartIndexQ intparams[8]
+            #define TotalSteps intparams[9]
             const int gtidx =  gid/(outerDimy*outerDimz);
             const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
             const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
@@ -344,6 +355,7 @@ else:
                                         const float 			*d_bhArr,
                                         const float 			*d_perfArr, 
                                         const unsigned int		*d_labels,
+                                        const unsigned int		*d_pointsMonitoring,
                                         const float 			*d_Qarr,
                                         const float 			CoreTemp,
                                         const  int				sonication,
@@ -352,11 +364,13 @@ else:
                                         const  int              outerDimz,
                                         const float 			dt,
                                         float 	                *d_MonitorSlice,
+                                        float 			        *d_Temppoints,
                                         const  int              TotalStepsMonitoring,
                                         const  int              nFactorMonitoring,
                                         const  int              n_Step,
                                         const int               SelJ,
-                                        const unsigned int StartIndexQ)	
+                                        const unsigned int StartIndexQ,
+                                        const  unsigned TotalSteps)	
         {
             const int gtidx = (blockIdx.x * blockDim.x + threadIdx.x);
             const int gtidy = (blockIdx.y * blockDim.y + threadIdx.y);
@@ -762,15 +776,38 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                 nFactorMonitoring=1,
                 dt=0.1,blood_rho=1050,blood_ct=3617,
                 stableTemp=37.0,DutyCycle=1.0,
-                Backend='OpenCL'):
+                Backend='OpenCL',
+                MonitoringPointsMap=None,
+                initT0=None,
+                initDose=None):
     global queue 
     global prgcl 
     global prgcuda
     global ctx
 
+    for k in [initT0,initDose]:
+        if k is not None:
+            assert(MaterialMap.shape[0]==k.shape[0] and \
+            MaterialMap.shape[1]==k.shape[1] and \
+            MaterialMap.shape[2]==k.shape[2])
+
+            assert(k.dtype==np.float32)
+
+    if  MonitoringPointsMap is not None:
+        assert(MaterialMap.shape[0]==MonitoringPointsMap.shape[0] and \
+            MaterialMap.shape[1]==MonitoringPointsMap.shape[1] and \
+            MaterialMap.shape[2]==MonitoringPointsMap.shape[2])
+
+        assert(MonitoringPointsMap.dtype==np.uint8)
+
+
     perfArr=np.zeros(MaterialMap.max()+1,np.float32)
     bhArr=np.zeros(MaterialMap.max()+1,np.float32)
-    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32)
+    if initT0 is None:
+        initTemp = np.zeros(MaterialMap.shape, dtype=np.float32)
+    else:
+        initTemp = initT0
+
     Qarr=np.zeros(MaterialMap.shape, dtype=np.float32) 
 
     for n in range(MaterialMap.max()+1):
@@ -778,7 +815,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                                     MaterialList['SpecificHeat'][n],dx,TotalDurationSteps,dt=dt)
         perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
                                            blood_rho,blood_ct,dt=dt)
-        initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
+        if initT0 is None:
+            initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
 
         Qarr[MaterialMap==n]=Pressure[MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],
@@ -791,7 +829,21 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     N1=np.int32(Pressure.shape[0])
     N2=np.int32(Pressure.shape[1])
     N3=np.int32(Pressure.shape[2])
-    initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
+    
+    if initDose is None:
+        initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
+
+    MonitoringPoints = np.zeros(MaterialMap.shape, dtype=np.uint32)
+    if MonitoringPointsMap is not None:
+        LocX,LocY,LocZ=np.where(MonitoringPointsMap>0)
+        TotalPointsMonitoring=len(LocX)
+        nCount=1
+        for x,y,z in zip(LocX,LocY,LocZ):
+            MonitoringPoints[x,y,z]=nCount
+            nCount+=1
+        TemperaturePoints=np.zeros((TotalPointsMonitoring,TotalDurationSteps),np.float32)
+    else:
+        TemperaturePoints=np.zeros((10),np.float32) #just dummy array
 
     TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
     if TotalStepsMonitoring % nFactorMonitoring!=0:
@@ -813,6 +865,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
         d_Qarr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
         d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+        d_MonitoringPoints=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
 
 
         d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
@@ -823,6 +876,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
 
         d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+        d_TemperaturePoints = cl.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
 
         knl = prgcl.BHTEFDTDKernel
 
@@ -854,6 +908,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
+                    d_MonitoringPoints,
                     np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
@@ -861,11 +916,13 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
+                    d_TemperaturePoints,
                     np.int32(TotalStepsMonitoring),
                     np.int32(nFactorMonitoring),
                     np.int32(n),
                     np.int32(LocationMonitoring),
-                    np.uint32(0))
+                    np.uint32(0),
+                    np.uint32(TotalDurationSteps))
 
             else:
                 knl(queue, gl , None,
@@ -877,6 +934,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
+                    d_MonitoringPoints,
                     np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
@@ -884,11 +942,13 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
+                    d_TemperaturePoints,
                     np.int32(TotalStepsMonitoring),
                     np.int32(nFactorMonitoring),
                     np.int32(n),
                     np.int32(LocationMonitoring),
-                    np.uint32(0))
+                    np.uint32(0),
+                    np.uint32(TotalDurationSteps))
             queue.finish()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
@@ -905,6 +965,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cl.enqueue_copy(queue, T1,ResTemp)
         cl.enqueue_copy(queue, Dose1,ResDose)
         cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
+        cl.enqueue_copy(queue, TemperaturePoints,d_TemperaturePoints)
         queue.finish()
 
     elif Backend=='CUDA':
@@ -924,11 +985,14 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         d_Dose0 = cuda.mem_alloc(Dose0.nbytes)
         d_Dose1 = cuda.mem_alloc(Dose1.nbytes)
         d_MonitorSlice = cuda.mem_alloc(MonitorSlice.nbytes)
+        d_MonitoringPoints=cuda.mem_alloc(MonitoringPoints.nbytes)
+        d_TemperaturePoints=cuda.mem_alloc(TemperaturePoints.nbytes)
 
         cuda.memcpy_htod(d_perfArr, perfArr)
         cuda.memcpy_htod(d_bhArr, bhArr)
         cuda.memcpy_htod(d_Qarr, Qarr)
         cuda.memcpy_htod(d_MaterialMap, MaterialMap)
+        cuda.memcpy_htod(d_MonitoringPoints, MonitoringPoints)
         cuda.memcpy_htod(d_T0, initTemp)
         cuda.memcpy_htod(d_T1, T1)
         cuda.memcpy_htod(d_Dose0, Dose0)
@@ -950,6 +1014,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
+                    d_MonitoringPoints,
                     np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
@@ -957,11 +1022,13 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
+                    d_TemperaturePoints,
                     np.int32(TotalStepsMonitoring),
                     np.int32(nFactorMonitoring),
                     np.int32(n),
                     np.int32(LocationMonitoring),
                     np.uint32(0),
+                    np.uint32(TotalDurationSteps),
                     block=dimBlockBHTE,
                     grid=dimGridBHTE)
 
@@ -974,6 +1041,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_perfArr,
                     d_MaterialMap,
                     d_Qarr,
+                    d_MonitoringPoints,
                     np.float32(stableTemp),
                     np.int32(dUS),
                     N1,
@@ -981,11 +1049,13 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
+                    d_TemperaturePoints,
                     np.int32(TotalStepsMonitoring),
                     np.int32(nFactorMonitoring),
                     np.int32(n),
                     np.int32(LocationMonitoring),
                     np.uint32(0),
+                    np.uint32(TotalDurationSteps),
                     block=dimBlockBHTE,
                     grid=dimGridBHTE)
             pycuda.autoinit.context.synchronize()
@@ -1002,6 +1072,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         cuda.memcpy_dtoh(T1,ResTemp) 
         cuda.memcpy_dtoh(Dose1,ResDose) 
         cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice) 
+        cuda.memcpy_dtoh(MonitoringPoints,d_MonitoringPoints) 
 
     else:
         assert(Backend=='Metal')
@@ -1094,7 +1165,9 @@ def BHTEMultiplePressureFields(PressureFields,
                 blood_rho=1050,
                 blood_ct=3617,
                 stableTemp=37.0,
-                Backend='OpenCL'):
+                Backend='OpenCL',
+                initT0=None,
+                initDose=None):
     global queue 
     global prgcl 
     global ctx
@@ -1103,11 +1176,25 @@ def BHTEMultiplePressureFields(PressureFields,
            PressureFields.shape[2]==MaterialMap.shape[1] and \
            PressureFields.shape[3]==MaterialMap.shape[2])
 
+    for k in [initT0,initDose]:
+        if k is not None:
+            assert(PressureFields.shape[0]==k.shape[0] and \
+            PressureFields.shape[1]==k.shape[1] and \
+            PressureFields.shape[2]==k.shape[2] and \
+            PressureFields.shape[3]==k.shape[3])
+
+            assert(k.dtype==np.float32)
+
     assert(nStepsOnOffList.shape[0]==PressureFields.shape[0])
 
     perfArr=np.zeros(MaterialMap.max()+1,np.float32)
     bhArr=np.zeros(MaterialMap.max()+1,np.float32)
-    initTemp = np.zeros(MaterialMap.shape, dtype=np.float32) 
+
+    if initT0 is None:
+        initTemp = np.zeros(MaterialMap.shape, dtype=np.float32) 
+    else:
+        initTemp = initT0
+
     
     QArrList=np.zeros(PressureFields.shape, dtype=np.float32) 
     
@@ -1116,7 +1203,8 @@ def BHTEMultiplePressureFields(PressureFields,
                                     MaterialList['SpecificHeat'][n],dx,TotalDurationSteps,dt=dt)
         perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
                                            blood_rho,blood_ct,dt=dt)
-        initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
+        if initT0 is None:
+            initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         for m in range(PressureFields.shape[0]):
             QArrList[m,:,:,:][MaterialMap==n]=PressureFields[m,:,:,:][MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],
                                                                     MaterialList['SoS'][n],
@@ -1140,8 +1228,10 @@ def BHTEMultiplePressureFields(PressureFields,
     N2=np.int32(MaterialMap.shape[1])
     N3=np.int32(MaterialMap.shape[2])
     coreTemp = np.array([stableTemp],np.float32)
-    initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
 
+    if initDose is None:
+        initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
+    
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
