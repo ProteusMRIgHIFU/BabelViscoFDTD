@@ -817,7 +817,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                                            blood_rho,blood_ct,dt=dt)
         if initT0 is None:
             initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
-        print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
+        #print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
 
         Qarr[MaterialMap==n]=Pressure[MaterialMap==n]**2*getQCoeff(MaterialList['Density'][n],
                                                                   MaterialList['SoS'][n],

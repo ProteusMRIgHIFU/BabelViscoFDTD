@@ -73,6 +73,7 @@ class PropagationModel:
                                          DefaultGPUDeviceName='TITAN',
                                          DefaultGPUDeviceNumber=0,
                                          SILENT=0,
+                                         QCorrection=1.0,
                                          ManualGroupSize=np.array([-1,-1,-1]).astype(np.int32),
                                          ManualLocalSize=np.array([-1,-1,-1]).astype(np.int32)):
         '''
@@ -179,7 +180,7 @@ class PropagationModel:
         ###%%%%%%
 
 
-        dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLong,TauShear,TauSigma,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateMatricesForPropagation(MaterialMap,MaterialProperties,Frequency,QfactorCorrection,h,AlphaCFL)
+        dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLong,TauShear,TauSigma,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateMatricesForPropagation(MaterialMap,MaterialProperties,Frequency,QfactorCorrection,h,AlphaCFL,QCorrection=QCorrection)
 
         Omega=Frequency*2*np.pi
 
@@ -481,7 +482,7 @@ class PropagationModel:
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D(InputParam)
         return SensorOutput_orig,V,RMSValue,Snapshots_orig
 
-    def CalculateMatricesForPropagation(self,MaterialMap, MaterialProperties, Frequency,QfactorCorrection,h,AlphaCFL):
+    def CalculateMatricesForPropagation(self,MaterialMap, MaterialProperties, Frequency,QfactorCorrection,h,AlphaCFL,QCorrection=1.0):
 
         rho=MaterialProperties[:,np.int32(StaggeredConstants['ColDensity'])].flatten()
         VLong=MaterialProperties[:,np.int32(StaggeredConstants['ColLongSOS'])].flatten()
@@ -501,11 +502,12 @@ class PropagationModel:
         ALongUnique=ALong
         AShearUnique=AShear
 
-        dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLongMat,TauShearMat,TauSigmaMat,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateLambdaMiuMatrices(VLongUnique,VShearUnique,RhoUnique,ALongUnique,AShearUnique,Frequency,QfactorCorrection,h,AlphaCFL)
+        dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLongMat,TauShearMat,TauSigmaMat,AnalysisQFactorLong,AnalysisQFactorShear=self.CalculateLambdaMiuMatrices(VLongUnique,VShearUnique,RhoUnique,ALongUnique,
+                                                                                                                                AShearUnique,Frequency,QfactorCorrection,h,AlphaCFL,QCorrection=QCorrection)
 
         return dt,RhoMat,MiuMat, LambdaMiuMat, LambdaMat,TauLongMat,TauShearMat,TauSigmaMat,AnalysisQFactorLong,AnalysisQFactorShear
 
-    def CalculateLambdaMiuMatrices(self,VLongInput,VShearInput,RhoMat,ALongInput,AShearInput,Frequency,QfactorCorrection,h,AlphaCFL,CheckOnlyParameters=False):
+    def CalculateLambdaMiuMatrices(self,VLongInput,VShearInput,RhoMat,ALongInput,AShearInput,Frequency,QfactorCorrection,h,AlphaCFL,CheckOnlyParameters=False,QCorrection=1.0):
         Omega=Frequency*2*np.pi
         VMaxLong=np.max(VLongInput)
 
@@ -547,8 +549,8 @@ class PropagationModel:
         #%We save the results of the curves of the Q factor, because if we need
         #%to analyze later that Q makes sense, this will be done postiori
 
-        AnalysisQFactorLong,TauLong,TauSigma_l=CalculateRelaxationCoefficients(ALongInput,QLong,Frequency);
-        AnalysisQFactorShear,TauShear,TauSigma_s=CalculateRelaxationCoefficients(AShearInput,QShear,Frequency);
+        AnalysisQFactorLong,TauLong,TauSigma_l=CalculateRelaxationCoefficients(ALongInput,QLong,Frequency,QCorrection=QCorrection);
+        AnalysisQFactorShear,TauShear,TauSigma_s=CalculateRelaxationCoefficients(AShearInput,QShear,Frequency,QCorrection=QCorrection);
 
 
         if QfactorCorrection: # %dispersion correction...
@@ -646,8 +648,8 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
 #%% and
 #%% Bohlen, Thomas. "Parallel 3-D viscoelastic finite difference seismic modelling." Computers & Geosciences 28.8 (2002): 887-899.
 
-    LowFreq=CentralFreqHz-CentralFreqHz*0.2 #% we cover a bandwith of +/- 30% the central frequency
-    HighFreq=CentralFreqHz+CentralFreqHz*0.2
+    LowFreq=CentralFreqHz-CentralFreqHz*0.05 #% we cover a bandwith of +/- 10% the central frequency
+    HighFreq=CentralFreqHz+CentralFreqHz*0.05
 
     LowFreq=LowFreq*2*np.pi
     HighFreq=HighFreq*2*np.pi
@@ -685,7 +687,7 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
     Error_LSQ=np.sum((Qres-QValue)**2)/Qres.size
 
     #%%QValueFormula=QValue-QValue*0.1;% THIS IS TRULY AD HOC, as noted in Blanch, this has be to be done
-    #%% to compensate effects of linerarization, but yet,
+    #%% to compensate effects of linearization, but yet,
     #%% lsqlin seems to do a good job, without having to sort out an kitchen formula... the formula is super sensitive to the range of frequencies  to be tested , which is not good at all
 
     fCal=[270e3,836e3,1402e3]
@@ -695,7 +697,7 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
         # warnings.warn('Central frequency (kHz) %f  outside the range of tested frequencies for adjustment of attenuation [%f,%f]' %\
         #                 (CentralFreqHz/1e3,fCal[0],fCal[-1]))
         if CentralFreqHz<fCal[0]:
-            QValueFormula=QValue-QValue*Adj[0];
+            QValueFormula=QValue-QValue**Adj[0];
         else:
             QValueFormula=QValue-QValue**Adj[-1]
     else:
@@ -715,9 +717,9 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
 
     return Tau,TauSigma,Qres,SpectrumToValidate,Error_LSQ
     
-def CalculateRelaxationCoefficients(AttMat,Q,Frequency):
+def CalculateRelaxationCoefficients(AttMat,Q,Frequency,QCorrection=1.0):
 
-    #Q*=1.2; #%% manual adjustment....
+    Q*=QCorrection #%% manual adjustment....
     AttNonZero=AttMat!=0
     IndAttNonZero=np.nonzero(AttNonZero.flatten().T)[0]
     AnalysisQFactor={}
