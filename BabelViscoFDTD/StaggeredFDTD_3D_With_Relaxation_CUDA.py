@@ -256,8 +256,9 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
             
         cp.cuda.Stream.null.synchronize()
         
-        for k in ArraysGPUOp:
-            ArraysGPUOp[k].free()
+        for k in list(ArraysGPUOp.keys()):
+            h= ArraysGPUOp.pop(k)
+            del h
 
 
     def _PreExecuteScript(self, arguments, ArraysGPUOp, dummy):

@@ -15,9 +15,6 @@ import ctypes
 import sys 
 import platform
 
-npyInc=np.get_include()
-info = get_paths()
-
 KernelCoreSourceBHTE="""
     #define Tref 43.0
      unsigned int DzDy=outerDimz*outerDimy;
@@ -271,48 +268,43 @@ else:
     import cupy as cp
     
     RayleighCUDASource="""
-    #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-    #include <ndarrayobject.h>
-    #include <cuComplex.h>
+   #include <cupy/complex.cuh>
 
     #define pi 3.141592653589793
 
     typedef float FloatingType;
-    typedef npy_cfloat FloatingTypeComplex;
 
     #define MAX_ELEMS_IN_CONSTANT  2730 // the total constant memory can't be greater than 64k bytes
 
 
-    __device__ __forceinline__ cuComplex cuexpf (cuComplex z)
+    __device__ __forceinline__ complex<float> cuexpf (complex<float> z)
 
         {
-            cuComplex res;
-            float t = expf (z.x);
-            sincosf (z.y, &res.y, &res.x);
-            res.x *= t;
-            res.y *= t;
-            return res;
+            float res_i,res_r;
+            sincosf(z.imag(), &res_i, &res_r);
+            return expf (z.real())*complex<float> (res_r,res_i);;
         }
+    
     extern "C" __global__ void ForwardPropagationKernel(int mr2,
-                                             npy_cfloat n_c_wvnb,
+                                             complex<float> c_wvnb,
                                              FloatingType *r2pr, 
                                              FloatingType *r1pr, 
                                              FloatingType *a1pr,
-                                             npy_cfloat * u1complex,
-                                             npy_cfloat *py_data_u2, 
+                                             complex<float> * u1complex,
+                                             complex<float> *py_data_u2, 
                                              int mr1,
                                              int mr1step)
         {
         const int si2 = (blockIdx.y*gridDim.x + blockIdx.x)*blockDim.x + threadIdx.x ;		// Grid is a "flatten" 1D, thread blocks are 1D
 
-        cuComplex c_wvnb= make_cuComplex(n_c_wvnb.real,n_c_wvnb.imag);
-        cuComplex cj=make_cuComplex(0.0,1);
-        cuComplex u0,temp,temp2;
+        complex<float> cj=complex<float>(0.0,1);
+        complex<float> temp,temp2;
         
         FloatingType dx,dy,dz,R,r2x,r2y,r2z;
         if ( si2 < mr2)  
         {
-            temp.x=0;temp.y=0;
+            temp*=0;
+            
 
             r2x=r2pr[si2*3];
             r2y=r2pr[si2*3+1];
@@ -328,21 +320,18 @@ else:
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
 
-                u0=make_cuComplex(u1complex[si1+mr1step*si2].real,
-                                  u1complex[si1+mr1step*si2].imag);
-                temp2=cuCmulf(cj,c_wvnb);
-                temp2.x*=-R;temp2.y*=-R;
+                temp2=cj*c_wvnb;
+                temp2=temp2*(-R);
                 temp2=cuexpf(temp2);
-                temp2=cuCmulf(temp2,u0);
-                temp2.x*=a1pr[si1]/R;temp2.y*=a1pr[si1]/R;
-                temp=cuCaddf(temp,temp2);
+                temp2=temp2*u1complex[si1+mr1step*si2];
+                temp2=temp2*a1pr[si1]/R;
+                temp=temp+temp2;
             }
 
-            temp2=cuCmulf(cj,c_wvnb);
-            temp=cuCmulf(temp,temp2);
+            temp2=cj*c_wvnb;
+            temp=temp*temp2;
 
-            py_data_u2[si2].real=temp.x/(2*pi);
-            py_data_u2[si2].imag=temp.y/(2*pi);
+            py_data_u2[si2]=temp/((float)(2*pi));
             
         }
         }
@@ -506,8 +495,7 @@ def InitCuda(DeviceName=None):
                 break
         selDevice.use()
     AllCudaCode=RayleighCUDASource + CUDAHeaderBHTE + KernelCoreSourceBHTE
-    prgcuda  = cp.RawModule(code= AllCudaCode,
-                                    options=('-I',npyInc+os.sep+'numpy','-I',info['include']))
+    prgcuda  = cp.RawModule(code= AllCudaCode)
  
 def InitOpenCL(DeviceName='AMD'):
     global Platforms
@@ -586,7 +574,7 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
     
         
     ForwardPropagationKernel(dimBlockGrid,
-                            dimThreadBlock
+                            dimThreadBlock,
                             (mr2, 
                              cwvnb,
                              d_r2pr, 
@@ -1036,19 +1024,19 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     d_Qarr,
                     d_MonitoringPoints,
                     np.float32(stableTemp),
-                    np.int32(dUS),
+                    dUS,
                     N1,
                     N2,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
                     d_TemperaturePoints,
-                    np.int32(TotalStepsMonitoring),
-                    np.int32(nFactorMonitoring),
-                    np.int32(n),
-                    np.int32(LocationMonitoring),
-                    np.uint32(0),
-                    np.uint32(TotalDurationSteps))
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    n,
+                    LocationMonitoring,
+                    0,
+                    TotalDurationSteps))
             cp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
@@ -1399,7 +1387,7 @@ def BHTEMultiplePressureFields(PressureFields,
 
             if (n%2==0):
                 BHTEKernel(dimGridBHTE,
-                        dimBlockBHTE
+                        dimBlockBHTE,
                     (d_T1,
                     d_Dose1,
                     d_T0,
@@ -1426,7 +1414,7 @@ def BHTEMultiplePressureFields(PressureFields,
                     
             else:
                 BHTEKernel(dimGridBHTE,
-                        dimBlockBHTE
+                        dimBlockBHTE,
                     (d_T0,
                     d_Dose0,
                     d_T1,
@@ -1449,9 +1437,7 @@ def BHTEMultiplePressureFields(PressureFields,
                     n,
                     LocationMonitoring,
                     StartIndexQ,
-                    TotalDurationSteps,
-                    block=dimBlockBHTE,
-                    grid=dimGridBHTE))
+                    TotalDurationSteps))
             cp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
