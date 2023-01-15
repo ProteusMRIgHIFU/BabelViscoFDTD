@@ -62,9 +62,9 @@ latest version of `pip`
 * pydicom>=1.3.0
 * setuptools >=51.0.0
 * pyopencl>=2020 (if in Windows, install manually a wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl)
-* pycuda>=2020 (only in Linux and Windows) 
+* cupy-cuda11x in Linux (via pip). In Windows install with conda in windows with `conda install -c conda-forge cupy` 
 
-`h5py`, `hdf5plugin`, `pydicom`, `pyopencl`, `pycuda`  are installed automatically as requirements if they are no present in the Python enviroment..
+`h5py`, `hdf5plugin`, `pydicom` and `pyopencl` are installed automatically as requirements if they are no present in the Python enviroment..
 
 ### macOS systems: Manual installation of modified `metalcompute`
 As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library, the modified version needs to be installed manually with
@@ -165,7 +165,7 @@ Model=PropagationModel()
 ### Multi-platform single code
 The underlying GPU code (start at `StaggeredFDTD_3D_With_Relaxation_<xx>.py` files) uses extensively C macros to provide a fully agnostic implementation that remains as efficient as possible regardless of using a CPU or GPU backend. It supports via macro definitions compilation for native CPU (X86, arm64), CUDA, OpenCL and Metal architectures; single or double precision.
 
-Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled. pycuda, pyopencl and metalcompute libraries help to minimize the amount the coding while still providing best performance possible with each backend.
+Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very similar. However, there are a few implementation details that need to be handled. cupy, pyopencl and metalcompute libraries help to minimize the amount the coding while still providing best performance possible with each backend.
 
 # Important information specific to the different environments for use
 ### macOS notes
@@ -222,7 +222,7 @@ Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `T
 * 0.9.9.20 Sep 17, 2022
     * A lot of important improvements to make the final line  
         - Metal is (finally) running as fast (sometimes slightly faster) than OpenCL in Apple processors. It took a lot of testing and fine tuning.
-        - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with pyopencl and pycuda. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because of this new approach, the old Swift interface to the FDTD code was removed.
+        - Use of a modified version of the excellent `py-metal-compute` library (https://github.com/baldand/py-metal-compute) that allows having a similar approach as with pyopencl, cupy and pycuda. Modified library is at https://github.com/ProteusMRIgHIFU/py-metal-compute. Because of this new approach, the old Swift interface to the FDTD code was removed.
         - Add Metal backend for BHTE tool. This version runs way faster than OpenCL in Apple processors (like a 10x factor, need to investigate more if we can replicate such gain)
         - Benchmark metrics above were refreshed
         - Moving forward, OpenCL is not recommended for macOS in X64 systems. Because of the limitation of the underlying 32-bit addressing, pyopencl does not catch easily when a simulation goes beyond 4GB. However, Metal for AMD in macOS runs quite well, so no need to stick with OpenCL

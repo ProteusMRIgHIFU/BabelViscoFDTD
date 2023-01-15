@@ -1,28 +1,19 @@
 import numpy as np
-import pycuda.driver as cuda
-import pycuda.compiler
-from pycuda.compiler import SourceModule
+import cupy as cp
 
 import time
 
 from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
 
 import struct
-import pycuda.driver as cuda
 TotalAllocs=0
 
-_bCudaInit = False
-
 def ListDevices():
-    global _bCudaInit
+    devCount = cp.cuda.runtime.getDeviceCount()
     devicesIDs=[]
-    if not _bCudaInit:
-        cuda.init()
-        _bCudaInit=True
-    devCount = cuda.Device.count()
     for deviceID in range(0, devCount):
-        device = cuda.Device(deviceID)
-        devicesIDs.append(device.name())
+        d=cp.cuda.runtime.getDeviceProperties(deviceID)
+        devicesIDs.append(d['name'].decode('UTF-8'))
     return devicesIDs
 
 class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BASE):
@@ -34,10 +25,7 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
         global TotalAllocs
         global _bCudaInit
         TotalAllocs=0
-        if not _bCudaInit:
-            cuda.init()
-            _bCudaInit=True
-        devCount = cuda.Device.count()
+        devCount = cp.cuda.runtime.getDeviceCount()
         print("Number of CUDA devices found:", devCount)
         if devCount == 0:
             raise SystemError("There are no CUDA devices.")
@@ -45,17 +33,10 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
         devicelist = {}
 
         for deviceID in range(0, devCount):
-            print("Found device", str(deviceID + 1) + "/" + str(devCount))
-            device = cuda.Device(deviceID)
-            print("Name:", device.name())
-            print("Compute capability:", device.compute_capability())
-            print("Total memory:", device.total_memory(), "bytes")
-            print("Threads per block:", device.MAX_THREADS_PER_BLOCK)
-            print("Max block dimensions:", device.MAX_BLOCK_DIM_X, "x", device.MAX_BLOCK_DIM_Y, "x", device.MAX_BLOCK_DIM_Z)
-            print("Max grid size:", device.MAX_GRID_DIM_X, "x", device.MAX_GRID_DIM_Y, "x", device.MAX_GRID_DIM_Z)
-            print("Shared memory per block:", device.MAX_SHARED_MEMORY_PER_BLOCK)
-            print("Registers per block:", device.MAX_REGISTERS_PER_BLOCK)
-            if device.COMPUTE_CAPABILITY_MAJOR >= 3 and arguments['DefaultGPUDeviceName'] in device.name():
+            d=cp.cuda.runtime.getDeviceProperties(deviceID)
+            print("Found device", str(deviceID + 1) + "/" + str(devCount),d['name'].decode('UTF-8'))
+            device = cp.cuda.Device(deviceID)
+            if arguments['DefaultGPUDeviceName'] in d['name'].decode('UTF-8'):
                 devicelist[deviceID] = device
     
         if len(devicelist) == 0:
@@ -67,17 +48,17 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
         print("Selecting device", arguments['DefaultGPUDeviceName'], "with number: ", arguments['DefaultGPUDeviceNumber'])
 
         self.device = devicelist[int(arguments['DefaultGPUDeviceNumber'])]
-        print("Device Created?")
-        self.context = device.make_context()
+        self.context = cp.cuda.Device(self.device)
         print("Context Created!")
-        # self.context.set_cache_config(cuda.func_cache.PREFER_L1)
+        self.context.use()
         SCode=[]
         SCode.append("#define mexType " + extra_params['td'] +"\n")
         SCode.append("#define CUDA\n")
         extra_params['SCode'] = SCode
+        
 
     def _InitiateCommands(self, AllC):
-        self._prgcuda  = SourceModule(AllC)#,include_dirs=[npyInc+os.sep+'numpy',info['include']])
+        self._prgcuda  = cp.RawModule(code=AllC)
 
         PartsStress=['MAIN_1']
         self.AllStressKernels={}
@@ -115,19 +96,21 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
 
     def _ownGpuCalloc(self, Name,td,dims,ArraysGPUOp,flags=None):
         global TotalAllocs
-        if td in ['float','unsigned int']:
-            f=4
+
+        if td == 'float':
+            dt=cp.float32
+        elif td =='unsigned int':
+            dt=cp.uint32
         else: # double
-            f=8
+            dt=cp.float64
         print('Allocating for',Name,dims,'elements')
-        ArraysGPUOp[Name]=cuda.mem_alloc(int(dims*f))
+        ArraysGPUOp[Name]=cp.zeros((dims),dt)
         TotalAllocs+=1   
     
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU,flags=None):
         global TotalAllocs
         print('Allocating for',Name,ArrayResCPU[Name].size,'elements')
-        ArraysGPUOp[Name]=cuda.mem_alloc(ArrayResCPU[Name].nbytes)
-        cuda.memcpy_htod(ArraysGPUOp[Name], ArrayResCPU[Name])
+        ArraysGPUOp[Name]=cp.asarray(ArrayResCPU[Name])
         TotalAllocs+=1
 
     def _Execution(self, arguments, ArrayResCPU, ArraysGPUOp):
@@ -137,7 +120,9 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
         for nStep in range(TimeSteps):
             for AllKrnl in [self.AllStressKernels,self.AllParticleKernels]:
                 for k in AllKrnl:
-                    AllKrnl[k](ArraysGPUOp["V_x_x"],
+                    AllKrnl[k](self.AllGridSizes[k],
+                              self.AllBlockSizes[k],
+                        (ArraysGPUOp["V_x_x"],
                         ArraysGPUOp["V_y_x"],
                         ArraysGPUOp["V_z_x"],
                         ArraysGPUOp["V_x_y"],
@@ -191,14 +176,15 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
                         ArraysGPUOp["Oy"],
                         ArraysGPUOp["Oz"],
                         ArraysGPUOp["Pressure"],
-                        np.uint32(nStep),
-                        arguments['TypeSource'],
-                        block=self.AllBlockSizes[k],
-                        grid=self.AllGridSizes[k])
-                    self.context.synchronize()
+                        nStep,
+                        arguments['TypeSource'])
+                        )
+                    cp.cuda.Stream.null.synchronize() 
 
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.SensorsKernel(ArraysGPUOp["V_x_x"],
+                self.SensorsKernel(self.GridSensors,
+                        self.BlockSensors,
+                        (ArraysGPUOp["V_x_x"],
                         ArraysGPUOp["V_y_x"],
                         ArraysGPUOp["V_z_x"],
                         ArraysGPUOp["V_x_y"],
@@ -254,29 +240,25 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
                         ArraysGPUOp["Pressure"],
                         ArraysGPUOp['SensorOutput'],
                         ArraysGPUOp['IndexSensorMap'],
-                        np.uint32(nStep),
-                        block=self.BlockSensors,
-                        grid=self.GridSensors)
-                self.context.synchronize()
+                        nStep))
+                cp.cuda.Stream.null.synchronize()
 
         bFirstCopy=True
         events=[]
         for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz',
             'Sigma_xy','Sigma_xz','Sigma_yz','Pressure']:
             sz=ArrayResCPU[k].shape
-            tempArray=np.zeros((sz[0],sz[1],sz[2],arguments['SPP_ZONES']),dtype=ArrayResCPU[k].dtype,order='F')
-            cuda.memcpy_dtoh( tempArray, ArraysGPUOp[k])
+            tempArray=ArraysGPUOp[k].get().reshape((sz[0],sz[1],sz[2],arguments['SPP_ZONES']), order='F')
             ArrayResCPU[k][:,:,:]=tempArray.sum(axis=3)/arguments['SPP_ZONES']
 
         for k in ['SqrAcc','Snapshots','SensorOutput']:
-            cuda.memcpy_dtoh( ArrayResCPU[k], ArraysGPUOp[k])
+            ArrayResCPU[k]=ArraysGPUOp[k].get()
             
-        self.context.synchronize()
+        cp.cuda.Stream.null.synchronize()
         
-        self.context.pop()
-        
-        for k in ArraysGPUOp:
-            ArraysGPUOp[k].free()
+        for k in list(ArraysGPUOp.keys()):
+            h= ArraysGPUOp.pop(k)
+            del h
 
 
     def _PreExecuteScript(self, arguments, ArraysGPUOp, dummy):
