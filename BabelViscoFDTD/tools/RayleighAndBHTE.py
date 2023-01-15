@@ -80,155 +80,158 @@ KernelCoreSourceBHTE="""
 }
 """
 
+import pyopencl as cl
+
+RayleighOpenCLMetalSource="""
+#ifdef _METAL
+#include <metal_stdlib>
+using namespace metal;
+#endif
+
+#define pi 3.141592653589793
+#define ppCos &pCos
+
+typedef float FloatingType;
+
+#ifdef _OPENCL
+__kernel  void ForwardPropagationKernel(  const int mr2,
+                                            const FloatingType c_wvnb_real,
+                                            const FloatingType c_wvnb_imag,
+                                            const int mr1,
+                                            __global const FloatingType *r2pr, 
+                                            __global const FloatingType *r1pr, 
+                                            __global const FloatingType *a1pr, 
+                                            __global const FloatingType *u1_real, 
+                                            __global const FloatingType *u1_imag,
+                                            __global  FloatingType  *py_data_u2_real,
+                                            __global  FloatingType  *py_data_u2_imag,
+                                            const int mr1step
+                                            )
+    {
+    int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
+
+    FloatingType dx,dy,dz,R,r2x,r2y,r2z;
+    FloatingType temp_r,tr ;
+    FloatingType temp_i,ti,pCos,pSin ;
+
+    if ( si2 < mr2)  
+    {
+        temp_r = 0;
+        temp_i = 0;
+        r2x=r2pr[si2*3];
+        r2y=r2pr[si2*3+1];
+        r2z=r2pr[si2*3+2];
+
+        for (int si1=0; si1<mr1; si1++)
+        {
+            // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
+            dx=r1pr[si1*3]-r2x;
+            dy=r1pr[si1*3+1]-r2y;
+            dz=r1pr[si1*3+2]-r2z;
+
+
+            R=sqrt(dx*dx+dy*dy+dz*dz);
+            ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
+
+            tr=ti;
+            pSin=sincos(R*c_wvnb_real,ppCos);
+
+            tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
+                        ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
+
+            temp_r +=tr;
+            temp_i +=ti;	
+        }
+        
+        R=temp_r;
+
+        temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
+        temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
+
+        py_data_u2_real[si2]=temp_r/(2*pi);
+        py_data_u2_imag[si2]=temp_i/(2*pi);
+    }
+    }
+#endif
+    """
+
+OpenCLMetalHeaderBHTE="""
+#ifdef _OPENCL
+    __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
+                                    __global float 		*d_output2,
+                                    __global const float 			*d_input, 
+                                    __global const float 			*d_input2,
+                                    __global const float 			*d_bhArr,
+                                    __global const float 			*d_perfArr, 
+                                    __global const unsigned int		*d_labels,
+                                    __global const float 			*d_Qarr,
+                                    __global const unsigned int		*d_pointsMonitoring,
+                                        const float 			CoreTemp,
+                                        const  unsigned int				sonication,
+                                        const  unsigned int				outerDimx, 
+                                        const  unsigned int              outerDimy, 
+                                        const  unsigned int              outerDimz,
+                                        const float 			dt,
+                                        __global  float 	*d_MonitorSlice,
+                                        __global float      *d_Temppoints,
+                                        const  unsigned int TotalStepsMonitoring,
+                                        const  unsigned int nFactorMonitoring,
+                                        const  unsigned int n_Step,
+                                        const unsigned int SelJ,
+                                        const unsigned int StartIndexQ,
+                                        const  unsigned TotalSteps)	
+    {
+        const int gtidx =  get_global_id(0);
+        const int gtidy =  get_global_id(1);
+        const int gtidz =  get_global_id(2);
+#endif
+#ifdef _METAL
+        kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]], 
+                                    device float 		*d_output2 [[ buffer(1) ]],
+                                    device const float 			*d_input [[ buffer(2) ]], 
+                                    device const float 			*d_input2 [[ buffer(3) ]],
+                                    device const float 			*d_bhArr [[ buffer(4) ]],
+                                    device const float 			*d_perfArr [[ buffer(5) ]], 
+                                    device const unsigned int		*d_labels [[ buffer(6) ]],
+                                    device const float 			*d_Qarr [[ buffer(7) ]],
+                                    device const unsigned int		*d_pointsMonitoring [[ buffer(8) ]],
+                                    device  float 	*d_MonitorSlice [[ buffer(9) ]],
+                                    device  float 	*d_Temppoints [[ buffer(10) ]],
+                                        constant float * floatParams [[ buffer(11) ]],
+                                        constant unsigned int * intparams [[ buffer(12) ]],
+                                        uint gid[[thread_position_in_grid]])	
+    {
+
+        #define CoreTemp floatParams[0]
+        #define dt floatParams[1]
+        #define sonication intparams[0]
+        #define outerDimx intparams[1]
+        #define outerDimy intparams[2]
+        #define outerDimz intparams[3]
+        #define TotalStepsMonitoring intparams[4]
+        #define nFactorMonitoring intparams[5]
+        #define n_Step intparams[6]
+        #define SelJ intparams[7]
+        #define StartIndexQ intparams[8]
+        #define TotalSteps intparams[9]
+        const int gtidx =  gid/(outerDimy*outerDimz);
+        const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
+        const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
+
+#endif
+    """
+
+OpenCLKernelBHTE =OpenCLMetalHeaderBHTE + KernelCoreSourceBHTE
+
+
+Platforms=None
+queue = None
+prgcl = None
+ctx = None
+
 if sys.platform == "darwin":
-    import pyopencl as cl
+    
     import metalcomputebabel as mc
-    
-    RayleighOpenCLMetalSource="""
-    #ifdef _METAL
-    #include <metal_stdlib>
-    using namespace metal;
-    #endif
-
-    #define pi 3.141592653589793
-    #define ppCos &pCos
-
-    typedef float FloatingType;
-
-    #ifdef _OPENCL
-    __kernel  void ForwardPropagationKernel(  const int mr2,
-                                              const FloatingType c_wvnb_real,
-                                              const FloatingType c_wvnb_imag,
-                                              const int mr1,
-                                             __global const FloatingType *r2pr, 
-                                             __global const FloatingType *r1pr, 
-                                             __global const FloatingType *a1pr, 
-                                             __global const FloatingType *u1_real, 
-                                             __global const FloatingType *u1_imag,
-                                             __global  FloatingType  *py_data_u2_real,
-                                             __global  FloatingType  *py_data_u2_imag,
-                                             const int mr1step
-                                             )
-        {
-        int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
-    
-        FloatingType dx,dy,dz,R,r2x,r2y,r2z;
-        FloatingType temp_r,tr ;
-        FloatingType temp_i,ti,pCos,pSin ;
-
-        if ( si2 < mr2)  
-        {
-            temp_r = 0;
-            temp_i = 0;
-            r2x=r2pr[si2*3];
-            r2y=r2pr[si2*3+1];
-            r2z=r2pr[si2*3+2];
-
-            for (int si1=0; si1<mr1; si1++)
-            {
-                // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
-                dx=r1pr[si1*3]-r2x;
-                dy=r1pr[si1*3+1]-r2y;
-                dz=r1pr[si1*3+2]-r2z;
-
-
-                R=sqrt(dx*dx+dy*dy+dz*dz);
-                ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
-
-                tr=ti;
-                pSin=sincos(R*c_wvnb_real,ppCos);
-
-                tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
-                            ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
-
-                temp_r +=tr;
-                temp_i +=ti;	
-            }
-            
-            R=temp_r;
-
-            temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
-            temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
-
-            py_data_u2_real[si2]=temp_r/(2*pi);
-            py_data_u2_imag[si2]=temp_i/(2*pi);
-        }
-        }
-    #endif
-      """
-
-    OpenCLMetalHeaderBHTE="""
-    #ifdef _OPENCL
-        __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
-                                        __global float 		*d_output2,
-                                        __global const float 			*d_input, 
-                                        __global const float 			*d_input2,
-                                        __global const float 			*d_bhArr,
-                                        __global const float 			*d_perfArr, 
-                                        __global const unsigned int		*d_labels,
-                                        __global const float 			*d_Qarr,
-                                        __global const unsigned int		*d_pointsMonitoring,
-                                            const float 			CoreTemp,
-                                            const  unsigned int				sonication,
-                                            const  unsigned int				outerDimx, 
-                                            const  unsigned int              outerDimy, 
-                                            const  unsigned int              outerDimz,
-                                            const float 			dt,
-                                            __global  float 	*d_MonitorSlice,
-                                            __global float      *d_Temppoints,
-                                            const  unsigned int TotalStepsMonitoring,
-                                            const  unsigned int nFactorMonitoring,
-                                            const  unsigned int n_Step,
-                                            const unsigned int SelJ,
-                                            const unsigned int StartIndexQ,
-                                            const  unsigned TotalSteps)	
-        {
-            const int gtidx =  get_global_id(0);
-            const int gtidy =  get_global_id(1);
-            const int gtidz =  get_global_id(2);
-    #endif
-    #ifdef _METAL
-           kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]], 
-                                        device float 		*d_output2 [[ buffer(1) ]],
-                                        device const float 			*d_input [[ buffer(2) ]], 
-                                        device const float 			*d_input2 [[ buffer(3) ]],
-                                        device const float 			*d_bhArr [[ buffer(4) ]],
-                                        device const float 			*d_perfArr [[ buffer(5) ]], 
-                                        device const unsigned int		*d_labels [[ buffer(6) ]],
-                                        device const float 			*d_Qarr [[ buffer(7) ]],
-                                        device const unsigned int		*d_pointsMonitoring [[ buffer(8) ]],
-                                        device  float 	*d_MonitorSlice [[ buffer(9) ]],
-                                        device  float 	*d_Temppoints [[ buffer(10) ]],
-                                         constant float * floatParams [[ buffer(11) ]],
-                                         constant unsigned int * intparams [[ buffer(12) ]],
-                                         uint gid[[thread_position_in_grid]])	
-        {
-
-            #define CoreTemp floatParams[0]
-            #define dt floatParams[1]
-            #define sonication intparams[0]
-            #define outerDimx intparams[1]
-            #define outerDimy intparams[2]
-            #define outerDimz intparams[3]
-            #define TotalStepsMonitoring intparams[4]
-            #define nFactorMonitoring intparams[5]
-            #define n_Step intparams[6]
-            #define SelJ intparams[7]
-            #define StartIndexQ intparams[8]
-            #define TotalSteps intparams[9]
-            const int gtidx =  gid/(outerDimy*outerDimz);
-            const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
-            const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
-
-    #endif
-        """
-
-    OpenCLKernelBHTE =OpenCLMetalHeaderBHTE + KernelCoreSourceBHTE
-
-    Platforms=None
-    queue = None
-    prgcl = None
-    ctx = None
 
     # Loads METAL interface
     os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
@@ -265,8 +268,7 @@ else:
 
     prgcuda = None
 
-    import pycuda.driver as cuda
-    import pycuda.autoinit
+    import cupy as cp
     
     RayleighCUDASource="""
     #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
@@ -291,7 +293,7 @@ else:
             res.y *= t;
             return res;
         }
-    __global__ void ForwardPropagationKernel(int mr2,
+    extern "C" __global__ void ForwardPropagationKernel(int mr2,
                                              npy_cfloat n_c_wvnb,
                                              FloatingType *r2pr, 
                                              FloatingType *r1pr, 
@@ -348,7 +350,7 @@ else:
     
     CUDAHeaderBHTE="""
 
-        __global__   void BHTEFDTDKernel(  float 		        *d_output, 
+        extern "C" __global__   void BHTEFDTDKernel(  float 		        *d_output, 
                                         float 		            *d_output2,
                                         const float 			*d_input, 
                                         const float 			*d_input2,
@@ -489,12 +491,24 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     Tx = GenerateSurface(lstep,Diam,Foc)
     return Tx
 
-def InitCuda():
+def InitCuda(DeviceName=None):
     global prgcuda
-    from pycuda.compiler import SourceModule
+    devCount = cp.cuda.runtime.getDeviceCount()
+    if devCount == 0:
+        raise SystemError("There are no CUDA devices.")
+        
+    if DeviceName is not None:
+        selDevice = None
+        for deviceID in range(0, devCount):
+            d=cp.cuda.runtime.getDeviceProperties(deviceID)
+            if DeviceName in d['name'].decode('UTF-8'):
+                selDevice=cp.cuda.Device(deviceID)
+                break
+        selDevice.use()
     AllCudaCode=RayleighCUDASource + CUDAHeaderBHTE + KernelCoreSourceBHTE
-    prgcuda  = SourceModule(AllCudaCode,include_dirs=[npyInc+os.sep+'numpy',info['include']])
-
+    prgcuda  = cp.RawModule(code= AllCudaCode,
+                                    options=('-I',npyInc+os.sep+'numpy','-I',info['include']))
+ 
 def InitOpenCL(DeviceName='AMD'):
     global Platforms
     global queue 
@@ -546,20 +560,12 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
     else:
         mr1=center.shape[0]
     mr2=rf.shape[0]
-    u2=np.zeros(rf.shape[0],np.complex64)
-    
-    d_r2pr= cuda.mem_alloc(rf.nbytes)
-    d_centerpr= cuda.mem_alloc(center.nbytes)
-    d_dspr= cuda.mem_alloc(ds.nbytes)
-    d_u0complex= cuda.mem_alloc(u0.nbytes)
-    d_u2complex= cuda.mem_alloc(u2.nbytes)
-    
-    cuda.memcpy_htod(d_r2pr, rf)
-    cuda.memcpy_htod(d_centerpr, center)
-    cuda.memcpy_htod(d_dspr, ds)
-    cuda.memcpy_htod(d_u0complex, u0)
-    cuda.memcpy_htod(d_u2complex, u2)
 
+    d_r2pr= cp.asarray(rf)
+    d_centerpr= cp.asarray(center)
+    d_dspr= cp.asarray(ds)
+    d_u0complex= cp.asarray(u0)
+    d_u2complex= cp.zeros(rf.shape[0],cp.complex64)
 
     CUDA_THREADBLOCKLENGTH = 512 
     MAX_ELEMS_IN_CONSTANT = 2730
@@ -579,21 +585,19 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
     ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
     
         
-    ForwardPropagationKernel(np.int32(mr2), 
+    ForwardPropagationKernel(dimBlockGrid,
+                            dimThreadBlock
+                            (mr2, 
                              cwvnb,
                              d_r2pr, 
                              d_centerpr,
                              d_dspr,
                              d_u0complex, 
                              d_u2complex, 
-                             np.int32(mr1),
-                             np.int32(u0step),
-                             block=dimThreadBlock, grid=dimBlockGrid)
+                             mr1,
+                             u0step))
 
-    pycuda.autoinit.context.synchronize()
-        
-    
-    cuda.memcpy_dtoh(u2,d_u2complex)  
+    u2=d_u2complex.get()
     return u2
 
 def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
@@ -972,27 +976,18 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                         int(N2/dimBlockBHTE[1]+1),
                         int(N3/dimBlockBHTE[2]+1))
 
-        d_perfArr=cuda.mem_alloc(perfArr.nbytes)
-        d_bhArr=cuda.mem_alloc(bhArr.nbytes)
-        d_Qarr=cuda.mem_alloc(Qarr.nbytes)
-        d_MaterialMap=cuda.mem_alloc(MaterialMap.nbytes)
-        d_T0 = cuda.mem_alloc(initTemp.nbytes)
-        d_T1 = cuda.mem_alloc(T1.nbytes)
-        d_Dose0 = cuda.mem_alloc(Dose0.nbytes)
-        d_Dose1 = cuda.mem_alloc(Dose1.nbytes)
-        d_MonitorSlice = cuda.mem_alloc(MonitorSlice.nbytes)
-        d_MonitoringPoints=cuda.mem_alloc(MonitoringPoints.nbytes)
-        d_TemperaturePoints=cuda.mem_alloc(TemperaturePoints.nbytes)
-
-        cuda.memcpy_htod(d_perfArr, perfArr)
-        cuda.memcpy_htod(d_bhArr, bhArr)
-        cuda.memcpy_htod(d_Qarr, Qarr)
-        cuda.memcpy_htod(d_MaterialMap, MaterialMap)
-        cuda.memcpy_htod(d_MonitoringPoints, MonitoringPoints)
-        cuda.memcpy_htod(d_T0, initTemp)
-        cuda.memcpy_htod(d_T1, T1)
-        cuda.memcpy_htod(d_Dose0, Dose0)
-        cuda.memcpy_htod(d_Dose1, Dose1)
+        d_perfArr=cp.asarray(perfArr)
+        d_bhArr=cp.asarray(bhArr)
+        d_Qarr=cp.asarray(Qarr)
+        d_MaterialMap=cp.asarray(MaterialMap)
+        d_T0 = cp.asarray(initTemp)
+        d_T1 = cp.asarray(T1)
+        d_Dose0 = cp.asarray(Dose0)
+        d_Dose1 = cp.asarray(Dose1)
+        d_MonitoringPoints=cp.asarray(MonitoringPoints)
+     
+        d_MonitorSlice = cp.zeros(MonitorSlice.shape,cp.float32)
+        d_TemperaturePoints=cp.zeros(TemperaturePoints.shape,cp.float32)
 
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
@@ -1002,7 +997,9 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             else:
                 dUS=0
             if (n%2==0):
-                BHTEKernel(d_T1,
+                BHTEKernel(dimGridBHTE,
+                    dimBlockBHTE,
+                    (d_T1,
                     d_Dose1,
                     d_T0,
                     d_Dose0,
@@ -1019,17 +1016,17 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     np.float32(dt),
                     d_MonitorSlice,
                     d_TemperaturePoints,
-                    np.int32(TotalStepsMonitoring),
-                    np.int32(nFactorMonitoring),
-                    np.int32(n),
-                    np.int32(LocationMonitoring),
-                    np.uint32(0),
-                    np.uint32(TotalDurationSteps),
-                    block=dimBlockBHTE,
-                    grid=dimGridBHTE)
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    n,
+                    LocationMonitoring,
+                    0,
+                    TotalDurationSteps))
 
             else:
-                BHTEKernel(d_T0,
+                BHTEKernel(dimGridBHTE,
+                    dimBlockBHTE,
+                    (d_T0,
                     d_Dose0,
                     d_T1,
                     d_Dose1,
@@ -1051,10 +1048,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     np.int32(n),
                     np.int32(LocationMonitoring),
                     np.uint32(0),
-                    np.uint32(TotalDurationSteps),
-                    block=dimBlockBHTE,
-                    grid=dimGridBHTE)
-            pycuda.autoinit.context.synchronize()
+                    np.uint32(TotalDurationSteps))
+            cp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
         
@@ -1065,10 +1060,10 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
             ResTemp=d_T0
             ResDose=d_Dose0
         
-        cuda.memcpy_dtoh(T1,ResTemp) 
-        cuda.memcpy_dtoh(Dose1,ResDose) 
-        cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice) 
-        cuda.memcpy_dtoh(TemperaturePoints,d_TemperaturePoints) 
+        T1=ResTemp.get()
+        Dose1=ResDose.get()
+        MonitorSlice=d_MonitorSlice.get() 
+        TemperaturePoints=d_TemperaturePoints.get() 
 
     else:
         assert(Backend=='Metal')
@@ -1377,27 +1372,18 @@ def BHTEMultiplePressureFields(PressureFields,
                         int(N2/dimBlockBHTE[1]+1),
                         int(N3/dimBlockBHTE[2]+1))
 
-        d_perfArr=cuda.mem_alloc(perfArr.nbytes)
-        d_bhArr=cuda.mem_alloc(bhArr.nbytes)
-        d_QArrList=cuda.mem_alloc(QArrList.nbytes)
-        d_MaterialMap=cuda.mem_alloc(MaterialMap.nbytes)
-        d_T0 = cuda.mem_alloc(initTemp.nbytes)
-        d_T1 = cuda.mem_alloc(T1.nbytes)
-        d_Dose0 = cuda.mem_alloc(Dose0.nbytes)
-        d_Dose1 = cuda.mem_alloc(Dose1.nbytes)
-        d_MonitorSlice = cuda.mem_alloc(MonitorSlice.nbytes)
-        d_MonitoringPoints=cuda.mem_alloc(MonitoringPoints.nbytes)
-        d_TemperaturePoints=cuda.mem_alloc(TemperaturePoints.nbytes)
-
-        cuda.memcpy_htod(d_perfArr, perfArr)
-        cuda.memcpy_htod(d_bhArr, bhArr)
-        cuda.memcpy_htod(d_QArrList, QArrList)
-        cuda.memcpy_htod(d_MaterialMap, MaterialMap)
-        cuda.memcpy_htod(d_MonitoringPoints, MonitoringPoints)
-        cuda.memcpy_htod(d_T0, initTemp)
-        cuda.memcpy_htod(d_T1, T1)
-        cuda.memcpy_htod(d_Dose0, Dose0)
-        cuda.memcpy_htod(d_Dose1, Dose1)
+        d_perfArr=cp.asarray(perfArr)
+        d_bhArr=cp.asarray(bhArr)
+        d_QArrList=cp.asarray(QArrList)
+        d_MaterialMap=cp.asarray(MaterialMap)
+        d_T0 = cp.asarray(initTemp)
+        d_T1 = cp.asarray(T1)
+        d_Dose0 = cp.asarray(Dose0)
+        d_Dose1 = cp.asarray(Dose1)
+        d_MonitoringPoints=cp.asarray(MonitoringPoints)
+     
+        d_MonitorSlice = cp.zeros(MonitorSlice.shape,cp.float32)
+        d_TemperaturePoints=cp.zeros(TemperaturePoints.shape,cp.float32)
 
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
@@ -1412,7 +1398,9 @@ def BHTEMultiplePressureFields(PressureFields,
             StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
 
             if (n%2==0):
-                BHTEKernel(d_T1,
+                BHTEKernel(dimGridBHTE,
+                        dimBlockBHTE
+                    (d_T1,
                     d_Dose1,
                     d_T0,
                     d_Dose0,
@@ -1422,24 +1410,24 @@ def BHTEMultiplePressureFields(PressureFields,
                     d_QArrList,
                     d_MonitoringPoints,
                     np.float32(stableTemp),
-                    np.int32(dUS),
+                    dUS,
                     N1,
                     N2,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
                     d_TemperaturePoints,
-                    np.int32(TotalStepsMonitoring),
-                    np.int32(nFactorMonitoring),
-                    np.int32(n),
-                    np.int32(LocationMonitoring),
-                    np.uint32(StartIndexQ),
-                    np.uint32(TotalDurationSteps),
-                    block=dimBlockBHTE,
-                    grid=dimGridBHTE)
-
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    n,
+                    LocationMonitoring,
+                    StartIndexQ,
+                    TotalDurationSteps))
+                    
             else:
-                BHTEKernel(d_T0,
+                BHTEKernel(dimGridBHTE,
+                        dimBlockBHTE
+                    (d_T0,
                     d_Dose0,
                     d_T1,
                     d_Dose1,
@@ -1449,22 +1437,22 @@ def BHTEMultiplePressureFields(PressureFields,
                     d_QArrList,
                     d_MonitoringPoints,
                     np.float32(stableTemp),
-                    np.int32(dUS),
+                    dUS,
                     N1,
                     N2,
                     N3,
                     np.float32(dt),
                     d_MonitorSlice,
                     d_TemperaturePoints,
-                    np.int32(TotalStepsMonitoring),
-                    np.int32(nFactorMonitoring),
-                    np.int32(n),
-                    np.int32(LocationMonitoring),
-                    np.uint32(StartIndexQ),
-                    np.uint32(TotalDurationSteps),
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    n,
+                    LocationMonitoring,
+                    StartIndexQ,
+                    TotalDurationSteps,
                     block=dimBlockBHTE,
-                    grid=dimGridBHTE)
-            pycuda.autoinit.context.synchronize()
+                    grid=dimGridBHTE))
+            cp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
         
@@ -1474,11 +1462,10 @@ def BHTEMultiplePressureFields(PressureFields,
         else:
             ResTemp=d_T0
             ResDose=d_Dose0
-        
-        cuda.memcpy_dtoh(T1,ResTemp) 
-        cuda.memcpy_dtoh(Dose1,ResDose) 
-        cuda.memcpy_dtoh(MonitorSlice,d_MonitorSlice)
-        cuda.memcpy_dtoh(TemperaturePoints,d_TemperaturePoints) 
+        T1=ResTemp.get()
+        Dose1=ResDose.get()
+        MonitorSlice=d_MonitorSlice.get() 
+        TemperaturePoints=d_TemperaturePoints.get()  
     else:
         assert(Backend=='Metal')
 
