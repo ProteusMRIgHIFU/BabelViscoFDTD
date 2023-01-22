@@ -527,14 +527,12 @@ class PropagationModel:
         SubALong=ALongInput[AttLongNonZero].copy().flatten()
         SubAShear=AShearInput[AttShearNonZero].copy().flatten()
 
-        DistQLong=np.pi/SubALong
-        DistQShear=np.pi/SubAShear
+        QLong=np.pi/SubALong
+        QShear=np.pi/SubAShear
 
-        QLong=DistQLong.copy()
         if QLong.shape[0]!=0:
             QLong=QLong/(VLongInput[AttLongNonZero]/Frequency)
 
-        QShear=DistQShear.copy()
         if QShear.shape[0]!=0:
             QShear=QShear/(VShearInput[AttShearNonZero]/Frequency)
 
@@ -719,8 +717,12 @@ def OptimalTauForQFactor(QValue,CentralFreqHz):
     
 def CalculateRelaxationCoefficients(AttMat,Q,Frequency,QCorrection=1.0):
 
-    Q*=QCorrection #%% manual adjustment....
     AttNonZero=AttMat!=0
+    if np.isscalar(QCorrection):
+        Q*=QCorrection
+    else:
+        Q*=QCorrection[AttNonZero]
+
     IndAttNonZero=np.nonzero(AttNonZero.flatten().T)[0]
     AnalysisQFactor={}
     AnalysisQFactor['Spectrum']=None
