@@ -47,6 +47,10 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
+  get_property(languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+  if("Swift" IN_LIST languages)
+    add_subdirectory(Metal)
+  endif()
 endif()
 
 

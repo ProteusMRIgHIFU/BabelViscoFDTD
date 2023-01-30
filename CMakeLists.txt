@@ -13,10 +13,20 @@ endif()
 
 project(BabelViscoFDTD LANGUAGES C)
 
+if(CMAKE_GENERATOR MATCHES "Ninja")
+  enable_language(Swift)
+else()
+  message(STATUS "To enable Metal Swift targets, use the CMake Ninja generator, e.g.
+
+  cmake -G Ninja -B ${PROJECT_BINARY_DIR}
+  ")
+endif()
+
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set( CMAKE_VERBOSE_MAKEFILE ON )
-set (CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS true)
 
 option(STAGGERED_OPT "Enable platform-specific optimisations" ON)
 option(STAGGERED_VERBOSE "Enable verbose output" ON)
