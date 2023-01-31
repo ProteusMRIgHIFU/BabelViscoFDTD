@@ -5,137 +5,104 @@ set(STAGGERED_PYTHON_C_MODULE_NAME  CACHE STRING "Name of the C extension module
 
 # Find OpenMP if required
 if(STAGGERED_OMP_SUPPORT)
-      find_package(OpenMP REQUIRED)
-      if(OPENMP_FOUND)
-          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -DUSE_OPENMP")
-          set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-      endif()
-else()
-    if(NOT MSVC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    endif()
-endif()
-
-# Enable debug if required
-if(STAGGERED_DEBUG)
-    if(MSVC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Zi")
-    else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
-    endif()
-else()
-    if(MSVC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Ox")
-    else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-    endif()
+  find_package(OpenMP COMPONENTS C REQUIRED)
+  if(OpenMP_C_FOUND)
+    add_compile_definitions(USE_OPENMP)
+  endif()
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-unknown-pragmas>)
 endif()
 
 # Enable non-portable optimisations if required
 if(STAGGERED_OPT AND NOT STAGGERED_DEBUG)
-    if(NOT MSVC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-    endif()
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:-march=native>)
+  endif()
 endif()
 
 # Enable unsafe optimisations if required
 if(STAGGERED_FAST_MATH AND NOT STAGGERED_DEBUG)
-    if(MSVC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fp:fast")
-    else()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
-    endif()
+  if(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:/fp:fast>)
+  elseif(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:-ffast-math>)
+  endif()
 endif()
 
 
 # Use double precision if required
 if(STAGGERED_SINGLE)
-    add_definitions(-DSINGLE_PREC)
+  add_compile_definitions(SINGLE_PREC)
 endif()
 
 # Set some compiler flags
 if(MSVC)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W0")
-else()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:/W0>)
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+  add_compile_options("$<$<COMPILE_LANGUAGE:C>:-Wall;-Wextra>")
 endif()
 
-# Add Python component if requested
+# ------------- Project targets -------------
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+
+  get_property(languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+  if("Swift" IN_LIST languages)
+    add_subdirectory(Metal)
+  endif()
+endif()
+
+
+# --- Python C extension ---
 if(STAGGERED_PYTHON_SUPPORT)
-    set(Python_FIND_VIRTUALENV FIRST)
-    find_package(PythonInterp 3.6 REQUIRED)
+  set(Python_FIND_VIRTUALENV FIRST)
+  find_package(Python REQUIRED COMPONENTS Development)
+  if(Python_VERSION VERSION_LESS 3.8)
+    message(FATAL_ERROR "Python version 3.8 or higher is required")
+  endif()
 
-    # Find NumPy headers
-    exec_program(${PYTHON_EXECUTABLE}
-        ARGS "-c \"import numpy;import os; print(numpy.get_include()+os.sep+'numpy')\""
-        OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
-        RETURN_VALUE NUMPY_NOT_FOUND
-        )
-    if(NUMPY_NOT_FOUND)
-        message(FATAL_ERROR "NumPy headers not found")
-    endif()
+  find_package(Python COMPONENTS NumPy REQUIRED)
 
-    # Find Python headers
-    exec_program(${PYTHON_EXECUTABLE}
-        ARGS "-c \"import sysconfig; print(sysconfig.get_paths()['include'])\""
-        OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS
-        RETURN_VALUE PYTHON_INCLUDE_DIRS_NOT_FOUND
-        )
-    if(PYTHON_INCLUDE_DIRS_NOT_FOUND)
-        message(FATAL_ERROR "Python headers not found")
-    endif()
+  # some systems need this extra include dir
+  find_path(_numpy_incdir
+  NAMES ndarrayobject.h
+  HINTS ${Python_NumPy_INCLUDE_DIRS}
+  PATH_SUFFIXES numpy
+  )
+  if(_numpy_incdir)
+    list(APPEND Python_NumPy_INCLUDE_DIRS ${_numpy_incdir})
+  endif()
 
-    # This goes after, since it uses PythonInterp as a hint
-    if(WIN32)
-        find_package(PythonLibs 3.6 REQUIRED)
-    endif()
+  message(STATUS "Python version: ${Python_VERSION}
+Numpy Include: ${Python_NumPy_INCLUDE_DIRS}
+Python Include: ${Python_INCLUDE_DIRS}
+  ")
 
-    if(STAGGERED_MACOS)
-        find_package(PythonLibs 3.6 REQUIRED)
-    endif()
+  set(PYTHON_C_EXTENSION_SRCS FDTDStaggered3D_with_relaxation_python.c)
 
-    
-    set(PYTHON_C_EXTENSION_SRCS
-          "FDTDStaggered3D_with_relaxation_python.c"
-      )
+  add_library(python_c_extension SHARED ${PYTHON_C_EXTENSION_SRCS})
 
+  set_target_properties(python_c_extension
+      PROPERTIES
+          PREFIX ""
+          OUTPUT_NAME "${STAGGERED_PYTHON_C_MODULE_NAME}"
+          LINKER_LANGUAGE C
+  )
+  if(MSVC)
+    set_property(TARGET python_c_extension PROPERTY SUFFIX ".pyd")
+  endif()
 
-    add_library(python_c_extension SHARED ${PYTHON_C_EXTENSION_SRCS})
+  target_include_directories(python_c_extension PUBLIC
+  ${Python_INCLUDE_DIRS}
+  ${Python_NumPy_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/src/headers
+  )
 
-    set_target_properties(
-        python_c_extension
-        PROPERTIES
-            PREFIX ""
-            OUTPUT_NAME ${STAGGERED_PYTHON_C_MODULE_NAME}
-            LINKER_LANGUAGE C
-    )
-
-    if(WIN32)
-        set_target_properties(
-            python_c_extension
-            PROPERTIES
-            SUFFIX ".pyd"
-        )
-    endif()
-
-    
-
-    target_include_directories(python_c_extension PUBLIC
-    ${PYTHON_INCLUDE_DIRS}
-    ${NUMPY_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/src/headers
-    )
-
-
-    target_link_libraries(python_c_extension)
-
-    # On Windows, it is required to link to the Python libraries
-
-    target_link_libraries(python_c_extension ${PYTHON_LIBRARIES})
-
-    
-    if(APPLE)
-      set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
-    endif(APPLE)
+  # On Windows, it is required to link to the Python libraries
+  target_link_libraries(python_c_extension PRIVATE
+  ${Python_LIBRARIES}
+  $<$<BOOL:${OpenMP_C_FOUND}>:OpenMP::OpenMP_C>
+  )
 
 endif()
