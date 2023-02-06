@@ -54,8 +54,9 @@ def CompileBabelMetal(build_temp,build_lib):
             copyfile(build_temp+'/Sources/BabelMetal/'+fn,build_lib+'/BabelViscoFDTD/tools/'+fn)
         bBabelMetalCompiled=True
 
-def PrepareOpenCLKernel():
+def PrepareKernels():
     #this function merges the kernel code to be usable for opencl
+
     with open(dir_path+'src'+os.sep+'GPU_KERNELS.h','r') as f:
         GPU_KERNELS=f.readlines()
 
@@ -68,7 +69,22 @@ def PrepareOpenCLKernel():
                 with open(dir_path+'src'+os.sep+incfile,'r') as g:
                     inclines=g.readlines()
                 f.writelines(inclines)
+
+    with open(dir_path+'src'+os.sep+'GPU_KERNELS2D.h','r') as f:
+        GPU_KERNELS=f.readlines()
+
+    with open('BabelViscoFDTD'+os.sep+'_gpu_kernel2D.c','w') as f:
+        for l in GPU_KERNELS:
+            if "#include" not in l:
+                f.write(l)
+            else:
+                incfile = l.split('"')[1]
+                with open(dir_path+'src'+os.sep+incfile,'r') as g:
+                    inclines=g.readlines()
+                f.writelines(inclines)
     copyfile(dir_path+'src'+os.sep+'Indexing.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing.h')
+    copyfile(dir_path+'src'+os.sep+'Indexing2D.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing2D.h')
+
 
 install_requires=['numpy',
                 'scipy',
@@ -77,7 +93,7 @@ install_requires=['numpy',
                 'pydicom',
                 'pyopencl']
 
-PrepareOpenCLKernel()
+PrepareKernels()
 
 if 'Darwin' not in platform.system():
     # Command line flags forwarded to CMake (for debug purpose)
@@ -298,7 +314,7 @@ setup(name="BabelViscoFDTD",
         packages=['BabelViscoFDTD','BabelViscoFDTD.tools'],
         install_requires=install_requires,
         description='GPU/CPU 3D FDTD solution of viscoelastic equation',
-        package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h']},
+        package_data={'BabelViscoFDTD': ['_gpu_kernel.c','_indexing.h','_gpu_kernel2D.c','_indexing2D.h']},
         author_email='samuel.pichardo@ucalgary.ca',
         keywords=['FDTD', 'CUDA', 'OpenCL','Metal','viscoelastic'],
         long_description=open('README.md').read(),

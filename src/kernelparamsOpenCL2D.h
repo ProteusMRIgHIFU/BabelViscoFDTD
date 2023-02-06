@@ -1,0 +1,37 @@
+#ifdef CUDA
+#define __predecorator 
+#else
+#define __predecorator __global
+#endif
+__predecorator mexType *V_x_x_pr,
+__predecorator mexType *V_y_x_pr,
+__predecorator mexType *V_x_y_pr,
+__predecorator mexType *V_y_y_pr,
+__predecorator mexType *Vx_pr,
+__predecorator mexType *Vy_pr,
+__predecorator mexType *Rxx_pr,
+__predecorator mexType *Ryy_pr,
+__predecorator mexType *Rxy_pr,
+__predecorator mexType *Sigma_x_xx_pr,
+__predecorator mexType *Sigma_y_xx_pr,
+__predecorator mexType *Sigma_x_yy_pr,
+__predecorator mexType *Sigma_y_yy_pr,
+__predecorator mexType *Sigma_x_xy_pr,
+__predecorator mexType *Sigma_y_xy_pr,
+__predecorator mexType *Sigma_xy_pr,
+__predecorator mexType *Sigma_xx_pr,
+__predecorator mexType *Sigma_yy_pr,
+__predecorator mexType *SourceFunctions_pr,
+__predecorator mexType * LambdaMiuMatOverH_pr,
+__predecorator mexType * LambdaMatOverH_pr,
+__predecorator mexType * MiuMatOverH_pr,
+__predecorator mexType * TauLong_pr,
+__predecorator mexType * OneOverTauSigma_pr,
+__predecorator mexType * TauShear_pr,
+__predecorator mexType * InvRhoMatH_pr,
+__predecorator mexType * SqrAcc_pr,
+__predecorator unsigned int * MaterialMap_pr,
+__predecorator unsigned int * SourceMap_pr,
+__predecorator mexType * Ox_pr,
+__predecorator mexType * Oy_pr,
+__predecorator mexType * Pressure_pr
