@@ -38,10 +38,10 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
         self._c_uint_type = np.uint64(0)
-        self.HOST_INDEX_MEX = np.zeros((30, 2), np.uint64)
+        self.HOST_INDEX_MEX = np.zeros((31, 2), np.uint64)
         self.HOST_INDEX_UINT = np.zeros((3, 2), np.uint64)
-        self.LENGTH_INDEX_MEX = 30
-        self.LENGTH_INDEX_UINT = 3
+        self.LENGTH_INDEX_MEX = self.HOST_INDEX_MEX.shape[0]
+        self.LENGTH_INDEX_UINT = self.HOST_INDEX_UINT.shape[0]
         self.ZoneCount = arguments['SPP_ZONES']
         self._IndexDataMetal = {
             "V_x_x":0, "V_y_x":0, "V_x_y":0, "V_y_y":0,
@@ -61,23 +61,23 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         self.C_IND = {
             "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,
             "nStep":0, "TypeSource":1, 
-            "V_x_x":0, "V_y_x":1, "V_x_y":2, "V_y_y":2, "Vx":3, "Vy":4,
-            "Rxx":5, "Ryy":6, "Rxy":7,
-            "Sigma_x_xx":8, "Sigma_y_xx":9, "Sigma_x_yy":10, "Sigma_y_yy":11,
-            "Sigma_x_xy":12, "Sigma_y_xy":13, "Sigma_xy":14, 
-            "Sigma_xx":15, "Sigma_yy":16, 
-            "SourceFunctions":17, "LambdaMiuMatOverH":18, 
-            "LambdaMatOverH":19, "MiuMatOverH":20, 
-            "TauLong":21, "OneOverTauSigma":22, "TauShear":23, 
-            "InvRhoMatH":24, "Ox":25, "Oy":26,
-            "Pressure":27, "SqrAcc":28, "SensorOutput":29, 
+            "V_x_x":0, "V_y_x":1, "V_x_y":2, "V_y_y":3, "Vx":4, "Vy":5,
+            "Rxx":6, "Ryy":7, "Rxy":8,
+            "Sigma_x_xx":9, "Sigma_y_xx":10, "Sigma_x_yy":11, "Sigma_y_yy":12,
+            "Sigma_x_xy":13, "Sigma_y_xy":14, "Sigma_xy":15, 
+            "Sigma_xx":16, "Sigma_yy":17, 
+            "SourceFunctions":18, "LambdaMiuMatOverH":19, 
+            "LambdaMatOverH":20, "MiuMatOverH":21, 
+            "TauLong":22, "OneOverTauSigma":23, "TauShear":24, 
+            "InvRhoMatH":25, "Ox":26, "Oy":27,
+            "Pressure":28, "SqrAcc":29, "SensorOutput":30, 
             }
 
         self.FUNCTION_LOCALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
             self.FUNCTION_LOCALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
         self.FUNCTION_GLOBALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
             self.FUNCTION_GLOBALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
                 
         self.LENGTH_CONST_UINT = 2
@@ -194,7 +194,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             self._CALC_USER_LOCAL("MAIN_1", "PARTICLE")
         
         for j in ["STRESS", "PARTICLE"]:
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+            for i in ["PML_1", "PML_2", "PML_3"]:
                 self._CALC_USER_LOCAL(i, j)
         
         if arguments['ManualGroupSize'][0] != -1:
