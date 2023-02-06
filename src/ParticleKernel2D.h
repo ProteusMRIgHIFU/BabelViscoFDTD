@@ -65,7 +65,7 @@ _PT  CurZone;
 		{
 		  if (IsOnPML_I(i)==1 || IsOnPML_J(j)==1 )
 			{
-	#if defined(_PR_PML_1) || defined(_PR_PML_2) 
+	#if defined(_PR_PML_1) || defined(_PR_PML_2)  
 				index=Ind_MaterialMap(i,j);
 				AvgInvRhoI=ELD(InvRhoMatH,ELD(MaterialMap,index));
 				//In the PML

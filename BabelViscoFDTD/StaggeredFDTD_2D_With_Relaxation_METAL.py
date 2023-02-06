@@ -277,7 +277,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         for k in PartsStress:
             self.AllStressKernels[k]=prg.function(k+"_StressKernel")
 
-        PartsParticle=['PML_1','PML_2','MAIN_1']
+        PartsParticle=['PML_1','PML_2','PML_3','MAIN_1']
         self.AllParticleKernels={}
         for k in PartsParticle:
             self.AllParticleKernels[k]=prg.function(k+"_ParticleKernel")
@@ -325,7 +325,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
                                                self.mex_buffer[11])
                 AllHandles.append(handle)
 
-            for i in ["PML_1", "PML_2", "MAIN_1"]:
+            for i in ["PML_1", "PML_2","PML_3", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
