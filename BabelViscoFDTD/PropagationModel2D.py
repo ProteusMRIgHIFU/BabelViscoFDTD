@@ -146,20 +146,20 @@ class PropagationModel2D:
 
 
         SzMap=MaterialMap.shape
-        if TypeSource<2:
-            if not(np.all(SzMap[0:2]==SourceMap.shape)  and np.all(SzMap[0:2]==SensorMap.shape)
+        # if TypeSource<2:
+        if not(np.all(SzMap[0:2]==SourceMap.shape)  and np.all(SzMap[0:2]==SensorMap.shape)
                 and np.all(SzMap[0:2]==Ox.shape) and np.all(SzMap[0:2]==Oy.shape) ):
                 raise ValueError('The size SourceMap, Ox, Oy, MaterialMap, SensorMap must be equal!!!')
-        else:
-            if not(np.all(SzMap[0:2]==SourceMap.shape)  and np.all(SzMap[0:2]==SensorMap.shape)):
-                raise ValueError('The size SourceMap, MaterialMap, SensorMap must be equal!!!')
-            if Ox.ndim==1:
-                if not(Ox.size==1 and Oy.size==1  and Ox[0]==1 and Oy[0]==1 ):
-                    raise ValueError('When specifying a source for stress, Oy must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
-                Ox=np.ones(MaterialMap.shape)
-            else:
-                if not( np.all(SzMap[0:2]==Ox.shape) and Oy.size==1  and Oy[0]==1 ):
-                    raise ValueError('When specifying a source for stress, Oy must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
+        # else:
+        #     if not(np.all(SzMap[0:2]==SourceMap.shape)  and np.all(SzMap[0:2]==SensorMap.shape)):
+        #         raise ValueError('The size SourceMap, MaterialMap, SensorMap must be equal!!!')
+        #     if Ox.ndim==1:
+        #         if not(Ox.size==1 and Oy.size==1  and Ox[0]==1 and Oy[0]==1 ):
+        #             raise ValueError('When specifying a source for stress, Oy must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
+        #         Ox=np.ones(MaterialMap.shape)
+        #     else:
+        #         if not( np.all(SzMap[0:2]==Ox.shape) and Oy.size==1  and Oy[0]==1 ):
+        #             raise ValueError('When specifying a source for stress, Oy must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
 
 
 

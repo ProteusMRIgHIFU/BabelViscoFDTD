@@ -327,17 +327,17 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   			if (source>0)
   			{
   			  source--; //need to use C index
-  			  value=ELD(SourceFunctions,nStep*NumberSources+source)*ELD(Ox,index); // We use Ox as mechanism to provide weighted arrays
+  			  value=ELD(SourceFunctions,nStep*NumberSources+source); 
 				index=Ind_Sigma_xx(i,j);
                 if ((TypeSource-2)==0)
                 {
-                    ELD(Sigma_xx,index)+=value;
-                    ELD(Sigma_yy,index)+=value;
+                    ELD(Sigma_xx,index)+=value*ELD(Ox,index);
+                    ELD(Sigma_yy,index)+=value*ELD(Oy,index);
                 }
                 else
                 {
-                   ELD(Sigma_xx,index)=value;
-                   ELD(Sigma_yy,index)=value;
+                   ELD(Sigma_xx,index)=value*ELD(Ox,index);
+                   ELD(Sigma_yy,index)=value*ELD(Oy,index);
                 }
 
   			}
