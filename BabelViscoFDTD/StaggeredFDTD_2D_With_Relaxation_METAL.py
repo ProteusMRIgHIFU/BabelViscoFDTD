@@ -345,13 +345,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
                                                self.mex_buffer[11])
 
                 AllHandles.append(handle)
-            self.ctx.commit_command_buffer()
-            self.ctx.wait_command_buffer()
-            while len(AllHandles)>0:
-                handle = AllHandles.pop(0) 
-                del handle
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.ctx.init_command_buffer()
                 handle=self.SensorsKernel(np.prod(self.globalSensor),
                                 self.constant_buffer_uint,
                                 self.index_mex,
@@ -369,8 +363,11 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
                                 self.mex_buffer[9],
                                 self.mex_buffer[10],
                                 self.mex_buffer[11])
-                self.ctx.commit_command_buffer()   
-                self.ctx.wait_command_buffer()
+                AllHandles.append(handle)
+            self.ctx.commit_command_buffer()
+            self.ctx.wait_command_buffer()
+            while len(AllHandles)>0:
+                handle = AllHandles.pop(0) 
                 del handle
         if 'arm64' not in platform.platform():
             self.ctx.sync_buffers((self.mex_buffer[0],
