@@ -204,8 +204,8 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
         for k in ['Vx','Vy','Sigma_xx','Sigma_yy',
             'Sigma_xy','Pressure']:
             sz=ArrayResCPU[k].shape
-            tempArray=ArraysGPUOp[k].get().reshape((sz[0],sz[1],sz[2],arguments['SPP_ZONES']), order='F')
-            ArrayResCPU[k][:,:,:]=tempArray.sum(axis=3)/arguments['SPP_ZONES']
+            tempArray=ArraysGPUOp[k].get().reshape((sz[0],sz[1],arguments['SPP_ZONES']), order='F')
+            ArrayResCPU[k][:,:]=tempArray.sum(axis=2)/arguments['SPP_ZONES']
 
         for k in ['SqrAcc','Snapshots','SensorOutput']:
             ArrayResCPU[k]=ArraysGPUOp[k].get()
@@ -226,7 +226,7 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
             AllBlockSizes=(arguments['ManualLocalSize'][0],
                            arguments['ManualLocalSize'][1])
         else:
-            AllBlockSizes=(8,8,2)
+            AllBlockSizes=(8,2)
 
         self.AllBlockSizes={}
         self.AllBlockSizes['MAIN_1']=AllBlockSizes
@@ -239,8 +239,8 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
             self.AllGridSizes['MAIN_1']=(int(N1//self.AllBlockSizes['MAIN_1'][0]+1),
                               int(N2//self.AllBlockSizes['MAIN_1'][1]+1))
 
-        self.BlockSensors=(64,1,1)
-        self.GridSensors=(int(arguments['IndexSensorMap'].size//self.BlockSensors[0]+1),1,1)
+        self.BlockSensors=(64,1)
+        self.GridSensors=(int(arguments['IndexSensorMap'].size//self.BlockSensors[0]+1),1)
 
 
 def StaggeredFDTD_2D_CUDA(arguments):
