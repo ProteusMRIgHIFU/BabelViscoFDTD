@@ -1,7 +1,5 @@
 #define mexType float
-#define METAL
-#define METALCOMPUTE
-#define MAX_SIZE_PML 101
+#define CUDA
 #ifndef INDEXING_DEF
 #define INDEXING_DEF
 
@@ -365,45 +363,45 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #endif
 
 #endif
-constant float DT = 1.50000005e-07;
-constant  _PT N1 = 129;
-constant  _PT N2 = 234;
-constant  _PT Limit_I_low_PML = 11;
-constant  _PT Limit_J_low_PML = 11;
-constant  _PT Limit_I_up_PML = 117;
-constant  _PT Limit_J_up_PML = 222;
-constant  _PT SizeCorrI = 105;
-constant  _PT SizeCorrJ = 210;
-constant  _PT PML_Thickness = 12;
-constant  _PT NumberSources = 1;
-constant  _PT LengthSource = 78;
-constant  _PT ZoneCount = 1;
-constant  _PT SizePMLxp1 = 8371;
-constant  _PT SizePMLyp1 = 8266;
-constant  _PT SizePML = 8137;
-constant  _PT SizePMLxp1yp1 = 8501;
-constant  _PT NumberSensors = 22050;
-constant  _PT TimeSteps = 497;
-constant  _PT SelRMSorPeak = 1;
-constant  _PT SelMapsRMSPeak = 32;
-constant  _PT IndexRMSPeak_Vx = 0;
-constant  _PT IndexRMSPeak_Vy = 0;
-constant  _PT IndexRMSPeak_Sigmaxx = 0;
-constant  _PT IndexRMSPeak_Sigmayy = 0;
-constant  _PT IndexRMSPeak_Sigmaxy = 0;
-constant  _PT IndexRMSPeak_Pressure = 0;
-constant  _PT NumberSelRMSPeakMaps = 1;
-constant  _PT SelMapsSensors = 35;
-constant  _PT IndexSensor_Vx = 0;
-constant  _PT IndexSensor_Vy = 1;
-constant  _PT IndexSensor_Sigmaxx = 0;
-constant  _PT IndexSensor_Sigmayy = 0;
-constant  _PT IndexSensor_Sigmaxy = 0;
-constant  _PT IndexSensor_Pressure = 2;
-constant  _PT NumberSelSensorMaps = 3;
-constant  _PT SensorSubSampling = 2;
-constant  _PT SensorStart = 0;
-constant float InvDXDTplus_pr[13] ={
+__constant__ float DT = 1.50000005e-07;
+__constant__  _PT N1 = 129;
+__constant__  _PT N2 = 234;
+__constant__  _PT Limit_I_low_PML = 11;
+__constant__  _PT Limit_J_low_PML = 11;
+__constant__  _PT Limit_I_up_PML = 117;
+__constant__  _PT Limit_J_up_PML = 222;
+__constant__  _PT SizeCorrI = 105;
+__constant__  _PT SizeCorrJ = 210;
+__constant__  _PT PML_Thickness = 12;
+__constant__  _PT NumberSources = 1;
+__constant__  _PT LengthSource = 78;
+__constant__  _PT ZoneCount = 1;
+__constant__  _PT SizePMLxp1 = 8371;
+__constant__  _PT SizePMLyp1 = 8266;
+__constant__  _PT SizePML = 8137;
+__constant__  _PT SizePMLxp1yp1 = 8501;
+__constant__  _PT NumberSensors = 22050;
+__constant__  _PT TimeSteps = 497;
+__constant__  _PT SelRMSorPeak = 1;
+__constant__  _PT SelMapsRMSPeak = 32;
+__constant__  _PT IndexRMSPeak_Vx = 0;
+__constant__  _PT IndexRMSPeak_Vy = 0;
+__constant__  _PT IndexRMSPeak_Sigmaxx = 0;
+__constant__  _PT IndexRMSPeak_Sigmayy = 0;
+__constant__  _PT IndexRMSPeak_Sigmaxy = 0;
+__constant__  _PT IndexRMSPeak_Pressure = 0;
+__constant__  _PT NumberSelRMSPeakMaps = 1;
+__constant__  _PT SelMapsSensors = 35;
+__constant__  _PT IndexSensor_Vx = 0;
+__constant__  _PT IndexSensor_Vy = 1;
+__constant__  _PT IndexSensor_Sigmaxx = 0;
+__constant__  _PT IndexSensor_Sigmayy = 0;
+__constant__  _PT IndexSensor_Sigmaxy = 0;
+__constant__  _PT IndexSensor_Pressure = 2;
+__constant__  _PT NumberSelSensorMaps = 3;
+__constant__  _PT SensorSubSampling = 2;
+__constant__  _PT SensorStart = 0;
+__constant__ float gpuInvDXDTpluspr[13] ={
 1.11941041e-07,
 1.16669149e-07,
 1.21348918e-07,
@@ -417,7 +415,7 @@ constant float InvDXDTplus_pr[13] ={
 1.48596627e-07,
 1.49646681e-07,
 1.50000005e-07};
-constant float DXDTminus_pr[13] ={
+__constant__ float gpuDXDTminuspr[13] ={
 4400059.5,
 4762087,
 5092634,
@@ -431,7 +429,7 @@ constant float DXDTminus_pr[13] ={
 6603705.5,
 6650926.5,
 6666666.5};
-constant float InvDXDTplushp_pr[13] ={
+__constant__ float gpuInvDXDTplushppr[13] ={
 1.14307596e-07,
 1.19018743e-07,
 1.23651716e-07,
@@ -445,7 +443,7 @@ constant float InvDXDTplushp_pr[13] ={
 1.49207352e-07,
 1.49911514e-07,
 1.50000005e-07};
-constant float DXDTminushp_pr[13] ={
+__constant__ float gpuDXDTminushppr[13] ={
 4585008.5,
 4931295.5,
 5246102,
