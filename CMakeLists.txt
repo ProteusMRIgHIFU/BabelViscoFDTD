@@ -1,32 +1,14 @@
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.11)
 
-if(NOT DEFINED STAGGERED_DEBUG AND DEFINED ENV{STAGGERED_DEBUG})
-  set(STAGGERED_DEBUG $ENV{STAGGERED_DEBUG})
-endif()
-if(NOT DEFINED CMAKE_BUILD_TYPE)
-  if(STAGGERED_DEBUG)
-      set(CMAKE_BUILD_TYPE "Debug" STRING CACHE "Debug")
-    else()
-      set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Release default")
-    endif()
-endif()
+set( CMAKE_VERBOSE_MAKEFILE ON )
 
-project(BabelViscoFDTD LANGUAGES C)
 
-if(CMAKE_GENERATOR MATCHES "Ninja")
-  enable_language(Swift)
-else()
-  message(STATUS "To enable Metal Swift targets, use the CMake Ninja generator, e.g.
+set (CMAKE_CXX_STANDARD 11)
 
-  cmake -G Ninja -B ${PROJECT_BINARY_DIR}
-  ")
-endif()
+project(BabelViscoFDTD LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
-set( CMAKE_VERBOSE_MAKEFILE ON )
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS true)
 
 option(STAGGERED_OPT "Enable platform-specific optimisations" ON)
 option(STAGGERED_VERBOSE "Enable verbose output" ON)
@@ -35,5 +17,7 @@ option(STAGGERED_FAST_MATH "Enable unsafe optimisations (non IEEE 754 compliant)
 option(STAGGERED_OMP_SUPPORT "Build with OpenMP support" ON)
 option(STAGGERED_CUDA_SUPPORT "Build with CUDA support" ON)
 option(STAGGERED_PYTHON_SUPPORT "Build Python C extension module" ON)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 add_subdirectory(src)
