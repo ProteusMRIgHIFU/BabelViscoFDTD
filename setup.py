@@ -36,7 +36,7 @@ def CompileBabelMetal(build_temp,build_lib):
     global extra_obj
     if not bBabelMetalCompiled:
         print('Compiling Metal')
-        ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but
+        ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
         ## since the compilation is very simple, we can do this manually
         print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
@@ -69,11 +69,11 @@ def PrepareOpenCLKernel():
                     inclines=g.readlines()
                 f.writelines(inclines)
     copyfile(dir_path+'src'+os.sep+'Indexing.h',dir_path+'BabelViscoFDTD'+os.sep+'_indexing.h')
-
-install_requires=['numpy',
-                'scipy',
+    
+install_requires=['numpy', 
+                'scipy', 
                 'h5py',
-                'hdf5plugin',
+                'hdf5plugin', 
                 'pydicom',
                 'pyopencl']
 
@@ -103,7 +103,7 @@ if 'Darwin' not in platform.system():
 
     class CMakeBuild(build_ext):
         def build_extensions(self):
-
+    
             try:
                 out = subprocess.check_output(['cmake', '--version'])
             except OSError:
@@ -111,16 +111,16 @@ if 'Darwin' not in platform.system():
 
             if platform.system() in ['Darwin']:
                 CompileBabelMetal(self.build_temp,self.build_lib)
-                ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but
+                ## There are no easy rules yet in CMAKE to do this through CMakeFiles, but 
                 ## since the compilation is very simple, we can do this manually
-
+                
 
             for ext in self.extensions:
                 print('ext',ext.name)
                 extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
                 cfg = 'Debug' if _get_env_variable('STAGGERED_DEBUG') == 'ON' else 'Release'
                 cmake_args =[
-                    '-DCMAKE_BUILD_TYPE=%s' % ('Debug' if cfg == 'Debug' else 'Release'),
+                    '-DSTAGGERED_DEBUG=%s' % ('ON' if cfg == 'Debug' else 'OFF'),
                     '-DSTAGGERED_OPT=%s' % _get_env_variable('STAGGERED_OPT'),
                     '-DSTAGGERED_SINGLE=%s' % ('ON' if 'single' in ext.name else 'OFF'),
                     '-DSTAGGERED_OMP_SUPPORT=%s' % ('OFF' if ('OPENCL' in ext.name or platform.system()=='Darwin' ) else 'ON'),
@@ -174,7 +174,7 @@ if 'Darwin' not in platform.system():
                 CMakeExtension(c_module_name+'_double')]
 
     cmdclass= {'build_ext': CMakeBuild}
-
+   
 
 else:
     #specific building conditions for Apple  systems
@@ -243,7 +243,7 @@ else:
             print('building extension')
             CompileBabelMetal(self.build_temp,self.build_lib)
             super().build_extensions()
-
+            
 
     from mmap import PAGESIZE
     bIncludePagememory=np.__version__ >="1.22.0"
@@ -253,7 +253,7 @@ else:
         extra_link_args_omp=['-lomp']
         define_macros_omp=[("USE_OPENMP",None)]
     else:
-        OPENMP_X64 = os.getenv('BABEL_MAC_OPENMP_X64')
+        OPENMP_X64 = os.getenv('BABEL_MAC_OPENMP_X64') 
         print('BABEL_MAC_OPENMP_X64',OPENMP_X64)
         bUseOpenMP=True
         if OPENMP_X64 is not None:
@@ -270,28 +270,28 @@ else:
             extra_link_args_omp=[]
             define_macros_omp=[]
 
-    ext_modules=[Extension(c_module_name+'_single',
+    ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
                     define_macros=[("SINGLE_PREC",None)]+define_macros_omp,
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc]),
-                Extension(c_module_name+'_double',
+                Extension(c_module_name+'_double', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
                     define_macros=define_macros_omp,
                     extra_compile_args=extra_compile_args_omp,
                     extra_link_args=extra_link_args_omp,
                     include_dirs=[npinc])]
-
-
+                    
+    
 
     if bIncludePagememory:
-        ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory',
+        ext_modules.append(Extension('BabelViscoFDTD.tools._page_memory', 
                             ["src/page_memory.c"],
                             define_macros=[("PAGE_SIZE",str(PAGESIZE))],
                             include_dirs=[npinc]))
     cmdclass = {'build_ext':DarwinInteropBuildExt}#, 'install':PostInstallCommand}
-
+    
 
 setup(name="BabelViscoFDTD",
         version=version,
