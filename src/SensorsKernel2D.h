@@ -6,7 +6,7 @@ index2=IndexSensorMap_pr[sj]-1;
 
 mexType accumX=0.0,accumY=0.0,
         accumXX=0.0, accumYY=0.0, 
-        accumXY=0.0, accum_p=0;;
+        accumXY=0.0, accum_p=0, accum_p_gx=0,accum_p_gy=0;
 for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
   {
     i=index2%(N1);
@@ -27,6 +27,10 @@ for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
       accumYY+=k_Sigma_yy_pr[index3];
   if (IS_Pressure_SELECTED(SelMapsSensors))
       accum_p+=k_Pressure_pr[index3];
+  if (IS_Pressure_Gx_SELECTED(SelMapsSensors))
+      accum_p_gx+=(k_Pressure_pr[Ind_Sigma_xx(i+1,j)]-k_Pressure_pr[Ind_Sigma_xx(i-1,j)])*0.5;
+  if (IS_Pressure_Gy_SELECTED(SelMapsSensors))
+      accum_p_gy+=(k_Pressure_pr[Ind_Sigma_xx(i,j+1)]-k_Pressure_pr[Ind_Sigma_xx(i,j-1)])*0.5;
   index3=Ind_Sigma_xy(i,j);
   if (IS_Sigmaxy_SELECTED(SelMapsSensors))
       accumXY+=k_Sigma_xy_pr[index3];
@@ -38,6 +42,10 @@ for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
         accumYY+=ELD(Sigma_yy,index3);
     if (IS_Pressure_SELECTED(SelMapsSensors))
         accum_p+=ELD(Pressure,index3);
+    if (IS_Pressure_Gx_SELECTED(SelMapsSensors))
+      accum_p_gx+=(k_Pressure_pr[Ind_Sigma_xx(i+1,j)]-k_Pressure_pr[Ind_Sigma_xx(i-1,j)])*0.5;
+    if (IS_Pressure_Gy_SELECTED(SelMapsSensors))
+      accum_p_gy+=(k_Pressure_pr[Ind_Sigma_xx(i,j+1)]-k_Pressure_pr[Ind_Sigma_xx(i,j-1)])*0.5;
     index3=Ind_Sigma_xy(i,j);
     if (IS_Sigmaxy_SELECTED(SelMapsSensors))
         accumXY+=ELD(Sigma_xy,index3);
@@ -62,3 +70,8 @@ if (IS_Sigmaxy_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Sigmaxy)=accumXY;
 if (IS_Pressure_SELECTED(SelMapsSensors))
     ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure)=accum_p;
+if (IS_Pressure_Gx_SELECTED(SelMapsSensors))
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure_gx)=accum_p_gx;
+if (IS_Pressure_Gy_SELECTED(SelMapsSensors))
+    ELD(SensorOutput,index+subarrsize*IndexSensor_Pressure_gy)=accum_p_gy;
+

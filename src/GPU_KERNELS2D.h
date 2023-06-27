@@ -78,6 +78,12 @@ kernel void PML_1_StressKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -112,6 +118,12 @@ kernel void PML_2_StressKernel(
 	_PT i = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -146,6 +158,12 @@ kernel void PML_3_StressKernel(
 	_PT i = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
   	_PT j = (_PT) ((gid)/nN1);
@@ -196,6 +214,12 @@ kernel void MAIN_1_StressKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -243,6 +267,12 @@ kernel void PML_1_ParticleKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -277,6 +307,12 @@ kernel void PML_2_ParticleKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -311,6 +347,12 @@ kernel void PML_3_ParticleKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
   	_PT j = (_PT) ((gid )/nN1);
@@ -361,6 +403,12 @@ kernel void MAIN_1_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	

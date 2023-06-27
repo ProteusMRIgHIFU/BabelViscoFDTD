@@ -123,6 +123,15 @@ kernel void PML_2_StressKernel(
 	_PT j = (_PT) gid.y;
 	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -162,6 +171,15 @@ kernel void PML_3_StressKernel(
 	_PT j = (_PT) gid.y;
 	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -201,6 +219,15 @@ kernel void PML_4_StressKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness*2)
@@ -240,6 +267,15 @@ kernel void PML_5_StressKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -279,6 +315,15 @@ kernel void PML_6_StressKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (PML_Thickness*2)
@@ -338,6 +383,15 @@ kernel void MAIN_1_StressKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -395,6 +449,15 @@ kernel void PML_1_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (PML_Thickness*2)
@@ -434,6 +497,15 @@ kernel void PML_2_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -473,6 +545,15 @@ kernel void PML_3_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -512,6 +593,15 @@ kernel void PML_4_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness*2)
@@ -551,6 +641,15 @@ kernel void PML_5_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
@@ -590,6 +689,15 @@ kernel void PML_6_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else	
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
 	#define nN3 (PML_Thickness*2)
@@ -643,6 +751,15 @@ kernel void MAIN_1_ParticleKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
