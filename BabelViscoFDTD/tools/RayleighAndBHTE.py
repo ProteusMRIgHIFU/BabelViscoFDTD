@@ -536,7 +536,8 @@ def InitMetal(DeviceName='AMD'):
     
     ctx = mc.Device(n)
     print(ctx)
-
+    if 'arm64' not in platform.platform():
+        ctx.set_external_gpu(1) 
     prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
     
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):

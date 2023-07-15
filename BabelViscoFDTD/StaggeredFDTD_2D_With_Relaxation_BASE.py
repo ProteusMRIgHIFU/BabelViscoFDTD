@@ -172,7 +172,7 @@ class StaggeredFDTD_2D_With_Relaxation_BASE():
             for k in ['Vx','Vy','Sigma_xx','Sigma_yy','Sigma_xy','Pressure','Snapshots']:
                 self._ownGpuCalloc(k,td,ArrayResCPU[k].size*outparams['ZoneCount'],ArraysGPUOp)
 
-            for k in ['SensorOutput','SqrAcc']:
+            for k in ['SqrAcc','SensorOutput']:
                 self._CreateAndCopyFromMXVarOnGPU(k, ArraysGPUOp, ArrayResCPU)
 
         self._PreExecuteScript(arguments, ArraysGPUOp, outparams)

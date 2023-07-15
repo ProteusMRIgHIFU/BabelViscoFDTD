@@ -100,7 +100,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         extra_params['SCode'] = SCode
         self.ctx = mc.Device(n)
         self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
-        # self.ConstantBufferMEX=np.zeros(self.LENGTH_CONST_MEX,np.float32)
         print(self.ctx)
         if 'arm64' not in platform.platform():
             print('Setting Metal for External or AMD processor')

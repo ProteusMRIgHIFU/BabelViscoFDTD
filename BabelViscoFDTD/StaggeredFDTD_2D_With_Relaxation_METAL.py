@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import platform
 import time
+import sys
+import gc
 import tempfile
 from shutil import copyfile
 
@@ -50,11 +52,11 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             "Rxy":3,
             "Sigma_x_xx":4, "Sigma_y_xx":4, "Sigma_x_yy":4, "Sigma_y_yy":4,
             "Sigma_x_xy":5, "Sigma_y_xy":5,
-            "Sigma_xy":6, 
-            "Sigma_xx":7, "Sigma_yy":7,
+            "Sigma_xy":6, "Sigma_xx":6,
+            "Sigma_yy":7, "Pressure":7,
             "SourceFunctions":8,
             "LambdaMiuMatOverH":9, "LambdaMatOverH":9, "MiuMatOverH":9,
-            "TauLong":9, "OneOverTauSigma":9, "TauShear":9, "InvRhoMatH":9, "Ox":9, "Oy":9, "Pressure":9, 
+            "TauLong":9, "OneOverTauSigma":9, "TauShear":9, "InvRhoMatH":9, "Ox":9, "Oy":9,  
             "SqrAcc":10,
             "SensorOutput":11
             }
@@ -173,7 +175,8 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.buffer(nSizes*4))
+            handle=self.ctx.buffer(nSizes*4)
+            self.mex_buffer.append(handle)
         self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
         # self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
@@ -212,7 +215,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         for i in range(self.LENGTH_INDEX_MEX):
             index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
             index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-            self.index_mex=self.ctx.buffer(index)
+        self.index_mex=self.ctx.buffer(index)
         
         index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
        
@@ -297,7 +300,9 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
                             outparams['PML_Thickness']*2]
         DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2]
-
+    
+        nref=sys.getrefcount(self.mex_buffer[7])
+        print('before exec nref',nref)
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
@@ -369,6 +374,8 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             while len(AllHandles)>0:
                 handle = AllHandles.pop(0) 
                 del handle
+        # nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after exec nref',nref)
         if 'arm64' not in platform.platform():
             self.ctx.sync_buffers((self.mex_buffer[0],
                                     self.mex_buffer[1],
@@ -385,8 +392,9 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         for i in ['SqrAcc', 'SensorOutput']:
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
+            print('getting ',i,self._IndexDataMetal[i])
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i][:,:,:] = np.reshape(Buffer, Shape,order='F')
+            ArrayResCPU[i][:,:,:] = Buffer.reshape(Shape,order='F').copy()
      
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
@@ -398,21 +406,36 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         
         SizeBuffer[9] += ArrayResCPU['Pressure'].size* self.ZoneCount
 
-        for i in ['Vx', 'Vy',  'Sigma_xx', 'Sigma_yy', 'Sigma_xy', 'Pressure']:
+        for i in ['Vx', 'Vy',  'Sigma_xx', 'Sigma_yy', 'Sigma_xy']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
             Shape = (sz[0],sz[1],self.ZoneCount)
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
             Buffer=Buffer.reshape(Shape,order='F')
             ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
-          
+        nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after 1st copying',nref)
+        # print(gc.get_referrers(self.mex_buffer[7]))
+        for i in ['Pressure']:
+            SizeCopy = ArrayResCPU[i].size * self.ZoneCount
+            sz=ArrayResCPU[i].shape
+            Shape = (sz[0],sz[1],self.ZoneCount)
+            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            Buffer=Buffer.reshape(Shape,order='F')
+            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
+        # nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after 2nd copying',nref)
+        # print(gc.get_referrers(self.mex_buffer[7]))
+        # print(gc.get_referrers(self.mex_buffer[8]))
         del self.constant_buffer_uint
         # del self.constant_buffer_mex
         del self.index_mex
         del self.index_uint 
         del self.uint_buffer
         while len(self.mex_buffer)>0:
-            handle = self.mex_buffer.pop()
+            handle = self.mex_buffer.pop(0)
+            # nref=sys.getrefcount(handle)
+            # print('mex nref',nref)
             del handle
 
 def StaggeredFDTD_2D_METAL(arguments):
