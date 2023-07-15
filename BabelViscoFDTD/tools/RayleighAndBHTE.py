@@ -705,6 +705,7 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
                                 u0step_ptr)
     if ret ==1:
         raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
+
     return u2_real+1j*u2_imag
 
 def ForwardSimple(cwvnb,center,ds,u0,rf,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
@@ -1124,8 +1125,9 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         else:
             ResTemp=d_T0
             ResDose=d_Dose0
-
-
+    
+        if 'arm64' not in platform.platform():
+            ctx.sync_buffers((ResTemp,ResDose,d_MonitorSlice,d_TemperaturePoints))
         print('Done BHTE')                               
         T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
@@ -1529,7 +1531,8 @@ def BHTEMultiplePressureFields(PressureFields,
             ResTemp=d_T0
             ResDose=d_Dose0
 
-
+        if 'arm64' not in platform.platform():
+            ctx.sync_buffers((ResTemp,ResDose,d_MonitorSlice,d_TemperaturePoints))
         print('Done BHTE')                               
         T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
