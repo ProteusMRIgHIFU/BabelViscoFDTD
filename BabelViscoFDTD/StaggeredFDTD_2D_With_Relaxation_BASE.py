@@ -13,15 +13,16 @@ from distutils.sysconfig import get_python_inc
 TotalAllocs=0
 
 MASKID={}
-MASKID['Vx']=0x0000000001
-MASKID['Vy']  =0x0000000002
-MASKID['Sigmaxx']  =0x0000000004
-MASKID['Sigmayy'] =0x0000000008
-MASKID['Sigmaxy'] =0x0000000010
-MASKID['Pressure'] =0x000000020
+MASKID['Vx']=           0x0000000001
+MASKID['Vy']  =         0x0000000002
+MASKID['Sigmaxx']  =    0x0000000004
+MASKID['Sigmayy'] =     0x0000000008
+MASKID['Sigmaxy'] =     0x0000000010
+MASKID['Pressure'] =    0x0000000020
+MASKID['Pressure_gx'] = 0x0000000040
+MASKID['Pressure_gy'] = 0x0000000080
 MASKID['SEL_RMS'] =0x0000000001
 MASKID['SEL_PEAK']=0x0000000002
-
 class StaggeredFDTD_2D_With_Relaxation_BASE():
     def __init__(self, arguments, extra_params={}):
         global NumberSelRMSPeakMaps # Is it necessary to keep these global anymore?
@@ -82,9 +83,9 @@ class StaggeredFDTD_2D_With_Relaxation_BASE():
                 "SizePMLxp1","SizePMLyp1","SizePML","SizePMLxp1yp1","NumberSensors","TimeSteps","SelRMSorPeak",\
                 "SelMapsRMSPeak","IndexRMSPeak_Vx","IndexRMSPeak_Vy", "IndexRMSPeak_Sigmaxx",\
                 "IndexRMSPeak_Sigmayy","IndexRMSPeak_Sigmaxy",\
-                "IndexRMSPeak_Pressure","NumberSelRMSPeakMaps","SelMapsSensors","IndexSensor_Vx","IndexSensor_Vy",\
+                "IndexRMSPeak_Pressure","IndexRMSPeak_Pressure_gx","IndexRMSPeak_Pressure_gy","NumberSelRMSPeakMaps","SelMapsSensors","IndexSensor_Vx","IndexSensor_Vy",\
                 "IndexSensor_Sigmaxx","IndexSensor_Sigmayy","IndexSensor_Sigmaxy",\
-                "IndexSensor_Pressure","NumberSelSensorMaps","SensorSubSampling",
+                "IndexSensor_Pressure","IndexSensor_Pressure_gx","IndexSensor_Pressure_gy","NumberSelSensorMaps","SensorSubSampling",
                 "SensorStart"]
         LParamArray=['InvDXDTplus','DXDTminus','InvDXDTplushp','DXDTminushp']
         tt =LParamFloat+LParamInt+LParamArray
@@ -235,7 +236,7 @@ class StaggeredFDTD_2D_With_Relaxation_BASE():
         outparams['SizePMLyp1']= arguments['N1']*(arguments['N2']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']+1
         outparams['SizePMLxp1yp1']= (arguments['N1']+1)*(arguments['N2']+1) - outparams['SizeCorrI']*outparams['SizeCorrJ']+1
 
-        for k in ['Vx','Vy','Sigmaxx','Sigmayy','Sigmaxy','Pressure']:
+        for k in ['Vx','Vy','Sigmaxx','Sigmayy','Sigmaxy','Pressure','Pressure_gx','Pressure_gy']:
             outparams['IndexRMSPeak_'+k]=0
             outparams['IndexSensor_'+k]=0
             if arguments['SelMapsRMSPeak'] & MASKID[k]:

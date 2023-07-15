@@ -289,13 +289,14 @@ class PropagationModel2D:
         IndexSensorMaps={}
         curMask=int(0x0001)
         #Do not modify the order of this search without matching the low level functions!
-        for pMap in ['Vx','Vy','Sigmaxx','Sigmayy','Sigmaxy','Pressure']:
-            if pMap in  SelMapsRMSPeakList:
-                SelMapsRMSPeak=SelMapsRMSPeak | curMask
-                IndexRMSMaps[pMap]=curIndexRMS
-                curIndexRMS+=1
-            else:
-                IndexRMSMaps[pMap]=-1
+        for pMap in ['Vx','Vy','Sigmaxx','Sigmayy','Sigmaxy','Pressure','Pressure_gx','Pressure_gy']:
+            if pMap not in ['Pressure_gx','Pressure_gy']:
+                if pMap in  SelMapsRMSPeakList:
+                    SelMapsRMSPeak=SelMapsRMSPeak | curMask
+                    IndexRMSMaps[pMap]=curIndexRMS
+                    curIndexRMS+=1
+                else:
+                    IndexRMSMaps[pMap]=-1
 
             if pMap in  SelMapsSensorsList:
                 SelMapsSensors=SelMapsSensors | curMask
@@ -431,10 +432,14 @@ class PropagationModel2D:
         if 'Pressure' in RetValueRMS:
             RetValueRMS['Pressure']*= pFactor
 
-        if 'Pressure' in RetValueSensors:
-            ii,jj=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
-            RetValueSensors['Pressure']*=np.repeat(pFactor[ii,jj].reshape([RetValueSensors['Pressure'].shape[0],1]),
-                                                  RetValueSensors['Pressure'].shape[1],axis=1)
+        for pgrad in ['Pressure','Pressure_gx','Pressure_gy']:
+            if pgrad in RetValueSensors:
+                ii,jj=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
+                RetValueSensors[pgrad]*=np.repeat(pFactor[ii,jj].reshape([RetValueSensors[pgrad].shape[0],1]),
+                                                    RetValueSensors[pgrad].shape[1],axis=1)
+                if '_gx' in pgrad or '_gy' in pgrad:
+                    RetValueSensors[pgrad]*=1.0/h
+
         if  IntervalSnapshots>0:
             if len(RetValueRMS)>0 and len(RetValuePeak)>0:
                 return RetValueSensors,V,RetValueRMS,RetValuePeak,InputParam,RetSnap

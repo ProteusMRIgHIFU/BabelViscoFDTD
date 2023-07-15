@@ -209,12 +209,14 @@ typedef _PT tIndex ;
 #define DXDThp_J 		(IsOnLowPML_J(j) ? DXDTminushp_pr[jPML(j)] : DXDTminus_pr[jPML(j)] )
 #endif
 
-#define MASK_Vx   		0x0000000001
-#define MASK_Vy   		0x0000000002
-#define MASK_Sigmaxx    0x0000000004
-#define MASK_Sigmayy    0x0000000008
-#define MASK_Sigmaxy    0x0000000010
-#define MASK_Pressure   0x0000000020
+#define MASK_Vx   			0x0000000001
+#define MASK_Vy   			0x0000000002
+#define MASK_Sigmaxx    	0x0000000004
+#define MASK_Sigmayy    	0x0000000008
+#define MASK_Sigmaxy    	0x0000000010
+#define MASK_Pressure      	0x0000000020
+#define MASK_Pressure_Gx   	0x0000000040
+#define MASK_Pressure_Gy   	0x0000000080
 
 #define IS_Vx_SELECTED(_Value) 					(_Value &MASK_Vx)
 #define IS_Vy_SELECTED(_Value) 					(_Value &MASK_Vy)
@@ -222,6 +224,8 @@ typedef _PT tIndex ;
 #define IS_Sigmayy_SELECTED(_Value) 			(_Value &MASK_Sigmayy)
 #define IS_Sigmaxy_SELECTED(_Value) 			(_Value &MASK_Sigmaxy)
 #define IS_Pressure_SELECTED(_Value) 			(_Value &MASK_Pressure)
+#define IS_Pressure_Gx_SELECTED(_Value) 		(_Value &MASK_Pressure_Gx)
+#define IS_Pressure_Gy_SELECTED(_Value) 		(_Value &MASK_Pressure_Gy)
 
 #define COUNT_SELECTIONS(_VarName,_Value) \
 				{ _VarName =0;\
@@ -230,7 +234,9 @@ typedef _PT tIndex ;
 					_VarName += IS_Sigmaxx_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Sigmayy_SELECTED(_Value) ? 1 : 0; \
 					_VarName += IS_Sigmaxy_SELECTED(_Value) ? 1 : 0; \
-					_VarName += IS_Pressure_SELECTED(_Value) ? 1 : 0;}
+					_VarName += IS_Pressure_SELECTED(_Value) ? 1 : 0;\
+					_VarName += IS_Pressure_Gx_SELECTED(_Value) ? 1 : 0;\
+					_VarName += IS_Pressure_Gy_SELECTED(_Value) ? 1 : 0}
 
 #define SEL_RMS			  	0x0000000001
 #define SEL_PEAK   			0x0000000002
@@ -288,10 +294,13 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_LengthSource 36
 #define CInd_IndexRMSPeak_Pressure 37
 #define CInd_IndexSensor_Pressure 38
-#define CInd_SensorStart 39
+#define CInd_IndexSensor_Pressure_gx 39
+#define CInd_IndexSensor_Pressure_gy 40
+#define CInd_SensorStart 41
+
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 40
+#define LENGTH_CONST_UINT 42
 
 //Indexes for float
 #define CInd_DT 0
