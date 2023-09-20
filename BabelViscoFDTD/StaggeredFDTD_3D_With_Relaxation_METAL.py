@@ -206,7 +206,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         for i in range(self.LENGTH_INDEX_MEX):
             index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
             index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-            self.index_mex=self.ctx.buffer(index)
+        self.index_mex=self.ctx.buffer(index)
         
         index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
        
