@@ -221,7 +221,10 @@ All three GPU backends have analogous control to split the calculations in the G
 Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS.
 
 # Release notes
-* 1.0.0-b - To fix buffer creation in Metal version
+* 1.0.1 - Sep 23, 2023
+    * Add 2D FDTD operations
+    * Significant improvement in performance of BHTE calculations for external AMD GPUs in Apple x64 systems via metal.
+* 1.0.0-2 - To fix buffer creation in Metal version. Sep 22, 2023
 * 1.0.0-1 - To fix pip version that had an incorrect file for OpenCL BHTE
 * 1.0.0 - That is it! After thousands of simulations for a manuscript preparation to introduce the [BabelBrain](https://github.com/ProteusMRIgHIFU/BabelBrain) planning suite (Now public), this is ready for an official 1.0.0 release. 
     * cupy replaces PyCUDA for all CUDA operations. PyCUDA needs a Visual Studio compiler on the path to compile kernels in Windows. BabelBrain uses a lot cupy; switching to it helps to keep using a single interface while benefitting from the availability of Numpy-like methods.
