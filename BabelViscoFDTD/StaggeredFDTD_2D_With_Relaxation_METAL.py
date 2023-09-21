@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 import platform
 import time
+import sys
+import gc
 import tempfile
 from shutil import copyfile
 
-from .StaggeredFDTD_3D_With_Relaxation_BASE import StaggeredFDTD_3D_With_Relaxation_BASE
+from .StaggeredFDTD_2D_With_Relaxation_BASE import StaggeredFDTD_2D_With_Relaxation_BASE
 
 from distutils.sysconfig import get_python_inc
 from math import ceil
@@ -26,7 +28,7 @@ def ListDevices():
         devicesIDs.append(dev.deviceName)
     return devicesIDs
 
-class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_Relaxation_BASE):
+class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_Relaxation_BASE):
     '''
     This version is mainly for Mx processors and which is based in a modified+forked version of metalcompute. As X64 will be phased out, in the future the metalcompute version will take over
     '''
@@ -38,40 +40,46 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
         self._c_uint_type = np.uint64(0)
-        self.HOST_INDEX_MEX = np.zeros((53, 2), np.uint64)
+        self.HOST_INDEX_MEX = np.zeros((31, 2), np.uint64)
         self.HOST_INDEX_UINT = np.zeros((3, 2), np.uint64)
-        self.LENGTH_INDEX_MEX = 53
-        self.LENGTH_INDEX_UINT = 3
+        self.LENGTH_INDEX_MEX = self.HOST_INDEX_MEX.shape[0]
+        self.LENGTH_INDEX_UINT = self.HOST_INDEX_UINT.shape[0]
         self.ZoneCount = arguments['SPP_ZONES']
         self._IndexDataMetal = {
-            "V_x_x":0, "V_y_x":0, "V_z_x":0, "V_x_y":0, "V_y_y":0, "V_z_y":0, "V_x_z":0, "V_y_z":0, "V_z_z":0,
-            "Vx":1, "Vy":1, "Vz":1,
-            "Rxx":2, "Ryy":2, "Rzz":2,
-            "Rxy":3, "Rxz":3, "Ryz":3,
-            "Sigma_x_xx":4, "Sigma_y_xx":4, "Sigma_z_xx":4, "Sigma_x_yy":4, "Sigma_y_yy":4, "Sigma_z_yy":4, "Sigma_x_zz":4, "Sigma_y_zz":4,
-            "Sigma_z_zz":5, "Sigma_x_xy":5, "Sigma_y_xy":5, "Sigma_x_xz":5, "Sigma_z_xz":5, "Sigma_y_yz":5, "Sigma_z_yz":5,
-            "Sigma_xy":6, "Sigma_xz":6, "Sigma_yz":6, 
-            "Sigma_xx":7, "Sigma_yy":7, "Sigma_zz":7,
+            "V_x_x":0, "V_y_x":0, "V_x_y":0, "V_y_y":0,
+            "Vx":1, "Vy":1,
+            "Rxx":2, "Ryy":2,
+            "Rxy":3,
+            "Sigma_x_xx":4, "Sigma_y_xx":4, "Sigma_x_yy":4, "Sigma_y_yy":4,
+            "Sigma_x_xy":5, "Sigma_y_xy":5,
+            "Sigma_xy":6, "Sigma_xx":6,
+            "Sigma_yy":7, "Pressure":7,
             "SourceFunctions":8,
-            "LambdaMiuMatOverH":9, "LambdaMatOverH":9, "MiuMatOverH":9, "TauLong":9, "OneOverTauSigma":9, "TauShear":9, "InvRhoMatH":9, "Ox":9, "Oy":9, "Oz":9, "Pressure":9, 
+            "LambdaMiuMatOverH":9, "LambdaMatOverH":9, "MiuMatOverH":9,
+            "TauLong":9, "OneOverTauSigma":9, "TauShear":9, "InvRhoMatH":9, "Ox":9, "Oy":9,  
             "SqrAcc":10,
             "SensorOutput":11
             }
         self.C_IND = {
             "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,
             "nStep":0, "TypeSource":1, 
-            "V_x_x":0, "V_y_x":1, "V_z_x":2, "V_x_y":3, "V_y_y":4, "V_z_y":5, "V_x_z":6, "V_y_z":7, "V_z_z":8, "Vx":9, "Vy":10, "Vz":11, "Rxx":12, "Ryy":13, "Rzz":14, "Rxy":15, "Rxz":16, "Ryz":17,
-            "Sigma_x_xx":18, "Sigma_y_xx":19, "Sigma_z_xx":20, "Sigma_x_yy":21, "Sigma_y_yy":22, "Sigma_z_yy":23, "Sigma_x_zz":24, "Sigma_y_zz":25, "Sigma_z_zz":26, 
-            "Sigma_x_xy":27, "Sigma_y_xy":28, "Sigma_x_xz":29, "Sigma_z_xz":30, "Sigma_y_yz":31, "Sigma_z_yz":32, "Sigma_xy":33, "Sigma_xz":34, "Sigma_yz":35, "Sigma_xx":36, "Sigma_yy":37, "Sigma_zz": 38,
-            "SourceFunctions":39, "LambdaMiuMatOverH":40, "LambdaMatOverH":41, "MiuMatOverH":42, "TauLong":43, "OneOverTauSigma":44, "TauShear":45, "InvRhoMatH":46, "Ox":47, "Oy":48, "Oz":49,
-            "Pressure":50, "SqrAcc":51, "SensorOutput":52, 
+            "V_x_x":0, "V_y_x":1, "V_x_y":2, "V_y_y":3, "Vx":4, "Vy":5,
+            "Rxx":6, "Ryy":7, "Rxy":8,
+            "Sigma_x_xx":9, "Sigma_y_xx":10, "Sigma_x_yy":11, "Sigma_y_yy":12,
+            "Sigma_x_xy":13, "Sigma_y_xy":14, "Sigma_xy":15, 
+            "Sigma_xx":16, "Sigma_yy":17, 
+            "SourceFunctions":18, "LambdaMiuMatOverH":19, 
+            "LambdaMatOverH":20, "MiuMatOverH":21, 
+            "TauLong":22, "OneOverTauSigma":23, "TauShear":24, 
+            "InvRhoMatH":25, "Ox":26, "Oy":27,
+            "Pressure":28, "SqrAcc":29, "SensorOutput":30, 
             }
 
         self.FUNCTION_LOCALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
             self.FUNCTION_LOCALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
         self.FUNCTION_GLOBALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
             self.FUNCTION_GLOBALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
                 
         self.LENGTH_CONST_UINT = 2
@@ -100,6 +108,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         extra_params['SCode'] = SCode
         self.ctx = mc.Device(n)
         self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
+        # self.ConstantBufferMEX=np.zeros(self.LENGTH_CONST_MEX,np.float32)
         print(self.ctx)
         if 'arm64' not in platform.platform():
             print('Setting Metal for External or AMD processor')
@@ -153,7 +162,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU,flags=[]):
         print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
         SizeCopy = ArrayResCPU[Name].size
-        if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
+        if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
             self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
             self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
             self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
@@ -166,7 +175,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.buffer(nSizes*4))
+            handle=self.ctx.buffer(nSizes*4)
+            self.mex_buffer.append(handle)
         self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
         # self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
@@ -174,7 +184,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self._IndexManip()
 
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
-                    'Ox','Oy','Oz','SourceFunctions']:
+                    'Ox','Oy','SourceFunctions']:
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "float")
 
         for k in ['IndexSensorMap','SourceMap','MaterialMap']:
@@ -187,7 +197,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             self._CALC_USER_LOCAL("MAIN_1", "PARTICLE")
         
         for j in ["STRESS", "PARTICLE"]:
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+            for i in ["PML_1", "PML_2", "PML_3"]:
                 self._CALC_USER_LOCAL(i, j)
         
         if arguments['ManualGroupSize'][0] != -1:
@@ -233,18 +243,18 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     
     def _SET_USER_LOCAL(self, ManualLocalSize):
         for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
+            for index in range(2):
                 self.FUNCTION_LOCALS['MAIN_1'][Type][index] = ManualLocalSize[index] # Can probably change this
     
     def _SET_USER_GLOBAL(self, ManualGlobalSize):
         for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
+            for index in range(2):
                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ManualGlobalSize[index] 
 
     def _CALC_USER_GROUP_MAIN(self, arguments, outparams):
         self._outparams = outparams
         for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
+            for index in range(2):
                 self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]-outparams['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
             print("MAIN_1_global_" + Type, "=", str(self.FUNCTION_GLOBALS['MAIN_1'][Type]))
     
@@ -252,38 +262,25 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         for Type in ['STRESS', 'PARTICLE']:
             self.FUNCTION_GLOBALS['PML_1'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][0])
             self.FUNCTION_GLOBALS['PML_1'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][1])
-            self.FUNCTION_GLOBALS['PML_1'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][2])
-
+          
             self.FUNCTION_GLOBALS['PML_2'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_2'][Type][0])
             self.FUNCTION_GLOBALS['PML_2'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_2'][Type][1])
-            self.FUNCTION_GLOBALS['PML_2'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_2'][Type][2])
-
+          
             self.FUNCTION_GLOBALS['PML_3'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_3'][Type][0])
             self.FUNCTION_GLOBALS['PML_3'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_3'][Type][1])
-            self.FUNCTION_GLOBALS['PML_3'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_3'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_4'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_4'][Type][0])
-            self.FUNCTION_GLOBALS['PML_4'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_4'][Type][1])
-            self.FUNCTION_GLOBALS['PML_4'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_4'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_5'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][0])
-            self.FUNCTION_GLOBALS['PML_5'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][1])
-            self.FUNCTION_GLOBALS['PML_5'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_5'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_6'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_6'][Type][0])
-            self.FUNCTION_GLOBALS['PML_6'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][1])
-            self.FUNCTION_GLOBALS['PML_6'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][2])
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
+          
+            
+            for i in ["PML_1", "PML_2", "PML_3"]:
                 print(i + "_global_" + Type + "=", str(self.FUNCTION_GLOBALS[i][Type]))
 
     def _InitiateCommands(self, AllC):
         prg = self.ctx.kernel(AllC)
-        PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        PartsStress=['PML_1','PML_2','PML_3','MAIN_1']
         self.AllStressKernels={}
         for k in PartsStress:
             self.AllStressKernels[k]=prg.function(k+"_StressKernel")
 
-        PartsParticle=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        PartsParticle=['PML_1','PML_2','PML_3','MAIN_1']
         self.AllParticleKernels={}
         for k in PartsParticle:
             self.AllParticleKernels[k]=prg.function(k+"_ParticleKernel")
@@ -296,27 +293,16 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         outparams=self._outparams
         DimsKernel={}
         DimsKernel['PML_1']=[outparams['PML_Thickness']*2,
-                             outparams['PML_Thickness']*2,
                              outparams['PML_Thickness']*2]
         DimsKernel['PML_2']=[outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
+                            outparams['N2']-outparams['PML_Thickness']*2]
         DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
-        DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2]
-        DimsKernel['PML_5']=[outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
-        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
                             outparams['PML_Thickness']*2]
         DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
-
+                            outparams['N2']-outparams['PML_Thickness']*2]
+    
+        nref=sys.getrefcount(self.mex_buffer[7])
+        print('before exec nref',nref)
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
@@ -324,7 +310,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
             self.ctx.init_command_buffer()
             AllHandles=[]
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
+            for i in ["PML_1", "PML_2", "PML_3", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
@@ -344,7 +330,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                                                self.mex_buffer[11])
                 AllHandles.append(handle)
 
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
+            for i in ["PML_1", "PML_2","PML_3", "MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
@@ -364,13 +350,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                                                self.mex_buffer[11])
 
                 AllHandles.append(handle)
-            self.ctx.commit_command_buffer()
-            self.ctx.wait_command_buffer()
-            while len(AllHandles)>0:
-                handle = AllHandles.pop(0) 
-                del handle
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.ctx.init_command_buffer()
                 handle=self.SensorsKernel(np.prod(self.globalSensor),
                                 self.constant_buffer_uint,
                                 self.index_mex,
@@ -388,9 +368,14 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                                 self.mex_buffer[9],
                                 self.mex_buffer[10],
                                 self.mex_buffer[11])
-                self.ctx.commit_command_buffer()   
-                self.ctx.wait_command_buffer()
+                AllHandles.append(handle)
+            self.ctx.commit_command_buffer()
+            self.ctx.wait_command_buffer()
+            while len(AllHandles)>0:
+                handle = AllHandles.pop(0) 
                 del handle
+        # nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after exec nref',nref)
         if 'arm64' not in platform.platform():
             self.ctx.sync_buffers((self.mex_buffer[0],
                                     self.mex_buffer[1],
@@ -407,37 +392,53 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         for i in ['SqrAcc', 'SensorOutput']:
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
+            print('getting ',i,self._IndexDataMetal[i])
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i][:,:,:] = np.reshape(Buffer, Shape,order='F')
+            ArrayResCPU[i][:,:,:] = Buffer.reshape(Shape,order='F').copy()
      
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
-        for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz']:
+        for i in ['Vx', 'Vy',  'Sigma_xx', 'Sigma_yy', 'Sigma_xy']:
             SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size* self.ZoneCount
         
-        for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy", "Oz"]:
+        for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy"]:
             SizeBuffer[9] += arguments[i].size
         
         SizeBuffer[9] += ArrayResCPU['Pressure'].size* self.ZoneCount
 
-        for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
+        for i in ['Vx', 'Vy',  'Sigma_xx', 'Sigma_yy', 'Sigma_xy']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
-            Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
+            Shape = (sz[0],sz[1],self.ZoneCount)
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
             Buffer=Buffer.reshape(Shape,order='F')
-            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
-          
+            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
+        nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after 1st copying',nref)
+        # print(gc.get_referrers(self.mex_buffer[7]))
+        for i in ['Pressure']:
+            SizeCopy = ArrayResCPU[i].size * self.ZoneCount
+            sz=ArrayResCPU[i].shape
+            Shape = (sz[0],sz[1],self.ZoneCount)
+            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            Buffer=Buffer.reshape(Shape,order='F')
+            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
+        # nref=sys.getrefcount(self.mex_buffer[7])
+        # print('after 2nd copying',nref)
+        # print(gc.get_referrers(self.mex_buffer[7]))
+        # print(gc.get_referrers(self.mex_buffer[8]))
         del self.constant_buffer_uint
         # del self.constant_buffer_mex
         del self.index_mex
         del self.index_uint 
         del self.uint_buffer
         while len(self.mex_buffer)>0:
-            handle = self.mex_buffer.pop()
+            handle = self.mex_buffer.pop(0)
+            # nref=sys.getrefcount(handle)
+            # print('mex nref',nref)
             del handle
 
-def StaggeredFDTD_3D_METAL(arguments):
-    Instance = StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(arguments)
+def StaggeredFDTD_2D_METAL(arguments):
+    Instance = StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(arguments)
     Results = Instance.Results
     return Results

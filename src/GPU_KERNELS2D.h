@@ -1,5 +1,5 @@
 #ifdef METAL
-#include"kernelparamsMetal.h"
+#include"kernelparamsMetal2D.h"
 
 #ifdef METALCOMPUTE
 #define CGID uint
@@ -54,27 +54,22 @@
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
-#define _ST_PML_4
-#define _ST_PML_5
-#define _ST_PML_6
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
 extern "C" __global__ void PML_1_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_1_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_1_StressKernel(
@@ -82,38 +77,39 @@ kernel void PML_1_StressKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
 	#else
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid-j*nN1);
 	#endif
 #endif
-    #include "StressKernel.h" 
+    #include "StressKernel2D.h" 
 }
 #undef _PML_KERNEL_CORNER
 
 #define _PML_KERNEL_LEFT_RIGHT
 #ifdef CUDA
 extern "C" __global__ void PML_2_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_2_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_2_StressKernel(
@@ -121,7 +117,6 @@ kernel void PML_2_StressKernel(
 	#ifndef METALCOMPUTE
 	_PT i = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
-	_PT k = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -129,39 +124,32 @@ kernel void PML_2_StressKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "StressKernel.h" 
+    #include "StressKernel2D.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT
 
 #define _PML_KERNEL_TOP_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_3_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_3_StressKernel(
@@ -169,7 +157,6 @@ kernel void PML_3_StressKernel(
 	#ifndef METALCOMPUTE
 	_PT i = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
-	_PT k = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -177,171 +164,20 @@ kernel void PML_3_StressKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid)/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "StressKernel.h" 
+    #include "StressKernel2D.h" 
 }
 #undef _PML_KERNEL_TOP_BOTTOM
 
-#define _PML_KERNEL_FRONT_BACK
-#ifdef CUDA
-extern "C" __global__ void PML_4_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_4_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_4_StressKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "StressKernel.h" 
-}
-#undef _PML_KERNEL_FRONT_BACK
-
-#define _PML_KERNEL_LEFT_RIGHT_RODS
-#ifdef CUDA
-extern "C" __global__ void PML_5_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_5_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_5_StressKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else	
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "StressKernel.h" 
-}
-#undef _PML_KERNEL_LEFT_RIGHT_RODS
-
-#define _PML_KERNEL_BOTTOM_TOP_RODS
-#ifdef CUDA
-extern "C" __global__ void PML_6_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_6_StressKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_6_StressKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "StressKernel.h" 
-}
-#undef _PML_KERNEL_BOTTOM_TOP_RODS
 
 #undef _ST_PML_1
 #undef _ST_PML_2
 #undef _ST_PML_3
-#undef _ST_PML_4
-#undef _ST_PML_5
-#undef _ST_PML_6
 #endif
 
 #define _ST_MAIN_1
@@ -353,27 +189,23 @@ kernel void PML_6_StressKernel(
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
-#define _ST_PML_4
-#define _ST_PML_5
-#define _ST_PML_6
+
 #endif
 #ifdef CUDA
 extern "C" __global__ void MAIN_1_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void MAIN_1_StressKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void MAIN_1_StressKernel(
@@ -381,7 +213,6 @@ kernel void MAIN_1_StressKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -389,57 +220,45 @@ kernel void MAIN_1_StressKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "StressKernel.h" 
+    #include "StressKernel2D.h" 
 }
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
 #undef _ST_PML_1
 #undef _ST_PML_2
 #undef _ST_PML_3
-#undef _ST_PML_4
-#undef _ST_PML_5
-#undef _ST_PML_6
 #endif
 #undef _MAIN_KERNEL
 #undef _ST_MAIN_1
 #undef _ST_MAIN_2
-#undef _ST_MAIN_3
-#undef _ST_MAIN_4
+
 
 
 // PML
 #if defined(METAL) || defined(USE_MINI_KERNELS_CUDA)
 #define _PR_PML_1
 #define _PR_PML_2
-#define _PR_PML_3
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
 extern "C" __global__ void PML_1_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_1_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_1_ParticleKernel(
@@ -447,7 +266,6 @@ kernel void PML_1_ParticleKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -455,39 +273,32 @@ kernel void PML_1_ParticleKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "ParticleKernel.h" 
+    #include "ParticleKernel2D.h" 
 }
 #undef _PML_KERNEL_CORNER
 
 #define _PML_KERNEL_LEFT_RIGHT
 #ifdef CUDA
 extern "C" __global__ void PML_2_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_2_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_2_ParticleKernel(
@@ -495,7 +306,6 @@ kernel void PML_2_ParticleKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -503,39 +313,32 @@ kernel void PML_2_ParticleKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "ParticleKernel.h" 
+    #include "ParticleKernel2D.h" 
 }
 #undef _PML_KERNEL_LEFT_RIGHT
 
 #define _PML_KERNEL_TOP_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_3_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
 #endif
 #ifdef METAL
 kernel void PML_3_ParticleKernel(
@@ -543,7 +346,6 @@ kernel void PML_3_ParticleKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -551,197 +353,47 @@ kernel void PML_3_ParticleKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-    #include "ParticleKernel.h" 
+    #include "ParticleKernel2D.h" 
 }
 #undef _PML_KERNEL_TOP_BOTTOM
 
-#define _PML_KERNEL_FRONT_BACK
-#ifdef CUDA
-extern "C" __global__ void PML_4_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_4_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_4_ParticleKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else	
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "ParticleKernel.h" 
-}
-#undef _PML_KERNEL_FRONT_BACK
 
-#define _PML_KERNEL_LEFT_RIGHT_RODS
-#ifdef CUDA
-extern "C" __global__ void PML_5_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_5_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_5_ParticleKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else	
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "ParticleKernel.h" 
-}
-#undef _PML_KERNEL_LEFT_RIGHT_RODS
-
-#define _PML_KERNEL_BOTTOM_TOP_RODS
-#ifdef CUDA
-extern "C" __global__ void PML_6_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	,unsigned int nStep, unsigned int TypeSource)
-{
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
-#endif
-#ifdef OPENCL
-__kernel void PML_6_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
-	, unsigned int nStep, unsigned int TypeSource)
-{
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
-#endif
-#ifdef METAL
-kernel void PML_6_ParticleKernel(
-	METAL_PARAMS
-	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
-	#else	
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
-	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
-	#endif
-#endif
-    #include "ParticleKernel.h" 
-}
-#undef _PML_KERNEL_BOTTOM_TOP_RODS
 
 #undef _PR_PML_1
 #undef _PR_PML_2
-#undef _PR_PML_3
 #endif
 
 #define _PR_MAIN_1
 #define _PR_MAIN_2
-#define _PR_MAIN_3
 #define _MAIN_KERNEL
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
 #define _PR_PML_1
 #define _PR_PML_2
-#define _PR_PML_3
 #endif
 #if defined(CUDA)
 extern "C" __global__ void MAIN_1_ParticleKernel(
-			#include "kernelparamsOpenCL.h"
+			#include "kernelparamsOpenCL2D.h"
 			,unsigned int nStep,unsigned int TypeSource)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+
 #endif
 #ifdef OPENCL
 __kernel void MAIN_1_ParticleKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep,
 	unsigned int TypeSource)
 {
 	_PT i = (_PT) get_global_id(0);
 	_PT j = (_PT) get_global_id(1);
-	_PT k = (_PT) get_global_id(2);
+	
 #endif
 #ifdef METAL
 kernel void MAIN_1_ParticleKernel(
@@ -749,7 +401,7 @@ kernel void MAIN_1_ParticleKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -757,37 +409,31 @@ kernel void MAIN_1_ParticleKernel(
 	#ifdef nN2
 	#undef nN2
 	#endif
-	#ifdef nN3
-	#undef nN3
-	#endif
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	
+  	_PT j = (_PT) ((gid )/nN1);
+  	_PT i = (_PT) (gid -j*nN1);
 	#endif
 #endif
-	#include "ParticleKernel.h"
+	#include "ParticleKernel2D.h"
 }
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
 #undef _PR_PML_1
 #undef _PR_PML_2
-#undef _PR_PML_3
 #endif
 #undef _PR_MAIN_1
 #undef _PR_MAIN_2
-#undef _PR_MAIN_3
 #undef _MAIN_KERNEL
 
 #if defined(CUDA)
-extern "C" __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigma_xx_pr,mexType * Sigma_yy_pr,mexType * Sigma_zz_pr,unsigned int CurrSnap)
+extern "C" __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigma_xx_pr,mexType * Sigma_yy_pr,unsigned int CurrSnap)
 {
 	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
   _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
 #endif
 #ifdef OPENCL
-__kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__global mexType * Sigma_xx_pr,__global mexType * Sigma_yy_pr,__global mexType * Sigma_zz_pr,unsigned int CurrSnap)
+__kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__global mexType * Sigma_xx_pr,__global mexType * Sigma_yy_pr,unsigned int CurrSnap)
 {
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
@@ -795,7 +441,6 @@ __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__globa
 #ifdef METAL
 #define Sigma_xx_pr k_Sigma_xx_pr
 #define Sigma_yy_pr k_Sigma_yy_pr
-#define Sigma_zz_pr k_Sigma_zz_pr
 
 kernel void SnapShot(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
@@ -838,7 +483,7 @@ kernel void SnapShot(
 
 #if defined(CUDA)
 extern "C" __global__ void SensorsKernel(
-	#include "kernelparamsOpenCL.h"
+	#include "kernelparamsOpenCL2D.h"
 	,mexType * SensorOutput_pr,
 	unsigned int * IndexSensorMap_pr,
 	unsigned int nStep)
@@ -847,7 +492,7 @@ extern "C" __global__ void SensorsKernel(
 #endif
 #ifdef OPENCL
 __kernel void SensorsKernel(
-		#include "kernelparamsOpenCL.h"
+		#include "kernelparamsOpenCL2D.h"
 		, __global mexType * SensorOutput_pr,
 			__global unsigned int * IndexSensorMap_pr,
 			unsigned int nStep)
@@ -904,6 +549,6 @@ kernel void SensorsKernel(
 
 	if (sj>=(_PT) NumberSensors)
 		return;
-	#include"SensorsKernel.h"
+	#include"SensorsKernel2D.h"
 
 }
