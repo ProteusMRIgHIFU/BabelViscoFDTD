@@ -221,6 +221,8 @@ All three GPU backends have analogous control to split the calculations in the G
 Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS.
 
 # Release notes
+* 1.0.2 - Oct 14, 2023
+    * Small fix to replace remaining use of np.int
 * 1.0.1 - Sep 23, 2023
     * Add 2D FDTD operations
     * Significant improvement in performance of BHTE calculations for external AMD GPUs in Apple x64 systems via metal.
