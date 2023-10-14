@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '1.0.1'
+version = '1.0.2'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -187,7 +187,7 @@ if 'Darwin' not in platform.system():
     print('Adding  CPU')
     ext_modules=[CMakeExtension(c_module_name+'_single',),
                 CMakeExtension(c_module_name+'_double')]
-
+    
     cmdclass= {'build_ext': CMakeBuild}
    
 
@@ -261,7 +261,8 @@ else:
             
 
     from mmap import PAGESIZE
-    bIncludePagememory=np.__version__ >="1.22.0"
+    # bIncludePagememory=np.__version__ >="1.22.0"
+    bIncludePagememory=False
 
     if 'arm64'  in platform.platform():
         extra_compile_args_omp=['-Xclang','-fopenmp']
@@ -284,7 +285,6 @@ else:
             extra_compile_args_omp=[]
             extra_link_args_omp=[]
             define_macros_omp=[]
-
     ext_modules=[Extension(c_module_name+'_single', 
                     ["src/FDTDStaggered3D_with_relaxation_python.c"],
                     define_macros=[("SINGLE_PREC",None)]+define_macros_omp,

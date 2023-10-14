@@ -399,7 +399,7 @@ def GenerateSurface(lstep,Diam,Foc):
     ds = np.zeros((0,1))
 
     VertDisplay=  np.zeros((0,3))
-    FaceDisplay= np.zeros((0,4),np.int)
+    FaceDisplay= np.zeros((0,4),int)
 
     for nr in range(len(BetaC)):
 
@@ -416,7 +416,7 @@ def GenerateSurface(lstep,Diam,Foc):
         ds = np.vstack((ds,np.zeros((len(AlphaC),1))))
 
         VertDisplay= np.vstack((VertDisplay,np.zeros((len(AlphaC)*4,3))))
-        FaceDisplay= np.vstack((FaceDisplay,np.zeros((len(AlphaC),4),np.int)))
+        FaceDisplay= np.vstack((FaceDisplay,np.zeros((len(AlphaC),4),int)))
 
 
         zc = -np.cos(BetaC[nr])*Foc
