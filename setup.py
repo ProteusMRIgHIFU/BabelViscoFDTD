@@ -41,7 +41,14 @@ def CompileBabelMetal(build_temp,build_lib):
         print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
 
-        command=['xcrun','-sdk', 'macosx', 'metal','-ffast-math','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
+        command=['xcrun','-sdk', 'macosx', 'metal']
+        
+        BabelBrainX64 = os.getenv('BABELBRAIN_MAC_X64')
+        if BabelBrainX64 is not None:
+            if BabelBrainX64=='1': 
+                print('Compiling with Backward compatibility for BabelBrain X64')
+                command.append('-std=macos-metal2.4')
+        command+=['-ffast-math','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
         command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)
