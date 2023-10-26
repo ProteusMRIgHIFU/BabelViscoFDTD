@@ -41,16 +41,18 @@ def CompileBabelMetal(build_temp,build_lib):
         print('Compiling Metal interface')
         copytree(dir_path+'src/Metal',build_temp )
 
-        command=['xcrun','-sdk', 'macosx', 'metal']
+        command=['xcrun','-sdk', 'macosx', 'metal','-ffast-math','-c']
         
         BabelBrainX64 = os.getenv('BABELBRAIN_MAC_X64')
+        extracmd=[]
         if BabelBrainX64 is not None:
             if BabelBrainX64=='1': 
                 print('Compiling with Backward compatibility for BabelBrain X64')
-                command.append('-std=macos-metal2.4')
-        command+=['-ffast-math','-c','Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
+                extracmd=['-std=macos-metal2.3','-mmacosx-version-min=11.0']
+        command+=extracmd
+        command+=['Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)
-        command=['xcrun','-sdk', 'macosx', 'metallib', 'Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
+        command=['xcrun','-sdk', 'macosx', 'metallib','Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)
         command=['swift','build','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
@@ -214,11 +216,9 @@ else:
             def patched_compile(self, obj, src, ext, cc_args, extra_postargs, pp_opts):
                 # define language specific compile flags here
                 if ext == ".cpp":
-                    patched_postargs = extra_postargs + ["-std=c++11"]
+                    patched_postargs = extra_postargs + ["-std=c++11",'-mmacosx-version-min=12.0']
                 elif ext == ".mm":
-                    patched_postargs = extra_postargs + ["-std=c++11",
-                        "-ObjC++",
-                    ]
+                    patched_postargs = extra_postargs + ["-std=c++11","-ObjC++",'-mmacosx-version-min=12.0']
                 else:
                     patched_postargs = extra_postargs
                 unpatched_compile(self, obj, src, ext, cc_args, patched_postargs, pp_opts)

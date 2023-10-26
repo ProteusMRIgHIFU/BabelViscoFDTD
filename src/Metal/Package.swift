@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "BabelMetal",
     platforms: [
-        .macOS("11")
+        .macOS("12")
     ],
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
