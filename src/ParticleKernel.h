@@ -1,4 +1,4 @@
-#if defined(METAL) || defined(USE_MINI_KERNELS_CUDA)
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #if defined(_PML_KERNEL_CORNER) 
 	i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
 	j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;

@@ -50,7 +50,7 @@
 #endif
 #endif
 /// PMLS
-#if defined(METAL)  || defined(USE_MINI_KERNELS_CUDA)
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
@@ -76,7 +76,7 @@ __kernel void PML_1_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -115,7 +115,7 @@ __kernel void PML_2_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_2_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -163,7 +163,7 @@ __kernel void PML_3_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_3_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -211,7 +211,7 @@ __kernel void PML_4_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_4_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -259,7 +259,7 @@ __kernel void PML_5_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_5_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -307,7 +307,7 @@ __kernel void PML_6_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -349,7 +349,7 @@ kernel void PML_6_StressKernel(
 #define _ST_MAIN_3
 #define _ST_MAIN_4
 #define _MAIN_KERNEL
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
+#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #define _ST_PML_1
 #define _ST_PML_2
 #define _ST_PML_3
@@ -392,9 +392,15 @@ kernel void MAIN_1_StressKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
+	#ifdef METAL_SINGLE_KERNEL
+	#define nN1 (N1)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	#else
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
+	#endif
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -402,7 +408,7 @@ kernel void MAIN_1_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
+#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #undef _ST_PML_1
 #undef _ST_PML_2
 #undef _ST_PML_3
@@ -418,7 +424,7 @@ kernel void MAIN_1_StressKernel(
 
 
 // PML
-#if defined(METAL) || defined(USE_MINI_KERNELS_CUDA)
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _PR_PML_1
 #define _PR_PML_2
 #define _PR_PML_3
@@ -441,7 +447,7 @@ __kernel void PML_1_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -489,7 +495,7 @@ __kernel void PML_2_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_2_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -537,7 +543,7 @@ __kernel void PML_3_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_3_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -585,7 +591,7 @@ __kernel void PML_4_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_4_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -633,7 +639,7 @@ __kernel void PML_5_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_5_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -681,7 +687,7 @@ __kernel void PML_6_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
 kernel void PML_6_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -719,7 +725,7 @@ kernel void PML_6_ParticleKernel(
 #define _PR_MAIN_2
 #define _PR_MAIN_3
 #define _MAIN_KERNEL
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
+#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #define _PR_PML_1
 #define _PR_PML_2
 #define _PR_PML_3
@@ -760,9 +766,15 @@ kernel void MAIN_1_ParticleKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
+	#ifdef METAL_SINGLE_KERNEL
+	#define nN1 (N1)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	#else
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
+	#endif
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -770,7 +782,7 @@ kernel void MAIN_1_ParticleKernel(
 #endif
 	#include "ParticleKernel.h"
 }
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
+#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #undef _PR_PML_1
 #undef _PR_PML_2
 #undef _PR_PML_3

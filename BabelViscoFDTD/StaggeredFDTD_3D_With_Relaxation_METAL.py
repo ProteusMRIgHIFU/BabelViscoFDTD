@@ -78,6 +78,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         # self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
         extra_params = {"BACKEND":"METAL"}
+        
+        self.bUseSingleKernel = True
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
@@ -95,6 +97,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         SCode = []
         SCode.append("#define mexType " + extra_params['td'] +"\n")
         SCode.append("#define METAL\n")
+        if self.bUseSingleKernel:
+            SCode.append("#define METAL_SINGLE_KERNEL\n")
         SCode.append("#define METALCOMPUTE\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
@@ -278,12 +282,20 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
     def _InitiateCommands(self, AllC):
         prg = self.ctx.kernel(AllC)
-        PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        if self.bUseSingleKernel:
+            PartsStress=['MAIN_1']
+        else:
+            PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        
         self.AllStressKernels={}
         for k in PartsStress:
             self.AllStressKernels[k]=prg.function(k+"_StressKernel")
 
-        PartsParticle=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        if self.bUseSingleKernel:
+            PartsParticle =['MAIN_1']
+        else:
+            PartsParticle=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        
         self.AllParticleKernels={}
         for k in PartsParticle:
             self.AllParticleKernels[k]=prg.function(k+"_ParticleKernel")
@@ -313,9 +325,19 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['PML_Thickness']*2,
                             outparams['PML_Thickness']*2]
-        DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
+        if self.bUseSingleKernel:
+            DimsKernel['MAIN_1']=[outparams['N1'],
+                            outparams['N2'],
+                            outparams['N3']]
+            kernels=["MAIN_1"]
+            
+        
+        else:
+            DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
                             outparams['N3']-outparams['PML_Thickness']*2]
+            kernels =["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
+            
 
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
@@ -324,7 +346,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
             self.ctx.init_command_buffer()
             AllHandles=[]
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
+            
+            for i in kernels:
                 nSize=np.prod(DimsKernel[i])
                 handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
@@ -344,7 +367,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                                                self.mex_buffer[11])
                 AllHandles.append(handle)
 
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]:
+            for i in kernels:
                 nSize=np.prod(DimsKernel[i])
                 handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
