@@ -84,7 +84,8 @@ public func Stopcapture() -> Int {
 @_cdecl("ForwardSimpleMetal")
 public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
                                c_wvnb_real: UnsafeMutablePointer<Float>, 
-                               c_wvnb_imag: UnsafeMutablePointer<Float>, 
+                               c_wvnb_imag: UnsafeMutablePointer<Float>,
+                               MaxDistance: UnsafeMutablePointer<Float>, 
                                mr1p:        UnsafeMutablePointer<Int>,
                                r2pr:        UnsafeMutablePointer<Float>, 
                                r1pr:        UnsafeMutablePointer<Float>, 
@@ -133,6 +134,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
 
         let c_wvnb_realBuffer = UnsafeMutableRawPointer(c_wvnb_real)
         let c_wvnb_imagBuffer = UnsafeMutableRawPointer(c_wvnb_imag)
+        let MaxDistanceBuffer = UnsafeMutableRawPointer(MaxDistance)
         
         let r2prBuffer = UnsafeMutableRawPointer(r2pr)
         let r1prBuffer =  UnsafeMutableRawPointer(r1pr)
@@ -167,6 +169,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         let mr1VectorBuffer = device.makeBuffer(bytes: mr1Buffer, length: MemoryLayout<Int>.size, options: [])
         let c_wvnb_realVectorBuffer = device.makeBuffer(bytes: c_wvnb_realBuffer, length: MemoryLayout<Float>.size, options: [])
         let c_wvnb_imagVectorBuffer = device.makeBuffer(bytes: c_wvnb_imagBuffer, length: MemoryLayout<Float>.size, options: [])
+        let MaxDistanceVectorBuffer = device.makeBuffer(bytes: MaxDistanceBuffer, length: MemoryLayout<Float>.size, options: [])
         let u0stepsVectorBuffer = device.makeBuffer(bytes: u0stepsBuffer, length: MemoryLayout<Int>.size, options: [])
 
         var r2prVectorBuffer:MTLBuffer?
@@ -300,18 +303,19 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
 
             computeCommandEncoder.setBuffer(c_wvnb_realVectorBuffer, offset: 0, index:0)
             computeCommandEncoder.setBuffer(c_wvnb_imagVectorBuffer, offset: 0, index: 1)
-            computeCommandEncoder.setBuffer(mr1VectorBuffer, offset: 0, index: 2)
-            computeCommandEncoder.setBuffer(mr2VectorBuffer, offset: 0, index: 3)
+            computeCommandEncoder.setBuffer(MaxDistanceVectorBuffer, offset: 0, index: 2)
+            computeCommandEncoder.setBuffer(mr1VectorBuffer, offset: 0, index: 3)
+            computeCommandEncoder.setBuffer(mr2VectorBuffer, offset: 0, index: 4)
             computeCommandEncoder.setBuffer(r2prVectorBuffer, 
-                            offset: MemoryLayout<Float>.size*basemr2*3, index: 4)
-            computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 5)
-            computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 6)
-            computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 7)
-            computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 8)
-            computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 9)
-            computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 10)
-            computeCommandEncoder.setBuffer(u0stepsVectorBuffer, offset:0, index:11)
-            computeCommandEncoder.setBuffer(n2BaseStepsBuffer, offset:0, index:12)
+                            offset: MemoryLayout<Float>.size*basemr2*3, index: 5)
+            computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 6)
+            computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 7)
+            computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 8)
+            computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 9)
+            computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 10)
+            computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 11)
+            computeCommandEncoder.setBuffer(u0stepsVectorBuffer, offset:0, index:12)
+            computeCommandEncoder.setBuffer(n2BaseStepsBuffer, offset:0, index:13)
             
             let w = computePipelineState.threadExecutionWidth
             let h = computePipelineState.maxTotalThreadsPerThreadgroup / w

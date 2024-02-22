@@ -11,19 +11,21 @@ using namespace metal;
 #define mr1 (*mr1_pr)
 #define mr2 (*mr2_pr)
 #define n2BaseSteps (*n2BaseSteps_pr)
+// This version limits the calculation to locations that are close, this is to explore
 kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
                                const device float *c_wvnb_imag [[ buffer(1) ]],
-                               const device int *mr1_pr        [[ buffer(2) ]],
-                               const device int *mr2_pr        [[ buffer(3) ]],
-                               const device float *r2pr        [[ buffer(4) ]],
-                               const device float *r1pr        [[ buffer(5) ]],
-                               const device float *a1pr        [[ buffer(6) ]],
-                               const device float *u1_real     [[ buffer(7) ]],
-                               const device float *u1_imag     [[ buffer(8) ]],
-                               device float *py_data_u2_real   [[ buffer(9) ]],
-                               device float *py_data_u2_imag   [[ buffer(10) ]],
-                               const device int *mr1step_pr    [[ buffer(11) ]],
-                               const device int *n2BaseSteps_pr [[ buffer(12) ]],
+                               const device float *MaxDistance [[ buffer(2) ]],
+                               const device int *mr1_pr        [[ buffer(3) ]],
+                               const device int *mr2_pr        [[ buffer(4) ]],
+                               const device float *r2pr        [[ buffer(5) ]],
+                               const device float *r1pr        [[ buffer(6) ]],
+                               const device float *a1pr        [[ buffer(7) ]],
+                               const device float *u1_real     [[ buffer(8) ]],
+                               const device float *u1_imag     [[ buffer(9) ]],
+                               device float *py_data_u2_real   [[ buffer(10) ]],
+                               device float *py_data_u2_imag   [[ buffer(11) ]],
+                               const device int *mr1step_pr    [[ buffer(12) ]],
+                               const device int *n2BaseSteps_pr [[ buffer(13) ]],
                                uint si2 [[ thread_position_in_grid ]]) {
     
    
@@ -49,6 +51,9 @@ kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
 
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
+                if (MaxDistance[0]>=0.0)
+                    if (R>MaxDistance[0])
+                        continue;
                 ti=(exp(R*c_wvnb_imag[0])*a1pr[si1]/R);
 
                 tr=ti;

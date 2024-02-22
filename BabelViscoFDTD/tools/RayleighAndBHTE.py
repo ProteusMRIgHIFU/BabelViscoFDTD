@@ -94,6 +94,7 @@ typedef float FloatingType;
 __kernel  void ForwardPropagationKernel(  const int mr2,
                                             const FloatingType c_wvnb_real,
                                             const FloatingType c_wvnb_imag,
+                                            const FloatingType MaxDistance,
                                             const int mr1,
                                             __global const FloatingType *r2pr, 
                                             __global const FloatingType *r1pr, 
@@ -128,6 +129,9 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
 
 
             R=sqrt(dx*dx+dy*dy+dz*dz);
+            if (MaxDistance>0.0)
+                if (R>MaxDistance)
+                    continue;
             ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
 
             tr=ti;
@@ -238,6 +242,7 @@ if sys.platform == "darwin":
     swift_fun.ForwardSimpleMetal.argtypes = [
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float),
         ctypes.POINTER(ctypes.c_float), 
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_float), 
@@ -250,6 +255,7 @@ if sys.platform == "darwin":
         ctypes.POINTER(ctypes.c_float),
         ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)]
+
 
     swift_fun.PrintMetalDevices()
     print("loaded Metal",str(swift_fun))
@@ -287,6 +293,7 @@ else:
     
     extern "C" __global__ void ForwardPropagationKernel(int mr2,
                                              complex<float> c_wvnb,
+                                             FloatingType MaxDistance, 
                                              FloatingType *r2pr, 
                                              FloatingType *r1pr, 
                                              FloatingType *a1pr,
@@ -319,6 +326,9 @@ else:
                 dz=r1pr[si1*3+2]-r2z;
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
+                if (MaxDistance>0.0)
+                    if (R>MaxDistance)
+                        continue;
 
                 temp2=cj*c_wvnb;
                 temp2=temp2*(-R);
@@ -540,7 +550,7 @@ def InitMetal(DeviceName='AMD'):
         ctx.set_external_gpu(1) 
     prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
     
-def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
+def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     if u0step!=0:
         mr1=u0step
         assert(mr1*rf.shape[0]==u0.shape[0])
@@ -578,6 +588,7 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
                             dimThreadBlock,
                             (mr2, 
                              cwvnb,
+                             MaxDistance,
                              d_r2pr, 
                              d_centerpr,
                              d_dspr,
@@ -589,7 +600,7 @@ def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=0):
     u2=d_u2complex.get()
     return u2
 
-def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
+def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     global queue 
     global prg 
     global ctx
@@ -628,6 +639,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
         np.int32(rf.shape[0]),
         np.float32(np.real(cwvnb)),
         np.float32(np.imag(cwvnb)),
+        np.float32(MaxDistance),
         np.int32(mr1),
         d_r2pr,
         d_r1pr,
@@ -644,7 +656,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=0):
                                             
     return u2
 
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
     os.environ['__BabelMetalDevice'] =deviceName
     bUseMappedMemory=0
     if np.__version__ >="1.22.0":
@@ -666,6 +678,7 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
 
     mr1=np.array([mr1])
     u0step_a=np.array([u0step])
+    MaxDistance_a=np.array([MaxDistance]).astype(np.float32)
 
     ibUseMappedMemory =np.array([bUseMappedMemory])
     cwvnb_real=np.array([np.real(cwvnb)])
@@ -677,6 +690,8 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
     bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    MaxDistance_ptr= MaxDistance_a.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     r2_ptr=rf.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
     a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -692,6 +707,7 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
     ret = swift_fun.ForwardSimpleMetal(mr2_ptr,
                                 cwvnb_real_ptr,
                                 cwvnb_imag_ptr,
+                                MaxDistance_ptr,
                                 mr1_ptr,
                                 r2_ptr,
                                 r1_ptr,
@@ -708,7 +724,7 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,u0step=0):
 
     return u2_real+1j*u2_imag
 
-def ForwardSimple(cwvnb,center,ds,u0,rf,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
+def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
     '''
     MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
     cwvnb is the complex speed of sound
@@ -723,11 +739,11 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,u0step=0,MacOsPlatform='Metal',deviceMet
     global prgcuda 
     if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,u0step=u0step)
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
         else:
-            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,u0step=u0step)
+            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
     else:
-        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,u0step=u0step)
+        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
 
     
 
