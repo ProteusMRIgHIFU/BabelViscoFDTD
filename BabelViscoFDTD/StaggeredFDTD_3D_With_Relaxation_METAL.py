@@ -66,20 +66,12 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             "SourceFunctions":39, "LambdaMiuMatOverH":40, "LambdaMatOverH":41, "MiuMatOverH":42, "TauLong":43, "OneOverTauSigma":44, "TauShear":45, "InvRhoMatH":46, "Ox":47, "Oy":48, "Oz":49,
             "Pressure":50, "SqrAcc":51, "SensorOutput":52, 
             }
-
-        self.FUNCTION_LOCALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
-            self.FUNCTION_LOCALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
-        self.FUNCTION_GLOBALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
-            self.FUNCTION_GLOBALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
-                
         self.LENGTH_CONST_UINT = 2
         # self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
         extra_params = {"BACKEND":"METAL"}
         
-        self.bUseSingleKernel = True
+        self.bUseSingleKernel = False
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
@@ -168,6 +160,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
+        self._outparams = outparams
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
             self.mex_buffer.append(self.ctx.buffer(nSizes*4))
@@ -183,23 +176,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
         for k in ['IndexSensorMap','SourceMap','MaterialMap']:
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
-
-        if arguments['ManualLocalSize'][0]!=-1:
-            self._SET_USER_LOCAL(arguments['ManualLocalSize'])
-        else:
-            self._CALC_USER_LOCAL("MAIN_1", "STRESS")
-            self._CALC_USER_LOCAL("MAIN_1", "PARTICLE")
-        
-        for j in ["STRESS", "PARTICLE"]:
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
-                self._CALC_USER_LOCAL(i, j)
-        
-        if arguments['ManualGroupSize'][0] != -1:
-            self._SET_USER_GLOBAL(arguments['ManualGroupSize'])
-        else:
-            self._CALC_USER_GROUP_MAIN(arguments, outparams)
-
-        self. _CALC_USER_GROUP_PML(outparams)
 
         self.localSensor = [1, 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
@@ -227,58 +203,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
-
-    def _CALC_USER_LOCAL(self, Name, Type):
-        #this will be calculated by metalcompute library
-        self.FUNCTION_LOCALS[Name][Type][0] = 1
-        self.FUNCTION_LOCALS[Name][Type][1] = 1
-        self.FUNCTION_LOCALS[Name][Type][2] = 1
-        # print(Name, "local", Type + " = [" + str(w) + ", " + str(h) + ", " + str(z) + "]")
-    
-    def _SET_USER_LOCAL(self, ManualLocalSize):
-        for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
-                self.FUNCTION_LOCALS['MAIN_1'][Type][index] = ManualLocalSize[index] # Can probably change this
-    
-    def _SET_USER_GLOBAL(self, ManualGlobalSize):
-        for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
-               self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ManualGlobalSize[index] 
-
-    def _CALC_USER_GROUP_MAIN(self, arguments, outparams):
-        self._outparams = outparams
-        for Type in ['STRESS', 'PARTICLE']:
-            for index in range(3):
-                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]-outparams['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
-            print("MAIN_1_global_" + Type, "=", str(self.FUNCTION_GLOBALS['MAIN_1'][Type]))
-    
-    def _CALC_USER_GROUP_PML(self, outparams):
-        for Type in ['STRESS', 'PARTICLE']:
-            self.FUNCTION_GLOBALS['PML_1'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][0])
-            self.FUNCTION_GLOBALS['PML_1'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][1])
-            self.FUNCTION_GLOBALS['PML_1'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_2'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_2'][Type][0])
-            self.FUNCTION_GLOBALS['PML_2'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_2'][Type][1])
-            self.FUNCTION_GLOBALS['PML_2'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_2'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_3'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_3'][Type][0])
-            self.FUNCTION_GLOBALS['PML_3'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_3'][Type][1])
-            self.FUNCTION_GLOBALS['PML_3'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_3'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_4'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_4'][Type][0])
-            self.FUNCTION_GLOBALS['PML_4'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_4'][Type][1])
-            self.FUNCTION_GLOBALS['PML_4'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_4'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_5'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][0])
-            self.FUNCTION_GLOBALS['PML_5'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_5'][Type][1])
-            self.FUNCTION_GLOBALS['PML_5'][Type][2] = ceil(outparams['SizeCorrK'] / self.FUNCTION_LOCALS['PML_5'][Type][2])
-
-            self.FUNCTION_GLOBALS['PML_6'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_6'][Type][0])
-            self.FUNCTION_GLOBALS['PML_6'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][1])
-            self.FUNCTION_GLOBALS['PML_6'][Type][2] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_6'][Type][2])
-            for i in ["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6"]:
-                print(i + "_global_" + Type + "=", str(self.FUNCTION_GLOBALS[i][Type]))
 
     def _InitiateCommands(self, AllC):
         prg = self.ctx.kernel(AllC)
