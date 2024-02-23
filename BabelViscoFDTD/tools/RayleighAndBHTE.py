@@ -107,7 +107,17 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
                                             )
     {
     int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
-
+#else
+kernel void ForwardPropagationKernel(const device FloatingType *r2pr  [[ buffer(0) ]],
+                               const device FloatingType *r1pr        [[ buffer(1) ]],
+                               const device FloatingType *a1pr        [[ buffer(2) ]],
+                               const device FloatingType *u1_real     [[ buffer(3) ]],
+                               const device FloatingType *u1_imag     [[ buffer(4) ]],
+                               device FloatingType *py_data_u2_real   [[ buffer(5) ]],
+                               device FloatingType *py_data_u2_imag   [[ buffer(6) ]],
+                               uint si2 [[ thread_position_in_grid ]]) {
+    
+#endif
     FloatingType dx,dy,dz,R,r2x,r2y,r2z;
     FloatingType temp_r,tr ;
     FloatingType temp_i,ti,pCos,pSin ;
@@ -129,16 +139,28 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
 
 
             R=sqrt(dx*dx+dy*dy+dz*dz);
+            #ifdef _OPENCL
             if (MaxDistance>0.0)
                 if (R>MaxDistance)
                     continue;
+            #else
+                #ifdef MaxDistance
+                    if (R>MaxDistance)
+                        continue;
+                #endif
+            #endif
+            
             ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
 
             tr=ti;
+            #ifdef _OPENCL
             pSin=sincos(R*c_wvnb_real,ppCos);
+            #else
+            pSin=sincos(R*c_wvnb_real,pCos);
+            #endif
 
             tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
-                        ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
+            ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
 
             temp_r +=tr;
             temp_i +=ti;	
@@ -153,10 +175,13 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
         py_data_u2_imag[si2]=temp_i/(2*pi);
     }
     }
-#endif
     """
 
 OpenCLMetalHeaderBHTE="""
+#ifdef _METAL
+#include <metal_stdlib>
+using namespace metal;
+#endif
 #ifdef _OPENCL
     __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
                                     __global float 		*d_output2,
@@ -238,27 +263,6 @@ if sys.platform == "darwin":
     os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
     print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
     swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
-
-    swift_fun.ForwardSimpleMetal.argtypes = [
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_char_p),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)]
-
-
-    swift_fun.PrintMetalDevices()
-    print("loaded Metal",str(swift_fun))
 
     def StartMetaCapture(deviceName='M1'):
         os.environ['__BabelMetalDevice'] =deviceName
@@ -548,7 +552,7 @@ def InitMetal(DeviceName='AMD'):
     print(ctx)
     if 'arm64' not in platform.platform():
         ctx.set_external_gpu(1) 
-    prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
+    
     
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     if u0step!=0:
@@ -621,14 +625,11 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     d_u1imagpr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.imag(u0).copy())
     d_a1pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ds)
     
-    
     u2_real = np.zeros((rf.shape[0]),dtype=np.float32)
     u2_imag = np.zeros((rf.shape[0]),dtype=np.float32)
     
     d_u2realpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
     d_u2imagpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
-    
-    
     
     knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
     if u2_real.shape[0] % 64 ==0:
@@ -656,18 +657,10 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
                                             
     return u2
 
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
-    os.environ['__BabelMetalDevice'] =deviceName
-    bUseMappedMemory=0
-    if np.__version__ >="1.22.0":
-        if 'arm64' in platform.platform() and\
-            np.core.multiarray.get_handler_name(center)=="page_data_allocator":
-            bUseMappedMemory=1
-        #We assume arrays were allocated with page_data_allocator to have aligned date
-        
-    
-    mr2=np.array([rf.shape[0]])
-
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
+    global queue 
+    global prgcl 
+    global ctx
     if u0step!=0:
         mr1=u0step
         assert(mr1*rf.shape[0]==u0.shape[0])
@@ -675,56 +668,51 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=
         assert(mr1==ds.shape[0])
     else:
         mr1=center.shape[0]
-
-    mr1=np.array([mr1])
-    u0step_a=np.array([u0step])
-    MaxDistance_a=np.array([MaxDistance]).astype(np.float32)
-
-    ibUseMappedMemory =np.array([bUseMappedMemory])
-    cwvnb_real=np.array([np.real(cwvnb)])
-    cwvnb_imag=np.array([np.imag(cwvnb)])
+        
+    defstr =  '#define mr2 %i\n' % rf.shape[0]
+    defstr += '#define c_wvnb_real %0.9g\n' % np.real(cwvnb)
+    defstr += '#define c_wvnb_imag %0.9g\n' % np.imag(cwvnb)
+    defstr += '#define mr1 %i \n' % mr1
+    defstr += '#define mr1step %i \n' % u0step
+    if MaxDistance != -1.0:
+        defstr += '#define MaxDistance %0.9g\n' % np.imag(MaxDistance)
     
-    mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    u0step_ptr = u0step_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    MaxDistance_ptr= MaxDistance_a.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    r2_ptr=rf.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    deviceName_ptr=ctypes.c_char_p(deviceName.encode())
-    u2_real = np.zeros(rf.shape[0],np.float32)
-    u2_imag = np.zeros(rf.shape[0],np.float32)
-    u2_real_ptr = u2_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u2_imag_ptr = u2_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+    prgcl = ctx.kernel('#define _METAL\n'+defstr+RayleighOpenCLMetalSource)
     
-
-    ret = swift_fun.ForwardSimpleMetal(mr2_ptr,
-                                cwvnb_real_ptr,
-                                cwvnb_imag_ptr,
-                                MaxDistance_ptr,
-                                mr1_ptr,
-                                r2_ptr,
-                                r1_ptr,
-                                a1_ptr,
-                                u1_real_ptr,
-                                u1_imag_ptr,
-                                deviceName_ptr,
-                                u2_real_ptr,
-                                u2_imag_ptr,
-                                bUseMappedMemory_ptr,
-                                u0step_ptr)
-    if ret ==1:
-        raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
-
+    d_r2pr = ctx.buffer(rf)
+    d_r1pr = ctx.buffer(center)
+    d_u1realpr=ctx.buffer(np.real(u0).copy())
+    d_u1imagpr=ctx.buffer(np.imag(u0).copy())
+    d_a1pr = ctx.buffer(ds)
+    
+    u2_real = np.zeros((rf.shape[0]),dtype=np.float32)
+    u2_imag = np.zeros((rf.shape[0]),dtype=np.float32)
+    
+    d_u2realpr = ctx.buffer(u2_real)
+    d_u2imagpr = ctx.buffer(u2_imag)
+    
+    knl = prgcl.function('ForwardPropagationKernel')
+    ctx.init_command_buffer()
+           
+    handle=knl(u2_real.shape[0],
+        d_r2pr,
+        d_r1pr,
+        d_a1pr,
+        d_u1realpr,
+        d_u1imagpr,
+        d_u2realpr,
+        d_u2imagpr)
+    ctx.commit_command_buffer()
+    ctx.wait_command_buffer()
+    del handle
+    if 'arm64' not in platform.platform():
+        ctx.sync_buffers((d_u2realpr,d_u2imagpr))
+    u2_real=np.frombuffer(d_u2realpr,dtype=np.float32)
+    u2_imag=np.frombuffer(d_u2imagpr,dtype=np.float32)
+    
     return u2_real+1j*u2_imag
 
-def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
+def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform='Metal'):
     '''
     MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
     cwvnb is the complex speed of sound
@@ -739,7 +727,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform=
     global prgcuda 
     if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
     else:
@@ -1073,7 +1061,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
     else:
         assert(Backend=='Metal')
-
+        prgcl = ctx.kernel('#define _METAL\n'+OpenCLKernelBHTE)
+        
         d_perfArr=ctx.buffer(perfArr)
         d_bhArr=ctx.buffer(bhArr)
         d_Qarr=ctx.buffer(Qarr)
