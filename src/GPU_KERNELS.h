@@ -52,7 +52,7 @@
 /// PMLS
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _ST_PML
-#define _PML_KERNEL_CORNER
+#define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -79,9 +79,9 @@ kernel void PML_1_StressKernel(
   	_PT j = (_PT) gid.y;
   	_PT k = (_PT) gid.z;
 	#else
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
     _PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -89,9 +89,9 @@ kernel void PML_1_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_CORNER
+#undef _PML_KERNEL_I_BOTTOM
 
-#define _PML_KERNEL_LEFT_RIGHT
+#define _PML_KERNEL_I_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_2_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -127,9 +127,9 @@ kernel void PML_2_StressKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
     _PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -137,9 +137,9 @@ kernel void PML_2_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_LEFT_RIGHT
+#undef _PML_KERNEL_I_TOP
 
-#define _PML_KERNEL_TOP_BOTTOM
+#define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -176,8 +176,8 @@ kernel void PML_3_StressKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -185,9 +185,9 @@ kernel void PML_3_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_TOP_BOTTOM
+#undef _PML_KERNEL_J_BOTTOM
 
-#define _PML_KERNEL_FRONT_BACK
+#define _PML_KERNEL_J_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_4_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -224,8 +224,8 @@ kernel void PML_4_StressKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -233,9 +233,9 @@ kernel void PML_4_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_FRONT_BACK
+#undef _PML_KERNEL_J_TOP
 
-#define _PML_KERNEL_LEFT_RIGHT_RODS
+#define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_5_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -271,9 +271,9 @@ kernel void PML_5_StressKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -281,9 +281,9 @@ kernel void PML_5_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_LEFT_RIGHT_RODS
+#undef _PML_KERNEL_K_BOTTOM
 
-#define _PML_KERNEL_BOTTOM_TOP_RODS
+#define _PML_KERNEL_K_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_6_StressKernel(
 	#include "kernelparamsOpenCL.h"
@@ -320,8 +320,8 @@ kernel void PML_6_StressKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -329,7 +329,7 @@ kernel void PML_6_StressKernel(
 #endif
     #include "StressKernel.h" 
 }
-#undef _PML_KERNEL_BOTTOM_TOP_RODS
+#undef _PML_KERNEL_K_TOP
 
 #undef _ST_PML
 #endif
@@ -399,7 +399,7 @@ kernel void MAIN_1_StressKernel(
 // PML
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _PR_PML
-#define _PML_KERNEL_CORNER
+#define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_1_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -435,9 +435,9 @@ kernel void PML_1_ParticleKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
     _PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -445,9 +445,9 @@ kernel void PML_1_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_CORNER
+#undef _PML_KERNEL_I_BOTTOM
 
-#define _PML_KERNEL_LEFT_RIGHT
+#define _PML_KERNEL_I_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_2_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -483,9 +483,9 @@ kernel void PML_2_ParticleKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
     _PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -493,9 +493,9 @@ kernel void PML_2_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_LEFT_RIGHT
+#undef _PML_KERNEL_I_TOP
 
-#define _PML_KERNEL_TOP_BOTTOM
+#define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -532,8 +532,8 @@ kernel void PML_3_ParticleKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -541,9 +541,9 @@ kernel void PML_3_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_TOP_BOTTOM
+#undef _PML_KERNEL_J_BOTTOM
 
-#define _PML_KERNEL_FRONT_BACK
+#define _PML_KERNEL_J_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_4_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -580,8 +580,8 @@ kernel void PML_4_ParticleKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (N2-PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -589,9 +589,9 @@ kernel void PML_4_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_FRONT_BACK
+#undef _PML_KERNEL_J_TOP
 
-#define _PML_KERNEL_LEFT_RIGHT_RODS
+#define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_5_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -627,9 +627,9 @@ kernel void PML_5_ParticleKernel(
 	#ifdef nN3
 	#undef nN3
 	#endif
-	#define nN1 (PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (N3-PML_Thickness*2)
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -637,9 +637,9 @@ kernel void PML_5_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_LEFT_RIGHT_RODS
+#undef _PML_KERNEL_K_BOTTOM
 
-#define _PML_KERNEL_BOTTOM_TOP_RODS
+#define _PML_KERNEL_K_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_6_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
@@ -676,8 +676,8 @@ kernel void PML_6_ParticleKernel(
 	#undef nN3
 	#endif
 	#define nN1 (N1-PML_Thickness*2)
-	#define nN2 (PML_Thickness*2)
-	#define nN3 (PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
 	_PT k = (_PT) (gid/(nN1*nN2));
   	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
@@ -685,7 +685,7 @@ kernel void PML_6_ParticleKernel(
 #endif
     #include "ParticleKernel.h" 
 }
-#undef _PML_KERNEL_BOTTOM_TOP_RODS
+#undef _PML_KERNEL_K_TOP
 
 #undef _PR_PML
 #endif

@@ -233,24 +233,24 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
         outparams=self._outparams
         DimsKernel={}
-        DimsKernel['PML_1']=[outparams['PML_Thickness']*2,
-                             outparams['PML_Thickness']*2,
-                             outparams['PML_Thickness']*2]
-        DimsKernel['PML_2']=[outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
+        DimsKernel['PML_1']=[outparams['PML_Thickness'],
+                             outparams['N2'],
+                             outparams['N3']]
+        DimsKernel['PML_2']=[outparams['PML_Thickness'],
+                             outparams['N2'],
+                             outparams['N3']]
         DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
+                            outparams['PML_Thickness'],
+                            outparams['N3']]
         DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness'],
+                            outparams['N3']]
+        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2]
-        DimsKernel['PML_5']=[outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
+                            outparams['PML_Thickness']]
         DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2]
+                            outparams['N2']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness']]
         if self.bUseSingleKernel:
             DimsKernel['MAIN_1']=[outparams['N1'],
                             outparams['N2'],

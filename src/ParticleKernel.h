@@ -1,69 +1,55 @@
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
-#if defined(_PML_KERNEL_CORNER) 
-	i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
-	j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-	k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
-	// Each i,j,k go from 0 -> 2 x PML size
+#if defined(_PML_KERNEL_I_BOTTOM) 
+//  i go from 0 to PML 
+//  j go from  0 to  N2
+//  k go from  0 to N3
+// so no initial corrections on indices
 #endif
-#if defined(_PML_KERNEL_LEFT_RIGHT)
-j+=PML_Thickness;
-k+=PML_Thickness;
-if (IsOnPML_J(j)==1 ||  IsOnPML_K(k)==1)
-	return;
-i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
-//  i go from 0 -> 2 x PML size
-//  j go from  PML size to N2 - PML
-//  k go from  PML size to N3 - PML
+#if defined(_PML_KERNEL_I_TOP)
+i+=Limit_I_up_PML;
+//  i go from  N1 - PML to N1
+//  j go from  0 to N2
+//  k go from  0 to N3
 #endif
 
-#if defined(_PML_KERNEL_TOP_BOTTOM)
+#if defined(_PML_KERNEL_J_BOTTOM)
 i+=PML_Thickness;
-k+=PML_Thickness;
-if (IsOnPML_I(i)==1 ||  IsOnPML_K(k)==1)
-	return;
-j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-//  i go from  PML size to N1 - PML
-//  j go from 0 -> 2 x PML size
-//  k go from  PML size to N3 - PML
+//  i go from  PML to N1 - PML
+//  j go from  0 to PML
+//  k go from  0 to N3
+
 #endif
 
-#if defined(_PML_KERNEL_FRONT_BACK)
+#if defined(_PML_KERNEL_J_TOP)
 i+=PML_Thickness;
-j+=PML_Thickness;
-if (IsOnPML_I(i)==1 ||  IsOnPML_J(j)==1)
-	return;
-k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
-//  i go from  PML size to N1 - PML
-//  j go from  PML size to N2 - PML
-//  K go from 0 -> 2 x PML size
+j+=Limit_J_up_PML;
+//  i go from  PML to N1 - PML
+//  j go from  N2 - PML to N2
+//  k go from  0 to N3
 #endif
 
-#if defined(_PML_KERNEL_LEFT_RIGHT_RODS)
-k+=PML_Thickness;
-if (IsOnPML_K(k)==1)
-	return;
-i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
-j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-//  i go from 0 -> 2 x PML size
-//  j go from  0 -> 2 x PML size
-//  k go from  PML size to N3 - PML
-#endif
-
-#if defined(_PML_KERNEL_BOTTOM_TOP_RODS)
-i+=PML_Thickness;
-if (IsOnPML_I(i)==1)
-	return;
-j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-k=k>Limit_K_low_PML ? k -Limit_K_low_PML-1+Limit_K_up_PML:k;
-//  i go from PML size to N1 - PML
-//  j go from  0 -> 2 x PML size
-//  k go from  0 -> 2 x PML size
-#endif
-
-#if defined(_MAIN_KERNEL)
+#if defined(_PML_KERNEL_K_BOTTOM)
 i+=PML_Thickness;
 j+=PML_Thickness;
-k+=PML_Thickness;
+//  i go from  PML to N1 - PML
+//  j go from  PML to N2 - PML
+//  k go from  0 to PML
+
+#endif
+
+#if defined(_PML_KERNEL_K_TOP)
+i+=PML_Thickness;
+j+=PML_Thickness;
+k+=Limit_K_up_PML;
+//  i go from  PML to N1 - PML
+//  j go from  PML to N2 - PML
+//  k go from  N3 - PML to N3
+#endif
+
+#if defined(_MAIN_KERNEL) 
+	i+=PML_Thickness;
+	j+=PML_Thickness;
+	k+=PML_Thickness;
 #endif
 #endif
 
