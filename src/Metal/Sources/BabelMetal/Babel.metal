@@ -12,9 +12,9 @@ using namespace metal;
 #define mr2 (*mr2_pr)
 #define n2BaseSteps (*n2BaseSteps_pr)
 // This version limits the calculation to locations that are close, this is to explore
-kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
-                               const device float *c_wvnb_imag [[ buffer(1) ]],
-                               const device float *MaxDistance [[ buffer(2) ]],
+kernel void ForwardSimpleMetal(const device float *c_wvnb_real_p [[ buffer(0) ]],
+                               const device float *c_wvnb_imag_p [[ buffer(1) ]],
+                               const device float *MaxDistance_p [[ buffer(2) ]],
                                const device int *mr1_pr        [[ buffer(3) ]],
                                const device int *mr2_pr        [[ buffer(4) ]],
                                const device float *r2pr        [[ buffer(5) ]],
@@ -32,6 +32,9 @@ kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
         float dx,dy,dz,R,r2x,r2y,r2z;
         float temp_r,tr ;
         float temp_i,ti,pCos,pSin ;
+        float c_wvnb_real=c_wvnb_real_p[0];
+        float c_wvnb_imag=c_wvnb_imag_p[0];
+        float MaxDistance = MaxDistance_p[0];
         int offset=mr1step*si2+n2BaseSteps;
         if (si2<uint(mr2))
         {
@@ -51,13 +54,13 @@ kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
 
 
                 R=sqrt(dx*dx+dy*dy+dz*dz);
-                if (MaxDistance[0]>=0.0)
-                    if (R>MaxDistance[0])
+                if (MaxDistance>=0.0)
+                    if (R>MaxDistance)
                         continue;
-                ti=(exp(R*c_wvnb_imag[0])*a1pr[si1]/R);
+                ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
 
                 tr=ti;
-                pSin=sincos(R*c_wvnb_real[0],pCos);
+                pSin=sincos(R*c_wvnb_real,pCos);
 
                 tr*=(u1_real[si1+offset]*pCos+u1_imag[si1+offset]*pSin);
                 ti*=(u1_imag[si1+offset]*pCos-u1_real[si1+offset]*pSin);
@@ -68,8 +71,8 @@ kernel void ForwardSimpleMetal(const device float *c_wvnb_real [[ buffer(0) ]],
 
             R=temp_r;
 
-            temp_r = -temp_r*c_wvnb_imag[0]-temp_i*c_wvnb_real[0];
-            temp_i = R*c_wvnb_real[0]-temp_i*c_wvnb_imag[0];
+            temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
+            temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
 
             py_data_u2_real[si2]=temp_r/(2*pi);
             py_data_u2_imag[si2]=temp_i/(2*pi);
