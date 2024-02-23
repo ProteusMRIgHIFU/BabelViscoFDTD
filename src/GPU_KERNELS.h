@@ -51,12 +51,7 @@
 #endif
 /// PMLS
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
-#define _ST_PML_1
-#define _ST_PML_2
-#define _ST_PML_3
-#define _ST_PML_4
-#define _ST_PML_5
-#define _ST_PML_6
+#define _ST_PML
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
 extern "C" __global__ void PML_1_StressKernel(
@@ -336,26 +331,13 @@ kernel void PML_6_StressKernel(
 }
 #undef _PML_KERNEL_BOTTOM_TOP_RODS
 
-#undef _ST_PML_1
-#undef _ST_PML_2
-#undef _ST_PML_3
-#undef _ST_PML_4
-#undef _ST_PML_5
-#undef _ST_PML_6
+#undef _ST_PML
 #endif
 
-#define _ST_MAIN_1
-#define _ST_MAIN_2
-#define _ST_MAIN_3
-#define _ST_MAIN_4
+#define _ST_MAIN
 #define _MAIN_KERNEL
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
-#define _ST_PML_1
-#define _ST_PML_2
-#define _ST_PML_3
-#define _ST_PML_4
-#define _ST_PML_5
-#define _ST_PML_6
+#define _ST_PML
 #endif
 #ifdef CUDA
 extern "C" __global__ void MAIN_1_StressKernel(
@@ -409,25 +391,14 @@ kernel void MAIN_1_StressKernel(
     #include "StressKernel.h" 
 }
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
-#undef _ST_PML_1
-#undef _ST_PML_2
-#undef _ST_PML_3
-#undef _ST_PML_4
-#undef _ST_PML_5
-#undef _ST_PML_6
+#undef _ST_PML
 #endif
 #undef _MAIN_KERNEL
-#undef _ST_MAIN_1
-#undef _ST_MAIN_2
-#undef _ST_MAIN_3
-#undef _ST_MAIN_4
-
+#undef _ST_MAIN
 
 // PML
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
-#define _PR_PML_1
-#define _PR_PML_2
-#define _PR_PML_3
+#define _PR_PML
 #define _PML_KERNEL_CORNER
 #ifdef CUDA
 extern "C" __global__ void PML_1_ParticleKernel(
@@ -716,19 +687,13 @@ kernel void PML_6_ParticleKernel(
 }
 #undef _PML_KERNEL_BOTTOM_TOP_RODS
 
-#undef _PR_PML_1
-#undef _PR_PML_2
-#undef _PR_PML_3
+#undef _PR_PML
 #endif
 
-#define _PR_MAIN_1
-#define _PR_MAIN_2
-#define _PR_MAIN_3
+#define _PR_MAIN
 #define _MAIN_KERNEL
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
-#define _PR_PML_1
-#define _PR_PML_2
-#define _PR_PML_3
+#define _PR_PML
 #endif
 #if defined(CUDA)
 extern "C" __global__ void MAIN_1_ParticleKernel(
@@ -783,13 +748,9 @@ kernel void MAIN_1_ParticleKernel(
 	#include "ParticleKernel.h"
 }
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
-#undef _PR_PML_1
-#undef _PR_PML_2
-#undef _PR_PML_3
+#undef _PR_PML
 #endif
-#undef _PR_MAIN_1
-#undef _PR_MAIN_2
-#undef _PR_MAIN_3
+#undef _PR_MAIN
 #undef _MAIN_KERNEL
 
 #if defined(CUDA)

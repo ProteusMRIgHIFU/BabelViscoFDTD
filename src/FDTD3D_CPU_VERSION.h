@@ -77,22 +77,10 @@
     int indexforNaN=0;
   #endif
 
-#define _ST_PML_1
-#define _ST_PML_2
-#define _ST_PML_3
-#define _ST_PML_4
-#define _ST_PML_5
-#define _ST_PML_6
-#define _ST_MAIN_1
-#define _ST_MAIN_2
-#define _ST_MAIN_3
-#define _ST_MAIN_4
-#define _PR_PML_1
-#define _PR_PML_2
-#define _PR_PML_3
-#define _PR_MAIN_1
-#define _PR_MAIN_2
-#define _PR_MAIN_3
+#define _ST_PML
+#define _ST_MAIN
+#define _PR_PML
+#define _PR_MAIN
 #define CPU
 
 	unsigned int SensorEntry=0;
