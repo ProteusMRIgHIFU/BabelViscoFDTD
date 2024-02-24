@@ -85,7 +85,7 @@ RayleighOpenCLMetalSource="""
 using namespace metal;
 #endif
 
-#define pi 3.141592653589793
+#define pi M_PI_F
 #define ppCos &pCos
 
 typedef float FloatingType;
