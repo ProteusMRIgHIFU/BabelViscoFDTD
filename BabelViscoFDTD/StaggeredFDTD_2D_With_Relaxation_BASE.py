@@ -106,9 +106,6 @@ class StaggeredFDTD_2D_With_Relaxation_BASE():
         for l in SCode:
             AllC+=l
     
-        with open('test.c','w') as f:
-            f.write(AllC)
-
         N1=arguments['N1']
         N2=arguments['N2']
 

@@ -1,42 +1,41 @@
 
 #include <metal_stdlib>
 #include <metal_math>
+#include "arguments.h"
 using namespace metal;
 
 
 //METAL kernel for Rayleigh Integral
 
 #define pi M_PI_F
-#define mr1step (*mr1step_pr)
-#define mr1 (*mr1_pr)
-#define mr2 (*mr2_pr)
-#define n2BaseSteps (*n2BaseSteps_pr)
+#define mr1step (args->mr1step)
+#define mr1 (args->mr1)
+#define mr2 (args->mr2)
+#define n2BaseSteps (args->n2BaseSteps)
+#define c_wvnb_real (args->c_wvnb_real)
+#define c_wvnb_imag (args->c_wvnb_imag)
+#define MaxDistance (args->MaxDistance)
+
+
+
 // This version limits the calculation to locations that are close, this is to explore
-kernel void ForwardSimpleMetal(const device float *c_wvnb_real_p [[ buffer(0) ]],
-                               const device float *c_wvnb_imag_p [[ buffer(1) ]],
-                               const device float *MaxDistance_p [[ buffer(2) ]],
-                               const device int *mr1_pr        [[ buffer(3) ]],
-                               const device int *mr2_pr        [[ buffer(4) ]],
-                               const device float *r2pr        [[ buffer(5) ]],
-                               const device float *r1pr        [[ buffer(6) ]],
-                               const device float *a1pr        [[ buffer(7) ]],
-                               const device float *u1_real     [[ buffer(8) ]],
-                               const device float *u1_imag     [[ buffer(9) ]],
-                               device float *py_data_u2_real   [[ buffer(10) ]],
-                               device float *py_data_u2_imag   [[ buffer(11) ]],
-                               const device int *mr1step_pr    [[ buffer(12) ]],
-                               const device int *n2BaseSteps_pr [[ buffer(13) ]],
+kernel void ForwardSimpleMetal(constant RayleighArguments *args [[ buffer(0) ]],
+                               const device float *r2pr        [[ buffer(1) ]],
+                               const device float *r1pr        [[ buffer(2) ]],
+                               const device float *a1pr        [[ buffer(3) ]],
+                               const device float *u1_real     [[ buffer(4) ]],
+                               const device float *u1_imag     [[ buffer(5) ]],
+                               device float *py_data_u2_real   [[ buffer(6) ]],
+                               device float *py_data_u2_imag   [[ buffer(7) ]],
                                uint si2 [[ thread_position_in_grid ]]) {
     
    
         float dx,dy,dz,R,r2x,r2y,r2z;
         float temp_r,tr ;
         float temp_i,ti,pCos,pSin ;
-        float c_wvnb_real=c_wvnb_real_p[0];
-        float c_wvnb_imag=c_wvnb_imag_p[0];
-        float MaxDistance = MaxDistance_p[0];
+
         int offset=mr1step*si2+n2BaseSteps;
-        if (si2<uint(mr2))
+        if (si2<mr2)
         {
 
             temp_r = 0;

@@ -205,8 +205,6 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     
 
     def _InitiateCommands(self, AllC):
-        with open('test.c','w') as f:
-            f.write(AllC)
         prg = self.ctx.kernel(AllC)
         if self.bUseSingleKernel:
             PartsStress=['MAIN_1']

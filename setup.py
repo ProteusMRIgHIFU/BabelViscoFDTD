@@ -54,7 +54,7 @@ def CompileBabelMetal(build_temp,build_lib):
         subprocess.check_call(command,cwd=build_temp)
         command=['xcrun','-sdk', 'macosx', 'metallib','Sources/BabelMetal/Rayleig.air','-o', 'Sources/BabelMetal/Babel.metallib']
         subprocess.check_call(command,cwd=build_temp)
-        command=['swift','build','-c', 'release']
+        command=['swift','build','-Xswiftc','-import-objc-header','-Xswiftc','Sources/BabelMetal/bridge.h','-c', 'release']
         subprocess.check_call(command,cwd=build_temp)
 
         for fn in ['libBabelMetal.dylib']:

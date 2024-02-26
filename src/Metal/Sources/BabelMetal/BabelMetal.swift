@@ -3,7 +3,6 @@ import MetalPerformanceShaders
 import Accelerate
 import Foundation
 
-
 let metallib : String = (ProcessInfo.processInfo.environment["__BabelMetal"] ?? "the lat in the dictionary was nil!") + "/Babel.metallib"
 
 
@@ -135,6 +134,10 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         let c_wvnb_realBuffer = UnsafeMutableRawPointer(c_wvnb_real)
         let c_wvnb_imagBuffer = UnsafeMutableRawPointer(c_wvnb_imag)
         let MaxDistanceBuffer = UnsafeMutableRawPointer(MaxDistance)
+        let mr1Buffer = UnsafeMutableRawPointer(mr1p)
+        let mr2Buffer = UnsafeMutableRawPointer(mr2p)
+
+        let u0stepsBuffer = UnsafeMutableRawPointer(u0stepsp)
         
         let r2prBuffer = UnsafeMutableRawPointer(r2pr)
         let r1prBuffer =  UnsafeMutableRawPointer(r1pr)
@@ -142,14 +145,12 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         let u1_realBuffer = UnsafeMutableRawPointer(u1_real)
         let u1_imagBuffer = UnsafeMutableRawPointer(u1_imag)
 
-        let mr1Buffer = UnsafeMutableRawPointer(mr1p)
-        let mr2Buffer = UnsafeMutableRawPointer(mr2p)
-        
+        let u0steps = u0stepsBuffer.load(as: Int.self) 
         let mr2 = mr2Buffer.load(as: Int.self)   
         let mr1 = mr1Buffer.load(as: Int.self) 
-
-        let u0stepsBuffer = UnsafeMutableRawPointer(u0stepsp)
-        let u0steps = u0stepsBuffer.load(as: Int.self) 
+        let MaxDistance = MaxDistanceBuffer.load(as: Float.self)
+        let c_wvnb_real = c_wvnb_realBuffer.load(as: Float.self)
+        let c_wvnb_imag = c_wvnb_imagBuffer.load(as: Float.self)
 
         
         var ll = MemoryLayout<Float>.size*mr1*3
@@ -166,12 +167,6 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             r1prVectorBuffer = device.makeBuffer(bytes: r1prBuffer, length: MemoryLayout<Float>.size*mr1*3, options: [])
         }
        
-        let mr1VectorBuffer = device.makeBuffer(bytes: mr1Buffer, length: MemoryLayout<Int>.size, options: [])
-        let c_wvnb_realVectorBuffer = device.makeBuffer(bytes: c_wvnb_realBuffer, length: MemoryLayout<Float>.size, options: [])
-        let c_wvnb_imagVectorBuffer = device.makeBuffer(bytes: c_wvnb_imagBuffer, length: MemoryLayout<Float>.size, options: [])
-        let MaxDistanceVectorBuffer = device.makeBuffer(bytes: MaxDistanceBuffer, length: MemoryLayout<Float>.size, options: [])
-        let u0stepsVectorBuffer = device.makeBuffer(bytes: u0stepsBuffer, length: MemoryLayout<Int>.size, options: [])
-
         var r2prVectorBuffer:MTLBuffer?
         ll = MemoryLayout<Float>.size*mr2*3
 
@@ -247,7 +242,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         // We need to split in small chunks to be sure the kernel does not take too much time
         // otherwise the OS will kill it
     
-        let NonBlockingstep = Int(5000e6)
+        let NonBlockingstep = Int(50000e6)
         var nm_step = Int(NonBlockingstep/mr1)
 
 
@@ -266,12 +261,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         var n2Limit = Int(0)
         var offset = Int(0)
 
-        let mr2VectorBuffer =  device.makeBuffer(length: MemoryLayout<Int>.size, options: .storageModeManaged)
-        
-        let n2BaseStepsBuffer = device.makeBuffer(length: MemoryLayout<Int>.size, options: .storageModeManaged)
-        
-        let pmr2Vector = mr2VectorBuffer!.contents().bindMemory(to: Int.self, capacity: 1)
-        let pn2Base = n2BaseStepsBuffer!.contents().bindMemory(to: Int.self, capacity: 1)
+
            
         while basemr2 < mr2
         {   
@@ -287,12 +277,6 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
 
             offset = basemr2*u0steps
 
-            
-            pmr2Vector[0]=n2Limit
-            pn2Base[0]=offset
-            mr2VectorBuffer!.didModifyRange(0..<1)
-            n2BaseStepsBuffer!.didModifyRange(0..<1)
-
 
             let commandBuffer = commandQueue.makeCommandBuffer()!
             let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
@@ -300,22 +284,24 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             let computePipelineState = try device.makeComputePipelineState(function: ForwardSimpleMetalFunction)
             computeCommandEncoder.setComputePipelineState(computePipelineState)
 
+            var args = RayleighArguments(c_wvnb_real:c_wvnb_real,
+                                         c_wvnb_imag:c_wvnb_imag,
+                                         MaxDistance:MaxDistance,
+                                         mr1step: UInt32(u0steps),
+                                         mr1: UInt32(mr1),
+                                         mr2:UInt32(n2Limit),
+                                         n2BaseSteps:UInt32(offset))
 
-            computeCommandEncoder.setBuffer(c_wvnb_realVectorBuffer, offset: 0, index:0)
-            computeCommandEncoder.setBuffer(c_wvnb_imagVectorBuffer, offset: 0, index: 1)
-            computeCommandEncoder.setBuffer(MaxDistanceVectorBuffer, offset: 0, index: 2)
-            computeCommandEncoder.setBuffer(mr1VectorBuffer, offset: 0, index: 3)
-            computeCommandEncoder.setBuffer(mr2VectorBuffer, offset: 0, index: 4)
+            computeCommandEncoder.setBytes(&args, length: MemoryLayout<RayleighArguments>.stride, index: 0)
             computeCommandEncoder.setBuffer(r2prVectorBuffer, 
-                            offset: MemoryLayout<Float>.size*basemr2*3, index: 5)
-            computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 6)
-            computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 7)
-            computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 8)
-            computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 9)
-            computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 10)
-            computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 11)
-            computeCommandEncoder.setBuffer(u0stepsVectorBuffer, offset:0, index:12)
-            computeCommandEncoder.setBuffer(n2BaseStepsBuffer, offset:0, index:13)
+                            offset: MemoryLayout<Float>.size*basemr2*3, index: 1)
+            computeCommandEncoder.setBuffer(r1prVectorBuffer, offset: 0, index: 2)
+            computeCommandEncoder.setBuffer(a1prVectorBuffer, offset: 0, index: 3)
+            computeCommandEncoder.setBuffer(u1_realVectorBuffer, offset: 0, index: 4)
+            computeCommandEncoder.setBuffer(u1_imagVectorBuffer, offset: 0, index: 5)
+            computeCommandEncoder.setBuffer(py_data_u2_realVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 6)
+            computeCommandEncoder.setBuffer(py_data_u2_imagVectorBuffer, offset: MemoryLayout<Float>.size*basemr2, index: 7)
+
             
             let w = computePipelineState.threadExecutionWidth
             let h = computePipelineState.maxTotalThreadsPerThreadgroup / w
@@ -330,8 +316,6 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             basemr2+=nm_step
         }
 
-        n2BaseStepsBuffer!.setPurgeableState(MTLPurgeableState.empty)
-        mr2VectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
         // unsafe bitcast and assigin result pointer to output
         if bUseAlignedMem == 0 
         {
@@ -348,13 +332,6 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
             py_data_u2_imagVectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
 
         }
-
-        mr1VectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
-        c_wvnb_realVectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
-        c_wvnb_imagVectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
-        u0stepsVectorBuffer!.setPurgeableState(MTLPurgeableState.empty)
-
-        
 
         return 0
     } catch {
