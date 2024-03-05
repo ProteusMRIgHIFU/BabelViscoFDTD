@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '1.0.5'
+version = '1.0.6'
 
 npinc=np.get_include()+os.sep+'numpy'
 # Filename for the C extension module library
@@ -43,12 +43,7 @@ def CompileBabelMetal(build_temp,build_lib):
 
         command=['xcrun','-sdk', 'macosx', 'metal','-ffast-math','-c']
         
-        BabelBrainX64 = os.getenv('BABELBRAIN_MAC_X64')
-        extracmd=[]
-        if BabelBrainX64 is not None:
-            if BabelBrainX64=='1': 
-                print('Compiling with Backward compatibility for BabelBrain X64')
-                extracmd=['-std=macos-metal2.3','-mmacosx-version-min=11.0']
+        extracmd=['-std=macos-metal2.3','-mmacosx-version-min=11.0']
         command+=extracmd
         command+=['Sources/BabelMetal/Babel.metal','-o', 'Sources/BabelMetal/Rayleig.air']
         subprocess.check_call(command,cwd=build_temp)

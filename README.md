@@ -221,6 +221,8 @@ All three GPU backends have analogous control to split the calculations in the G
 Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS.
 
 # Release notes
+* 1.06 - March 5, 2024
+    * Change compilation of Rayleigh module in ARM64 Metal to support macOS Monterey and up 
 * 1.05 - Feb 26, 2024
     * Fix an issue of reflections on one of the sides of the domain when using Metal backend
     * Improve Swift Metal for Rayleigh calculations, passing scalar parameters now using an structure rather than buffers.
