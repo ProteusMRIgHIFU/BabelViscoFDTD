@@ -51,17 +51,7 @@
 #endif
 /// PMLS
 
-#define _ST_MAIN_1
-#define _ST_MAIN_2
-#define _ST_MAIN_3
-#define _ST_MAIN_4
-#define _MAIN_KERNEL
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
-#define _ST_PML_1
-#define _ST_PML_2
-#define _ST_PML_3
 
-#endif
 #ifdef CUDA
 extern "C" __global__ void MAIN_1_StressKernel(
 	#include "kernelparamsOpenCL2D.h"
@@ -85,37 +75,13 @@ kernel void MAIN_1_StressKernel(
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
 	#else	
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#define nN1 N1
-	#define nN2 N2
-  	_PT j = (_PT) ((gid )/nN1);
-  	_PT i = (_PT) (gid -j*nN1);
+	_PT j = (_PT) ((gid )/N1);
+  	_PT i = (_PT) (gid -j*N1);
 	#endif
 #endif
     #include "StressKernel2D.h" 
 }
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
-#undef _ST_PML_1
-#undef _ST_PML_2
-#undef _ST_PML_3
-#endif
-#undef _MAIN_KERNEL
-#undef _ST_MAIN_1
-#undef _ST_MAIN_2
 
-
-#define _PR_MAIN_1
-#define _PR_MAIN_2
-#define _MAIN_KERNEL
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
-#define _PR_PML_1
-#define _PR_PML_2
-#endif
 #if defined(CUDA)
 extern "C" __global__ void MAIN_1_ParticleKernel(
 			#include "kernelparamsOpenCL2D.h"
@@ -141,30 +107,13 @@ kernel void MAIN_1_ParticleKernel(
 	#ifndef METALCOMPUTE
   	_PT i = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	
 	#else
-	#ifdef nN1
-	#undef nN1
-	#endif
-	#ifdef nN2
-	#undef nN2
-	#endif
-	#define nN1 N1 
-	#define nN2 N2 
-	
-  	_PT j = (_PT) ((gid )/nN1);
-  	_PT i = (_PT) (gid -j*nN1);
+  	_PT j = (_PT) ((gid )/N1);
+  	_PT i = (_PT) (gid -j*N1);
 	#endif
 #endif
 	#include "ParticleKernel2D.h"
 }
-#if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA))
-#undef _PR_PML_1
-#undef _PR_PML_2
-#endif
-#undef _PR_MAIN_1
-#undef _PR_MAIN_2
-#undef _MAIN_KERNEL
 
 #if defined(CUDA)
 extern "C" __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigma_xx_pr,mexType * Sigma_yy_pr,unsigned int CurrSnap)
