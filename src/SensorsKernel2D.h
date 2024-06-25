@@ -43,9 +43,9 @@ for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
     if (IS_Pressure_SELECTED(SelMapsSensors))
         accum_p+=ELD(Pressure,index3);
     if (IS_Pressure_Gx_SELECTED(SelMapsSensors))
-      accum_p_gx+=(k_Pressure_pr[Ind_Sigma_xx(i+1,j)]-k_Pressure_pr[Ind_Sigma_xx(i-1,j)])*0.5;
+      accum_p_gx+=(Pressure_pr[Ind_Sigma_xx(i+1,j)]-Pressure_pr[Ind_Sigma_xx(i-1,j)])*0.5;
     if (IS_Pressure_Gy_SELECTED(SelMapsSensors))
-      accum_p_gy+=(k_Pressure_pr[Ind_Sigma_xx(i,j+1)]-k_Pressure_pr[Ind_Sigma_xx(i,j-1)])*0.5;
+      accum_p_gy+=(Pressure_pr[Ind_Sigma_xx(i,j+1)]-Pressure_pr[Ind_Sigma_xx(i,j-1)])*0.5;
     index3=Ind_Sigma_xy(i,j);
     if (IS_Sigmaxy_SELECTED(SelMapsSensors))
         accumXY+=ELD(Sigma_xy,index3);
