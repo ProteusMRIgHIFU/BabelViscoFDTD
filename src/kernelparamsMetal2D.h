@@ -96,8 +96,10 @@
 #define k_Sigma_y_xy_pr  __def_MEX_VAR_5(Sigma_y_xy)
 
 #define k_Sigma_xy_pr  __def_MEX_VAR_6(Sigma_xy)
-#define k_Sigma_xx_pr  __def_MEX_VAR_7(Sigma_xx)
+#define k_Sigma_xx_pr  __def_MEX_VAR_6(Sigma_xx)
+
 #define k_Sigma_yy_pr  __def_MEX_VAR_7(Sigma_yy)
+#define k_Pressure_pr  __def_MEX_VAR_7(Pressure)
 
 #define k_SourceFunctions_pr __def_MEX_VAR_8(SourceFunctions)
 
@@ -110,7 +112,6 @@
 #define k_InvRhoMatH_pr         __def_MEX_VAR_9(InvRhoMatH)
 #define k_Ox_pr  __def_MEX_VAR_9(Ox)
 #define k_Oy_pr  __def_MEX_VAR_9(Oy)
-#define k_Pressure_pr  __def_MEX_VAR_9(Pressure)
 
 #define k_SqrAcc_pr  __def_MEX_VAR_10(SqrAcc)
 
