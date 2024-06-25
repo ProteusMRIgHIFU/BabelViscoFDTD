@@ -254,8 +254,6 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
     
 
     def _InitiateCommands(self, AllC):
-        with open('allcode.c','w') as f:
-            f.write(AllC)
         prg = self.ctx.kernel(AllC)
         PartsStress=['MAIN_1']
         self.AllStressKernels={}
