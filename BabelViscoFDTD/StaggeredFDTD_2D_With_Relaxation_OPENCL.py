@@ -205,6 +205,8 @@ class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_B
 
 
     def _InitiateCommands(self, AllC):
+        with open('allcodeOCL.c','w') as f:
+            f.write(AllC)
         prg = cl.Program(self.ctx,AllC).build()
         PartsStress=['MAIN_1']
         self.AllStressKernels={}
