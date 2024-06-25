@@ -97,17 +97,17 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
                                bUseAlignedMemp: UnsafeMutablePointer<Int>,
                                u0stepsp: UnsafeMutablePointer<Int>) -> Int {
     do {
-        print("Rayleigh: Beginning")
+        // print("Rayleigh: Beginning")
         let deviceName : String = ProcessInfo.processInfo.environment["__BabelMetalDevice"]!
 
-        print("Rayleigh: deviceName =" + deviceName)
+        // print("Rayleigh: deviceName =" + deviceName)
 
         var bFound = false
         var device : MTLDevice!
         for dev in MTLCopyAllDevices() {
             if dev.name.contains(deviceName)
             {
-                print("Rayleigh: Device " + deviceName + "Found!")
+                // print("Rayleigh: Device " + deviceName + "Found!")
                 bFound = true
                 device = dev
             }
@@ -115,7 +115,7 @@ public func ForwardSimpleMetal(mr2p:        UnsafeMutablePointer<Int>,
         }
 
         if bFound == false {
-            print("Rayleigh: Device " + deviceName + "Not Found!")
+            // print("Rayleigh: Device " + deviceName + "Not Found!")
             return 1
         }
 
