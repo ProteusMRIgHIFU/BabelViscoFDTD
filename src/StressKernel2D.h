@@ -104,22 +104,48 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	  index=Ind_MaterialMap(i,j);
       MaterialID=ELD(MaterialMap,index);
 
+
 	  #if  defined(_ST_PML_3) ||  defined(_ST_MAIN_2)  
 
   		m1=ELD(MiuMatOverH,MaterialID);
-  		m2=ELD(MiuMatOverH,EL(MaterialMap,i+1,j));
-  		m3=ELD(MiuMatOverH,EL(MaterialMap,i,j+1));
-  		m4=ELD(MiuMatOverH,EL(MaterialMap,i+1,j+1));
-   		value=m1*m2*m3*m4;
-  		RigidityXY =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
+		if (i<N1-1)
+			m2=ELD(MiuMatOverH,EL(MaterialMap,i+1,j));
+		else
+			m2=m1;
+		if (j<N2-1)
+			m3=ELD(MiuMatOverH,EL(MaterialMap,i,j+1));
+		else
+			m3=m1;
+		if (i<N1-1 && j<N2-1 )
+			m4=ELD(MiuMatOverH,EL(MaterialMap,i+1,j+1));
+		else
+			m4 = m1;
+		value=m1*m2*m3*m4;
+		RigidityXY =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
       #endif
 
 	  #if  defined(_ST_MAIN_2) 
-  		TauShearXY = value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j)) +
-  							 ELD(TauShear,EL(MaterialMap,i,j+1)) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j+1)))
-  							 : ELD(TauShear,MaterialID);
+  		if (value ==0.0)
+			TauShearXY = ELD(TauShear,MaterialID);
+		else
+		{
+			m1 = ELD(TauShear,MaterialID);
+			if (i<N1-1)
+				m2=ELD(TauShear,EL(MaterialMap,i+1,j));
+			else
+				m2=m1;
+			if (j<N2-1)
+				m3=ELD(TauShear,EL(MaterialMap,i,j+1));
+			else
+				m3=m1;
+			if (i<N1-1 && j<N2-1 )
+				m4=ELD(TauShear,EL(MaterialMap,i+1,j+1));
+			else
+				m4=m1;
+
+			TauShearXY=0.25*(m1+m2+m3+m4);
+			
+		}
 
 	   #endif
 	   
