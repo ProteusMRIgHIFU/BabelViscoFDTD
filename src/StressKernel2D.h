@@ -1,70 +1,20 @@
-#if defined(METAL) || defined(USE_MINI_KERNELS_CUDA)
-#if defined(_PML_KERNEL_CORNER) 
-	i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
-	j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-	// Each i,jgo from 0 -> 2 x PML size
-#endif
-#if defined(_PML_KERNEL_LEFT_RIGHT)
-j+=PML_Thickness;
-if (IsOnPML_J(j)==1)
-	return;
-i=i>Limit_I_low_PML ? i -Limit_I_low_PML-1+Limit_I_up_PML:i;
-//  i go from 0 -> 2 x PML size
-//  j go from  PML size to N2 - PML
-#endif
-
-#if defined(_PML_KERNEL_TOP_BOTTOM)
-i+=PML_Thickness;
-if (IsOnPML_I(i)==1 )
-	return;
-j=j>Limit_J_low_PML ? j -Limit_J_low_PML-1+Limit_J_up_PML:j;
-//  i go from  PML size to N1 - PML
-//  j go from 0 -> 2 x PML size
-#endif
-
-#if defined(_MAIN_KERNEL) 
-	i+=PML_Thickness;
-	j+=PML_Thickness;
-#endif
-#endif
 
 #if defined(OPENCL) || defined(METAL) || defined(CUDA)
 if (i>=N1 || j >=N2  )
 	return;
 #endif
 	
-#if defined(_ST_PML_1) || defined(_ST_PML_2)   
 	mexType Diff;
-#endif
-#if defined(_ST_PML_1) || defined(_ST_PML_2)
 	mexType Diff2;
-#endif
-
-
-#if defined(_ST_MAIN_1) || defined(_ST_MAIN_2)  
 	mexType Dx;
-#endif
-#if defined(_ST_MAIN_1)  
 	mexType Dy;
-#endif
-
-#if defined(_ST_MAIN_1) || defined(_ST_PML_3) ||  defined(_ST_MAIN_2)  
 	mexType value;
-#endif
-#if  defined(_ST_PML_3) ||  defined(_ST_MAIN_2)
 	mexType m1;
 	mexType m2;
 	mexType m3;
 	mexType m4;
-#endif
-#if  defined(_ST_PML_3) ||  defined(_ST_MAIN_2) 
 	mexType RigidityXY=0.0;
-#endif
-
-#if defined(_ST_MAIN_2) 
 	mexType TauShearXY=0.0;
-#endif
-#if defined(_ST_MAIN_1)
 	mexType LambdaMiu;
 	mexType LambdaMiuComp;
 	mexType dFirstPart;
@@ -74,17 +24,12 @@ if (i>=N1 || j >=N2  )
 	mexType accum_p=0.0;
 	_PT source;
 	_PT bAttenuating=1;
-#endif
-#if defined(_ST_MAIN_1) || defined(_ST_MAIN_2) 
 	mexType Miu;
 	mexType MiuComp;
 	mexType OneOverTauSigma;
 	mexType NextR;
-#endif
 
-#if defined(_ST_MAIN_2)
 	mexType accum_xy=0.0;
-#endif
 
 
 
@@ -104,34 +49,27 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	  index=Ind_MaterialMap(i,j);
       MaterialID=ELD(MaterialMap,index);
 
-	  #if  defined(_ST_PML_3) ||  defined(_ST_MAIN_2)  
-
+	
   		m1=ELD(MiuMatOverH,MaterialID);
   		m2=ELD(MiuMatOverH,EL(MaterialMap,i+1,j));
   		m3=ELD(MiuMatOverH,EL(MaterialMap,i,j+1));
   		m4=ELD(MiuMatOverH,EL(MaterialMap,i+1,j+1));
    		value=m1*m2*m3*m4;
   		RigidityXY =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
-      #endif
-
-	  #if  defined(_ST_MAIN_2) 
-  		TauShearXY = value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
+    	TauShearXY = value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
   							 ELD(TauShear,EL(MaterialMap,i+1,j)) +
   							 ELD(TauShear,EL(MaterialMap,i,j+1)) +
   							 ELD(TauShear,EL(MaterialMap,i+1,j+1)))
   							 : ELD(TauShear,MaterialID);
 
-	   #endif
 	   
   	
   	if (IsOnPML_I(i)==1 || IsOnPML_J(j)==1 )//We are in the PML borders
   	 {
 
-#if defined(_ST_PML_1) || defined(_ST_PML_2) ||  defined(_ST_PML_3) 
   		if (i<N1-1 && j <N2-1 )
   		{
 
-#if defined(_ST_PML_1) || defined(_ST_PML_2) ||  defined(_ST_PML_3) 
   			Diff= i>1 && i <N1-1 ? CA*(EL(Vx,i,j)-EL(Vx,i-1,j)) -
   			                       CB*(EL(Vx,i+1,j)-EL(Vx,i-2,j))
   			      : i>0 && i <N1 ? (EL(Vx,i,j)-EL(Vx,i-1,j))  :0;
@@ -140,10 +78,6 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   									CB*(EL(Vy,i,j+1)-EL(Vy,i,j-2))
   			        : j>0 && j < N2 ? EL(Vy,i,j)-EL(Vy,i,j-1):0;
 
-#endif
-
-#if defined(_ST_PML_1)
-  			
   			index2=Ind_Sigma_x_xx(i,j);
   			ELD(Sigma_x_xx,index2) =InvDXDT_I*(
   											ELD(Sigma_x_xx,index2)*DXDT_I+
@@ -158,9 +92,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 			index=Ind_Sigma_xx(i,j);
   			index2=Ind_Sigma_x_xx(i,j);
   			ELD(Sigma_xx,index)= ELD(Sigma_x_xx,index2) + ELD(Sigma_y_xx,index2);
- #endif 			
-
- #if defined(_ST_PML_2)			
+		
 			index2=Ind_Sigma_x_yy(i,j);
   			ELD(Sigma_x_yy,index2) =InvDXDT_I*(
   											ELD(Sigma_x_yy,index2)*DXDT_I+
@@ -178,9 +110,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   			index2=Ind_Sigma_x_xx(i,j);
   			ELD(Sigma_yy,index)= ELD(Sigma_x_yy,index2) + ELD(Sigma_y_yy,index2);
 
-#endif
 
-#if defined(_ST_PML_3)
   			index2=Ind_Sigma_x_xy(i,j);
 
   			Diff= i >0 && i<N1-2 ? CA*(EL(Vy,i+1,j)-EL(Vy,i,j)) -
@@ -204,14 +134,12 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 			index=Ind_Sigma_xy(i,j);
 
 			ELD(Sigma_xy,index)= ELD(Sigma_x_xy,Ind_Sigma_x_xy(i,j)) + ELD(Sigma_y_xy,index2);
-#endif
+
 
 		  }	   
-#endif
 	}
   	else
   	{
-#if defined(_ST_MAIN_1)
   		//We are in the center, no need to check any limits, the use of the PML simplify this
   		index=Ind_Sigma_xx(i,j);
 
@@ -275,13 +203,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
       	
 		accum_yy+=ELD(Sigma_yy,index);
 
-  		
-
-#endif		
-#if defined(_ST_MAIN_2) ||  defined(_ST_MAIN_3) || defined(_ST_MAIN_4)
   		index=Ind_Sigma_xy(i,j);
-#endif
-#if defined(_ST_MAIN_2) 
 		if (RigidityXY!=0.0)
   		{
 			  OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
@@ -316,10 +238,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   		}
         // else
         //     ELD(Rxy,index)=0.0;
-#endif
 
-
-	#if defined(_ST_MAIN_1)
 		if ((nStep < LengthSource) && TypeSource>=2) //Source is stress
   		{
   			index=IndN1N2(i,j,0);
@@ -342,18 +261,14 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 
   			}
   		}
-	#endif
+	
   	}
   }
   if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0  && nStep>=SensorStart*SensorSubSampling)
   {
-	#if defined(_ST_MAIN_1) 
     accum_xx/=ZoneCount;
     accum_yy/=ZoneCount;
-	#endif
-	#if defined(_ST_MAIN_2)
     accum_xy/=ZoneCount;
-	#endif
 
 
     CurZone=0;
@@ -363,7 +278,6 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 
     if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
     {
-		#if defined(_ST_MAIN_1)
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)+=accum_xx*accum_xx;
         if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
@@ -371,11 +285,8 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     
 		if (IS_Pressure_SELECTED(SelMapsRMSPeak))
 			ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)+=accum_p*accum_p;
-		#endif
-		#if defined(_ST_MAIN_2)
         if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)+=accum_xy*accum_xy;
-		#endif
 
 		
     }
@@ -383,19 +294,14 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
         index+=index2*NumberSelRMSPeakMaps;
     if (SelRMSorPeak & SEL_PEAK)
     {
-		#if defined(_ST_MAIN_1)
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)=accum_xx>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx) ? accum_xx: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx);
         if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy)=accum_yy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy) ? accum_yy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy);
         if (IS_Pressure_SELECTED(SelMapsRMSPeak))
 			ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)=accum_p > ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure) ? accum_p :ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure);
-	    #endif
-		#if defined(_ST_MAIN_2)
 		if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)=accum_xy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy) ? accum_xy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy);
-        #endif
-		
     }
 
   }

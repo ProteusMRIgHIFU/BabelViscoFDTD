@@ -76,10 +76,10 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             }
 
         self.FUNCTION_LOCALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
+        for i in ['MAIN_1' ]:
             self.FUNCTION_LOCALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
         self.FUNCTION_GLOBALS = {}
-        for i in ['MAIN_1', "PML_1", "PML_2", "PML_3"]:
+        for i in ['MAIN_1']:
             self.FUNCTION_GLOBALS[i] = {'STRESS':[0, 0, 0], 'PARTICLE':[0, 0, 0]}
                 
         self.LENGTH_CONST_UINT = 2
@@ -195,17 +195,11 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         else:
             self._CALC_USER_LOCAL("MAIN_1", "STRESS")
             self._CALC_USER_LOCAL("MAIN_1", "PARTICLE")
-        
-        for j in ["STRESS", "PARTICLE"]:
-            for i in ["PML_1", "PML_2", "PML_3"]:
-                self._CALC_USER_LOCAL(i, j)
-        
+               
         if arguments['ManualGroupSize'][0] != -1:
             self._SET_USER_GLOBAL(arguments['ManualGroupSize'])
         else:
             self._CALC_USER_GROUP_MAIN(arguments, outparams)
-
-        self. _CALC_USER_GROUP_PML(outparams)
 
         self.localSensor = [1, 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
@@ -255,32 +249,20 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         self._outparams = outparams
         for Type in ['STRESS', 'PARTICLE']:
             for index in range(2):
-                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]-outparams['PML_Thickness']*2) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
+                self.FUNCTION_GLOBALS['MAIN_1'][Type][index] = ceil((arguments[('N'+str(index + 1))]) / self.FUNCTION_LOCALS['MAIN_1'][Type][index])
             print("MAIN_1_global_" + Type, "=", str(self.FUNCTION_GLOBALS['MAIN_1'][Type]))
     
-    def _CALC_USER_GROUP_PML(self, outparams):
-        for Type in ['STRESS', 'PARTICLE']:
-            self.FUNCTION_GLOBALS['PML_1'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][0])
-            self.FUNCTION_GLOBALS['PML_1'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_1'][Type][1])
-          
-            self.FUNCTION_GLOBALS['PML_2'][Type][0] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_2'][Type][0])
-            self.FUNCTION_GLOBALS['PML_2'][Type][1] = ceil(outparams['SizeCorrJ'] / self.FUNCTION_LOCALS['PML_2'][Type][1])
-          
-            self.FUNCTION_GLOBALS['PML_3'][Type][0] = ceil(outparams['SizeCorrI'] / self.FUNCTION_LOCALS['PML_3'][Type][0])
-            self.FUNCTION_GLOBALS['PML_3'][Type][1] = ceil(outparams['PML_Thickness']*2 / self.FUNCTION_LOCALS['PML_3'][Type][1])
-          
-            
-            for i in ["PML_1", "PML_2", "PML_3"]:
-                print(i + "_global_" + Type + "=", str(self.FUNCTION_GLOBALS[i][Type]))
 
     def _InitiateCommands(self, AllC):
+        with open('allcode.c','w') as f:
+            f.write(AllC)
         prg = self.ctx.kernel(AllC)
-        PartsStress=['PML_1','PML_2','PML_3','MAIN_1']
+        PartsStress=['MAIN_1']
         self.AllStressKernels={}
         for k in PartsStress:
             self.AllStressKernels[k]=prg.function(k+"_StressKernel")
 
-        PartsParticle=['PML_1','PML_2','PML_3','MAIN_1']
+        PartsParticle=['MAIN_1']
         self.AllParticleKernels={}
         for k in PartsParticle:
             self.AllParticleKernels[k]=prg.function(k+"_ParticleKernel")
@@ -292,14 +274,8 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
         outparams=self._outparams
         DimsKernel={}
-        DimsKernel['PML_1']=[outparams['PML_Thickness']*2,
-                             outparams['PML_Thickness']*2]
-        DimsKernel['PML_2']=[outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2]
-        DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']*2]
-        DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2]
+        DimsKernel['MAIN_1']=[outparams['N1'],
+                            outparams['N2']]
     
         nref=sys.getrefcount(self.mex_buffer[7])
         print('before exec nref',nref)
@@ -310,7 +286,8 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
 
             self.ctx.init_command_buffer()
             AllHandles=[]
-            for i in ["PML_1", "PML_2", "PML_3", "MAIN_1"]:
+  
+            for i in ["MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
@@ -330,7 +307,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
                                                self.mex_buffer[11])
                 AllHandles.append(handle)
 
-            for i in ["PML_1", "PML_2","PML_3", "MAIN_1"]:
+            for i in ["MAIN_1"]:
                 nSize=np.prod(DimsKernel[i])
                 handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
                                                self.index_mex,
