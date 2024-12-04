@@ -862,6 +862,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
 
     nFraction=int(TotalDurationSteps/10)
+    if nFraction ==0:
+        nFraction=1
 
     if Backend=='OpenCL':
 
