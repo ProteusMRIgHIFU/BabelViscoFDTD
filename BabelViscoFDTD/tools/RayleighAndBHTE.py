@@ -7,13 +7,29 @@ Very simple GPU-accelerated Rayleigh integral with support to OpenCL and CUDA
 CUDA is automatically selected if running Windows or Linux, while OpenCL is selected in MacOs
 '''
 
+import gc
 import numpy as np
 import os
+from pathlib import Path
 import sys
 from sysconfig import get_paths
 import ctypes
 import sys 
 import platform
+
+_IS_MAC = platform.system() == 'Darwin'
+
+def resource_path():  # needed for bundling
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    if not _IS_MAC:
+        return os.path.split(Path(__file__))[0]
+
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundle_dir =  os.path.abspath(os.path.join(os.path.dirname(__file__)))
+    else:
+        bundle_dir = Path(__file__).parent
+
+    return bundle_dir
 
 KernelCoreSourceBHTE="""
     #define Tref 43.0
@@ -550,6 +566,66 @@ def InitMetal(DeviceName='AMD'):
         ctx.set_external_gpu(1) 
     prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
     
+def InitMLX(DeviceName='AMD'):
+    global ctx
+    global prgcl_mlx
+    global clp_mlx
+    global sel_device
+    
+    import mlx.core as mx
+    clp_mlx = mx
+
+    kernel_files = [
+       os.path.join(resource_path(), 'rayleigh.cpp'),
+       os.path.join(resource_path(), 'BHTE.cpp'),
+    ]
+    
+    with open(os.path.join(resource_path(), 'rayleighAndBHTE.hpp'), 'r') as f:
+        header = f.read()
+        
+    kernel_functions = [{'name': 'ForwardPropagationKernel',
+                        'file': kernel_files[0],
+                        'input_names': ["mr2", "c_wvnb_real", "c_wvnb_imag", "MaxDistance", "mr1",
+                                        "r2pr","r1pr","a1pr","u1_real","u1_imag","mr1step"],
+                        'output_names': ["py_data_u2_real","py_data_u2_imag"],
+                        'atomic_outputs': False},
+                        {'name': 'BHTEFDTDKernel',
+                        'file': kernel_files[1],
+                        'input_names': ["d_input","d_input2","d_bhArr","d_perfArr","d_labels","d_Qarr",
+                                        "d_pointsMonitoring","CoreTemp","sonication","outerDimx","outerDimy",
+                                        "outerDimz","dt","TotalStepsMonitoring","nFactorMonitoring","n_Step",
+                                        "SelJ","StartIndexQ","TotalSteps"],
+                        'output_names': ["d_output","d_output2","d_MonitorSlice","d_Temppoints"],
+                        'atomic_outputs': False}]
+
+    preamble = '#define _MLX\n'
+    build_later = True
+    
+    sel_device = mx.default_device()
+    print('Selecting device: ', sel_device)
+    
+    kernels = {}
+    for kf in kernel_functions:
+        with open(kf['file'], 'r') as f:
+            lines = f.readlines()
+        kernel_code = ''.join(lines[:-1]) # Remove last bracket
+        
+        if build_later:
+            kf['header'] = preamble+header
+            kf['source'] = kernel_code
+            kernels[kf['name']] = kf
+        else:
+            kernel = mx.fast.metal_kernel(name = kf['name'],
+                                          input_names = kf['input_names'],
+                                          output_names = kf['output_names'],
+                                          atomic_outputs = kf['atomic_outputs'],
+                                          header = preamble + header,
+                                          source = kernel_code)
+            
+            kernels[kf['name']] = kernel
+    
+    prgcl_mlx = kernels
+    
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     if u0step!=0:
         mr1=u0step
@@ -656,6 +732,105 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
                                             
     return u2
 
+def ForwardSimpleMLX(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
+    global queue 
+    global prgcl_mlx
+    global ctx
+    global clp_mlx
+    global sel_device
+    
+    mr2=rf.shape[0]
+    
+    if u0step!=0:
+        mr1=u0step
+        assert(mr1*rf.shape[0]==u0.shape[0])
+        assert(mr1==center.shape[0])
+        assert(mr1==ds.shape[0])
+    else:
+        mr1=center.shape[0]
+    
+    # Change to mlx arrays
+    d_r1pr = clp_mlx.array(center)
+    d_u1realpr=clp_mlx.array(np.real(u0))
+    d_u1imagpr=clp_mlx.array(np.imag(u0))
+    d_a1pr = clp_mlx.array(ds)
+    
+    u2 = np.zeros((rf.shape[0]),dtype=np.complex64)
+    
+    # Build program from source code
+    knl = clp_mlx.fast.metal_kernel(name = f"{prgcl_mlx['ForwardPropagationKernel']['name']}",
+                                    input_names = prgcl_mlx['ForwardPropagationKernel']['input_names'],
+                                    output_names = prgcl_mlx['ForwardPropagationKernel']['output_names'],
+                                    source = prgcl_mlx['ForwardPropagationKernel']['source'],
+                                    header = prgcl_mlx['ForwardPropagationKernel']['header'],
+                                    atomic_outputs = prgcl_mlx['ForwardPropagationKernel']['atomic_outputs'],
+                                    )
+    
+    # We need to split in small chunks to be sure the kernel does not take too much time
+    # otherwise the OS will kill it
+
+    NonBlockingstep = int(24000e6)
+    step = int(NonBlockingstep/mr1)
+
+    if step > mr2:
+        step = mr2
+    if step < 5:
+        step = 5
+
+    slice_start = 0
+    slice_end = 0
+            
+    while slice_start < mr2:
+        
+        slice_end = min(slice_start + step, mr2)
+        chunk_size = slice_end-slice_start
+        
+        print(f"Working on slices {slice_start} to {slice_end} out of {u2.shape[0]}")
+
+        # Grab section of data
+        d_r2pr = clp_mlx.array(rf[slice_start:slice_end,:]) 
+        d_u2realpr = clp_mlx.zeros_like(d_r2pr)
+        d_u2imagpr = clp_mlx.zeros_like(d_r2pr)
+        
+        # Deploy kernel
+        d_u2realpr,d_u2imagpr = knl(inputs = [np.int32(slice_end),
+                                              np.float32(np.real(cwvnb)),
+                                              np.float32(np.imag(cwvnb)),
+                                              np.float32(MaxDistance),
+                                              np.int32(mr1),
+                                              d_r2pr,
+                                              d_r1pr,
+                                              d_a1pr,
+                                              d_u1realpr,
+                                              d_u1imagpr,
+                                              np.int32(u0step)],
+                                    output_shapes = [(chunk_size,),(chunk_size,)],
+                                    output_dtypes = [clp_mlx.float32,clp_mlx.float32],
+                                    grid=(chunk_size,1,1),
+                                    threadgroup=(256, 1, 1),
+                                    verbose=False,
+                                    stream=sel_device)
+        clp_mlx.synchronize()
+
+        # Change back to numpy array 
+        u2_real = np.array(d_u2realpr)
+        u2_imag = np.array(d_u2imagpr)
+        
+        # Combine real & imag parts
+        u2_section = u2_real+1j*u2_imag
+        
+        # Update final array
+        u2[slice_start:slice_end] = u2_section
+        
+        # Clean up mlx arrays
+        del d_u2realpr,d_u2imagpr
+        gc.collect()
+        
+        # Update starting location
+        slice_start += step
+
+    return u2
+
 def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
     os.environ['__BabelMetalDevice'] =deviceName
     bUseMappedMemory=0
@@ -740,6 +915,8 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform=
     if sys.platform == "darwin":
         if MacOsPlatform=='Metal':
             return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
+        elif MacOsPlatform == 'MLX':
+            return ForwardSimpleMLX(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
     else:
