@@ -31,369 +31,12 @@ def resource_path():  # needed for bundling
 
     return bundle_dir
 
-KernelCoreSourceBHTE="""
-    #define Tref 43.0
-     unsigned int DzDy=outerDimz*outerDimy;
-     unsigned int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
-    
-    float R1,R2,dtp;
-    if(gtidx > 0 && gtidx < outerDimx-1 && gtidy > 0 && gtidy < outerDimy-1 && gtidz > 0 && gtidz < outerDimz-1)
-    {
-
-            const  unsigned int label = d_labels[coord];
-
-            d_output[coord] = d_input[coord] + d_bhArr[label] * ( 
-                     d_input[coord + 1] + d_input[coord - 1] + d_input[coord + outerDimz] + d_input[coord - outerDimz] +
-                      d_input[coord + DzDy] + d_input[coord - DzDy] - 6.0 * d_input[coord]) +
-                    + d_perfArr[label] * (CoreTemp - d_input[coord]) ;
-            if (sonication)
-            {
-                d_output[coord]+=d_Qarr[coord+StartIndexQ];
-            }
-            
-            R2 = (d_output[coord] >= Tref)?0.5:0.25; 
-            R1 = (d_input[coord] >= Tref)?0.5:0.25;
-
-            if(fabs(d_output[coord]-d_input[coord])<0.0001)
-            {
-                d_output2[coord] = d_input2[coord] + dt * pow((float)R1,(float)(Tref-d_input[coord]));
-            }
-            else
-            {
-                if(R1 == R2)
-                {
-                    d_output2[coord] = d_input2[coord] + (pow((float)R2,(float)(Tref-d_output[coord])) - pow((float)R1,(float)(Tref-d_input[coord]))) / 
-                                   ( -(d_output[coord]-d_input[coord])/ dt * log(R1));
-                }
-                else
-                {
-                    dtp = dt * (Tref - d_input[coord])/(d_output[coord] - d_input[coord]);
-
-                    d_output2[coord] = d_input2[coord] + (1 - pow((float)R1,(float)(Tref-d_input[coord])))     / (- (Tref - d_input[coord])/ dtp * log(R1)) + 
-                                   (pow((float)R2,(float)(Tref-d_output[coord])) - 1) / (-(d_output[coord] - Tref)/(dt - dtp) * log(R2));
-                }
-            }
-
-            if (gtidy==SelJ && (n_Step % nFactorMonitoring ==0))
-            {
-                 d_MonitorSlice[gtidx*outerDimz*TotalStepsMonitoring+gtidz*TotalStepsMonitoring+ n_Step/nFactorMonitoring] =d_output[coord];
-            }
-
-            if (d_pointsMonitoring[coord]>0)
-            {
-                d_Temppoints[TotalSteps*(d_pointsMonitoring[coord]-1)+n_Step]=d_output[coord];
-            }
-        }
-        else if(gtidx < outerDimx && gtidy < outerDimy && gtidz < outerDimz){
-            d_output[coord] = d_input[coord];
-            d_output2[coord] = d_input2[coord];
-
-        }
-
-}
-"""
-
-import pyopencl as cl
-
-RayleighOpenCLMetalSource="""
-#ifdef _METAL
-#include <metal_stdlib>
-using namespace metal;
-#endif
-
-#define pi 3.141592653589793
-#define ppCos &pCos
-
-typedef float FloatingType;
-
-#ifdef _OPENCL
-__kernel  void ForwardPropagationKernel(  const int mr2,
-                                            const FloatingType c_wvnb_real,
-                                            const FloatingType c_wvnb_imag,
-                                            const FloatingType MaxDistance,
-                                            const int mr1,
-                                            __global const FloatingType *r2pr, 
-                                            __global const FloatingType *r1pr, 
-                                            __global const FloatingType *a1pr, 
-                                            __global const FloatingType *u1_real, 
-                                            __global const FloatingType *u1_imag,
-                                            __global  FloatingType  *py_data_u2_real,
-                                            __global  FloatingType  *py_data_u2_imag,
-                                            const int mr1step
-                                            )
-    {
-    int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
-
-    FloatingType dx,dy,dz,R,r2x,r2y,r2z;
-    FloatingType temp_r,tr ;
-    FloatingType temp_i,ti,pCos,pSin ;
-
-    if ( si2 < mr2)  
-    {
-        temp_r = 0;
-        temp_i = 0;
-        r2x=r2pr[si2*3];
-        r2y=r2pr[si2*3+1];
-        r2z=r2pr[si2*3+2];
-
-        for (int si1=0; si1<mr1; si1++)
-        {
-            // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
-            dx=r1pr[si1*3]-r2x;
-            dy=r1pr[si1*3+1]-r2y;
-            dz=r1pr[si1*3+2]-r2z;
-
-
-            R=sqrt(dx*dx+dy*dy+dz*dz);
-            if (MaxDistance>0.0)
-                if (R>MaxDistance)
-                    continue;
-            ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
-
-            tr=ti;
-            pSin=sincos(R*c_wvnb_real,ppCos);
-
-            tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
-                        ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
-
-            temp_r +=tr;
-            temp_i +=ti;	
-        }
-        
-        R=temp_r;
-
-        temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
-        temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
-
-        py_data_u2_real[si2]=temp_r/(2*pi);
-        py_data_u2_imag[si2]=temp_i/(2*pi);
-    }
-    }
-#endif
-    """
-
-OpenCLMetalHeaderBHTE="""
-#ifdef _OPENCL
-    __kernel  void BHTEFDTDKernel( __global float 		*d_output, 
-                                    __global float 		*d_output2,
-                                    __global const float 			*d_input, 
-                                    __global const float 			*d_input2,
-                                    __global const float 			*d_bhArr,
-                                    __global const float 			*d_perfArr, 
-                                    __global const unsigned int		*d_labels,
-                                    __global const float 			*d_Qarr,
-                                    __global const unsigned int		*d_pointsMonitoring,
-                                        const float 			CoreTemp,
-                                        const  unsigned int				sonication,
-                                        const  unsigned int				outerDimx, 
-                                        const  unsigned int              outerDimy, 
-                                        const  unsigned int              outerDimz,
-                                        const float 			dt,
-                                        __global  float 	*d_MonitorSlice,
-                                        __global float      *d_Temppoints,
-                                        const  unsigned int TotalStepsMonitoring,
-                                        const  unsigned int nFactorMonitoring,
-                                        const  unsigned int n_Step,
-                                        const unsigned int SelJ,
-                                        const unsigned int StartIndexQ,
-                                        const  unsigned TotalSteps)	
-    {
-        const int gtidx =  get_global_id(0);
-        const int gtidy =  get_global_id(1);
-        const int gtidz =  get_global_id(2);
-#endif
-#ifdef _METAL
-        kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]], 
-                                    device float 		*d_output2 [[ buffer(1) ]],
-                                    device const float 			*d_input [[ buffer(2) ]], 
-                                    device const float 			*d_input2 [[ buffer(3) ]],
-                                    device const float 			*d_bhArr [[ buffer(4) ]],
-                                    device const float 			*d_perfArr [[ buffer(5) ]], 
-                                    device const unsigned int		*d_labels [[ buffer(6) ]],
-                                    device const float 			*d_Qarr [[ buffer(7) ]],
-                                    device const unsigned int		*d_pointsMonitoring [[ buffer(8) ]],
-                                    device  float 	*d_MonitorSlice [[ buffer(9) ]],
-                                    device  float 	*d_Temppoints [[ buffer(10) ]],
-                                        constant float * floatParams [[ buffer(11) ]],
-                                        constant unsigned int * intparams [[ buffer(12) ]],
-                                        uint gid[[thread_position_in_grid]])	
-    {
-
-        #define CoreTemp floatParams[0]
-        #define dt floatParams[1]
-        #define sonication intparams[0]
-        #define outerDimx intparams[1]
-        #define outerDimy intparams[2]
-        #define outerDimz intparams[3]
-        #define TotalStepsMonitoring intparams[4]
-        #define nFactorMonitoring intparams[5]
-        #define n_Step intparams[6]
-        #define SelJ intparams[7]
-        #define StartIndexQ intparams[8]
-        #define TotalSteps intparams[9]
-        const int gtidx =  gid/(outerDimy*outerDimz);
-        const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
-        const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
-
-#endif
-    """
-
-OpenCLKernelBHTE =OpenCLMetalHeaderBHTE + KernelCoreSourceBHTE
-
 
 Platforms=None
 queue = None
 prgcl = None
 ctx = None
-
-if sys.platform == "darwin":
-    
-    import metalcomputebabel as mc
-
-    # Loads METAL interface
-    os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
-    print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
-    swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
-
-    swift_fun.ForwardSimpleMetal.argtypes = [
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_char_p),
-        ctypes.POINTER(ctypes.c_float), 
-        ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_int),
-        ctypes.POINTER(ctypes.c_int)]
-
-
-    swift_fun.PrintMetalDevices()
-    print("loaded Metal",str(swift_fun))
-
-    def StartMetaCapture(deviceName='M1'):
-        os.environ['__BabelMetalDevice'] =deviceName
-        swift_fun.StartCapture()
-
-    def Stopcapture():
-        swift_fun.Stopcapture()
-
-else:
-
-    prgcuda = None
-
-    import cupy as cp
-    
-    RayleighCUDASource="""
-   #include <cupy/complex.cuh>
-
-    #define pi 3.141592653589793
-
-    typedef float FloatingType;
-
-    #define MAX_ELEMS_IN_CONSTANT  2730 // the total constant memory can't be greater than 64k bytes
-
-
-    __device__ __forceinline__ complex<float> cuexpf (complex<float> z)
-
-        {
-            float res_i,res_r;
-            sincosf(z.imag(), &res_i, &res_r);
-            return expf (z.real())*complex<float> (res_r,res_i);;
-        }
-    
-    extern "C" __global__ void ForwardPropagationKernel(int mr2,
-                                             complex<float> c_wvnb,
-                                             FloatingType MaxDistance, 
-                                             FloatingType *r2pr, 
-                                             FloatingType *r1pr, 
-                                             FloatingType *a1pr,
-                                             complex<float> * u1complex,
-                                             complex<float> *py_data_u2, 
-                                             int mr1,
-                                             int mr1step)
-        {
-        const int si2 = (blockIdx.y*gridDim.x + blockIdx.x)*blockDim.x + threadIdx.x ;		// Grid is a "flatten" 1D, thread blocks are 1D
-
-        complex<float> cj=complex<float>(0.0,1);
-        complex<float> temp,temp2;
-        
-        FloatingType dx,dy,dz,R,r2x,r2y,r2z;
-        if ( si2 < mr2)  
-        {
-            temp*=0;
-            
-
-            r2x=r2pr[si2*3];
-            r2y=r2pr[si2*3+1];
-            r2z=r2pr[si2*3+2];
-
-            for (int si1=0; si1<mr1; si1++)
-            {
-
-                // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
-                dx=r1pr[si1*3]-r2x;
-                dy=r1pr[si1*3+1]-r2y;
-                dz=r1pr[si1*3+2]-r2z;
-
-                R=sqrt(dx*dx+dy*dy+dz*dz);
-                if (MaxDistance>0.0)
-                    if (R>MaxDistance)
-                        continue;
-
-                temp2=cj*c_wvnb;
-                temp2=temp2*(-R);
-                temp2=cuexpf(temp2);
-                temp2=temp2*u1complex[si1+mr1step*si2];
-                temp2=temp2*a1pr[si1]/R;
-                temp=temp+temp2;
-            }
-
-            temp2=cj*c_wvnb;
-            temp=temp*temp2;
-
-            py_data_u2[si2]=temp/((float)(2*pi));
-            
-        }
-        }
-      """
-    
-    CUDAHeaderBHTE="""
-
-        extern "C" __global__   void BHTEFDTDKernel(  float 		        *d_output, 
-                                        float 		            *d_output2,
-                                        const float 			*d_input, 
-                                        const float 			*d_input2,
-                                        const float 			*d_bhArr,
-                                        const float 			*d_perfArr, 
-                                        const unsigned int		*d_labels,
-                                        const float 			*d_Qarr,
-                                        const unsigned int		*d_pointsMonitoring,
-                                        const float 			CoreTemp,
-                                        const  int				sonication,
-                                        const  int				outerDimx, 
-                                        const  int              outerDimy, 
-                                        const  int              outerDimz,
-                                        const float 			dt,
-                                        float 	                *d_MonitorSlice,
-                                        float 			        *d_Temppoints,
-                                        const  int              TotalStepsMonitoring,
-                                        const  int              nFactorMonitoring,
-                                        const  int              n_Step,
-                                        const int               SelJ,
-                                        const unsigned int StartIndexQ,
-                                        const  unsigned TotalSteps)	
-        {
-            const int gtidx = (blockIdx.x * blockDim.x + threadIdx.x);
-            const int gtidy = (blockIdx.y * blockDim.y + threadIdx.y);
-            const int gtidz = (blockIdx.z * blockDim.z + threadIdx.z);
-        """
-
+clp = None
 
 def SpeedofSoundWater(Temperature):
     Xcoeff =  [0.00000000314643 ,-0.000001478,0.000334199,-0.0580852,5.03711,1402.32]
@@ -506,74 +149,15 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     Tx = GenerateSurface(lstep,Diam,Foc)
     return Tx
 
-def InitCuda(DeviceName=None):
+def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
     global prgcuda
-    devCount = cp.cuda.runtime.getDeviceCount()
-    if devCount == 0:
-        raise SystemError("There are no CUDA devices.")
-        
-    if DeviceName is not None:
-        selDevice = None
-        for deviceID in range(0, devCount):
-            d=cp.cuda.runtime.getDeviceProperties(deviceID)
-            if DeviceName in d['name'].decode('UTF-8'):
-                selDevice=cp.cuda.Device(deviceID)
-                break
-        selDevice.use()
-    AllCudaCode=RayleighCUDASource + CUDAHeaderBHTE + KernelCoreSourceBHTE
-    prgcuda  = cp.RawModule(code= AllCudaCode)
- 
-def InitOpenCL(DeviceName='AMD'):
     global Platforms
     global queue 
     global prgcl 
     global ctx
-    
-    Platforms=cl.get_platforms()
-    if len(Platforms)==0:
-        raise SystemError("No OpenCL platforms")
-    SelDevice=None
-    for device in Platforms[0].get_devices():
-        print(device.name)
-        if DeviceName in device.name:
-            SelDevice=device
-    if SelDevice is None:
-        raise SystemError("No OpenCL device containing name [%s]" %(DeviceName))
-    else:
-        print('Selecting device: ', SelDevice.name)
-    ctx = cl.Context([SelDevice])
-    queue = cl.CommandQueue(ctx)
-    prgcl = cl.Program(ctx, '#define _OPENCL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE).build()
-
-def InitMetal(DeviceName='AMD'):
-    global ctx
-    global prgcl 
-
-    devices = mc.get_devices()
-    SelDevice=None
-    for n,dev in enumerate(devices):
-        if DeviceName in dev.deviceName:
-            SelDevice=dev
-            break
-    if SelDevice is None:
-        raise SystemError("No Metal device containing name [%s]" %(DeviceName))
-    else:
-        print('Selecting device: ', dev.deviceName)
-    
-    ctx = mc.Device(n)
-    print(ctx)
-    if 'arm64' not in platform.platform():
-        ctx.set_external_gpu(1) 
-    prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
-    
-def InitMLX(DeviceName='AMD'):
-    global ctx
-    global prgcl_mlx
-    global clp_mlx
+    global clp
     global sel_device
-    
-    import mlx.core as mx
-    clp_mlx = mx
+    global swift_fun
 
     kernel_files = [
        os.path.join(resource_path(), 'rayleigh.cpp'),
@@ -582,8 +166,63 @@ def InitMLX(DeviceName='AMD'):
     
     with open(os.path.join(resource_path(), 'rayleighAndBHTE.hpp'), 'r') as f:
         header = f.read()
+
+    if gpu_backend == 'CUDA':
+        import cupy as cp
+        clp = cp
+
+        preamble = '#define _CUDA\n'
+        ctx,prgcuda,sel_device = InitCUDA(DeviceName,preamble+header,kernel_files)
+
+    elif gpu_backend == 'OpenCL':
+        import pyopencl as pocl
+        clp = pocl
+
+        preamble = '#define _OPENCL\n'
+        queue,prgcl,ctx = InitOpenCL(DeviceName,preamble+header,kernel_files)
         
-    kernel_functions = [{'name': 'ForwardPropagationKernel',
+    elif gpu_backend == 'Metal':
+        import metalcomputebabel as mc
+        
+        # Loads METAL interface
+        os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
+        print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
+        swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
+
+        swift_fun.ForwardSimpleMetal.argtypes = [
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_char_p),
+            ctypes.POINTER(ctypes.c_float), 
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int)]
+
+
+        swift_fun.PrintMetalDevices()
+        print("loaded Metal",str(swift_fun))
+
+        def StartMetaCapture(deviceName='M1'):
+            os.environ['__BabelMetalDevice'] =deviceName
+            swift_fun.StartCapture()
+
+        def Stopcapture():
+            swift_fun.Stopcapture()
+    else:
+        assert(gpu_backend=='MLX')
+        import mlx.core as mx
+        clp = mx
+        
+        preamble = '#define _MLX\n'
+        kernel_functions = [{'name': 'ForwardPropagationKernel',
                         'file': kernel_files[0],
                         'input_names': ["mr2", "c_wvnb_real", "c_wvnb_imag", "MaxDistance", "mr1",
                                         "r2pr","r1pr","a1pr","u1_real","u1_imag","mr1step"],
@@ -597,21 +236,115 @@ def InitMLX(DeviceName='AMD'):
                                         "SelJ","StartIndexQ","TotalSteps"],
                         'output_names': ["d_output","d_output2","d_MonitorSlice","d_Temppoints"],
                         'atomic_outputs': False}]
+        
+        prgcl,sel_device = InitMLX(DeviceName,preamble+header,kernel_functions,build_later=True)
+        
+    
+def InitCUDA(DeviceName=None,header='',kernel_files=None,build_later=False):
+    import cupy as cp
+    # global prgcuda
+    
+    # Obtain list of gpu devices
+    devCount = cp.cuda.runtime.getDeviceCount()
+    if devCount == 0:
+        raise SystemError("There are no CUDA devices.")
+    
+    # Select device that matches specified name
+    if DeviceName is not None:
+        selDevice = None
+        for deviceID in range(0, devCount):
+            d=cp.cuda.runtime.getDeviceProperties(deviceID)
+            if DeviceName in d['name'].decode('UTF-8'):
+                selDevice=cp.cuda.Device(deviceID)
+                break
+        selDevice.use()
+    
+    # Combine kernel codes with header
+    kernel_codes = [header]
+    for k_file in kernel_files:
+        with open(k_file, 'r') as f:
+            kernel_code = f.read()
+            kernel_codes.append(kernel_code)
+    complete_kernel = '\n'.join(kernel_codes)
+    
+    # Build program later, return complete kernel for now
+    if build_later: 
+        prgcuda = complete_kernel
+    # Build program from source code
+    else: 
+        
+        # Windows sometimes has issues finding CUDA
+        if platform.system()=='Windows':
+            sys.executable.split('\\')[:-1]
+            options=('-I',os.path.join(os.getenv('CUDA_PATH'),'Library','Include'),
+                        '-I',str(resource_path()),
+                        '--ptxas-options=-v')
+        else:
+            options=('-I',str(resource_path()))
+        
+        prgcuda = cp.RawModule(code=complete_kernel,options=options)
 
-    preamble = '#define _MLX\n'
-    build_later = True
+    return ctx,prgcuda,selDevice
+ 
+def InitOpenCL(DeviceName='AMD',header='',kernel_files=None,build_later=False):
+    import pyopencl as pocl
+    
+     # Obtain list of openCL platforms
+    Platforms=pocl.get_platforms()
+    if len(Platforms)==0:
+        raise SystemError("No OpenCL platforms")
+    
+    # Obtain list of available devices and select one
+    SelDevice=None
+    for device in Platforms[0].get_devices():
+        print(device.name)
+        if DeviceName in device.name:
+            SelDevice=device
+    if SelDevice is None:
+        raise SystemError("No OpenCL device containing name [%s]" %(DeviceName))
+    else:
+        print('Selecting device: ', SelDevice.name)
+        
+    # Create context for selected device
+    ctx = pocl.Context([SelDevice])
+    
+    # Combine kernel codes with header
+    kernel_codes = [header]
+    for k_file in kernel_files:
+        with open(k_file, 'r') as f:
+            kernel_code = f.read()
+            kernel_codes.append(kernel_code)
+    complete_kernel = '\n'.join(kernel_codes)
+    
+    # Build program later, return complete kernel for now
+    if build_later:
+        prgcl = complete_kernel 
+    # Build program from source code
+    else:
+        prgcl = pocl.Program(ctx,complete_kernel).build()
+
+    # Create command queue for selected device
+    queue = pocl.CommandQueue(ctx)
+
+    # Allocate device memory
+    mf = pocl.mem_flags
+
+    return queue, prgcl, ctx
+    
+def InitMLX(DeviceName='AMD',header='',kernel_files=None,build_later=False):
+    import mlx.core as mx
     
     sel_device = mx.default_device()
     print('Selecting device: ', sel_device)
     
     kernels = {}
-    for kf in kernel_functions:
+    for kf in kernel_files:
         with open(kf['file'], 'r') as f:
             lines = f.readlines()
         kernel_code = ''.join(lines[:-1]) # Remove last bracket
         
         if build_later:
-            kf['header'] = preamble+header
+            kf['header'] = header
             kf['source'] = kernel_code
             kernels[kf['name']] = kf
         else:
@@ -619,125 +352,25 @@ def InitMLX(DeviceName='AMD'):
                                           input_names = kf['input_names'],
                                           output_names = kf['output_names'],
                                           atomic_outputs = kf['atomic_outputs'],
-                                          header = preamble + header,
+                                          header = header,
                                           source = kernel_code)
             
             kernels[kf['name']] = kernel
     
-    prgcl_mlx = kernels
+    return kernels,sel_device
     
-def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
-    if u0step!=0:
-        mr1=u0step
-        assert(mr1*rf.shape[0]==u0.shape[0])
-        assert(mr1==center.shape[0])
-        assert(mr1==ds.shape[0])
-    else:
-        mr1=center.shape[0]
-    mr2=rf.shape[0]
-
-    d_r2pr= cp.asarray(rf)
-    d_centerpr= cp.asarray(center)
-    d_dspr= cp.asarray(ds)
-    d_u0complex= cp.asarray(u0)
-    d_u2complex= cp.zeros(rf.shape[0],cp.complex64)
-
-    CUDA_THREADBLOCKLENGTH = 512 
-    MAX_ELEMS_IN_CONSTANT = 2730
-    dimThreadBlock=(CUDA_THREADBLOCKLENGTH, 1,1)
+def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='OpenCL',gpu_device='M1'): #MacOsPlatform='Metal',deviceMetal='6800'):
+    '''
+    MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
+    cwvnb is the complex speed of sound
+    center is an [Mx3] array with the position of the decomposed transducer elements
+    ds is an [M] array with the transducer element surface area
+    u0 is [M] complex array with the particle speed at eact transducer element
+    rf is [Nx3] array with the positons where Rayleigh integral will be calculated
     
-    nBlockSizeX = int((mr2 - 1) / dimThreadBlock[0]) + 1
-    nBlockSizeY = 1
-
-    if (nBlockSizeX > 65534 ):
-        nBlockSizeY = int(nBlockSizeX / 65534)
-        if (nBlockSizeX %65534 !=0):
-            nBlockSizeY+=1
-        nBlockSizeX = int(nBlockSizeX/nBlockSizeY)+1
+    Function returns a [N] complex array of particle speed at locations rf
     
-    dimBlockGrid=(nBlockSizeX, nBlockSizeY,1)
-                      
-    ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
-    
-        
-    ForwardPropagationKernel(dimBlockGrid,
-                            dimThreadBlock,
-                            (mr2, 
-                             cwvnb,
-                             MaxDistance,
-                             d_r2pr, 
-                             d_centerpr,
-                             d_dspr,
-                             d_u0complex, 
-                             d_u2complex, 
-                             mr1,
-                             u0step))
-
-    u2=d_u2complex.get()
-    return u2
-
-def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
-    global queue 
-    global prg 
-    global ctx
-    mf = cl.mem_flags
-    
-    if u0step!=0:
-        mr1=u0step
-        assert(mr1*rf.shape[0]==u0.shape[0])
-        assert(mr1==center.shape[0])
-        assert(mr1==ds.shape[0])
-    else:
-        mr1=center.shape[0]
-    
-     
-    d_r2pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=rf)
-    d_r1pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=center)
-    d_u1realpr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.real(u0).copy())
-    d_u1imagpr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.imag(u0).copy())
-    d_a1pr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ds)
-    
-    
-    u2_real = np.zeros((rf.shape[0]),dtype=np.float32)
-    u2_imag = np.zeros((rf.shape[0]),dtype=np.float32)
-    
-    d_u2realpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
-    d_u2imagpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
-    
-    
-    
-    knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
-    if u2_real.shape[0] % 64 ==0:
-        ks=[u2_real.shape[0]]
-    else:
-        ks=[int(u2_real.shape[0]/64)*64+64]
-    knl(queue, ks, [64],
-        np.int32(rf.shape[0]),
-        np.float32(np.real(cwvnb)),
-        np.float32(np.imag(cwvnb)),
-        np.float32(MaxDistance),
-        np.int32(mr1),
-        d_r2pr,
-        d_r1pr,
-        d_a1pr,
-        d_u1realpr,
-        d_u1imagpr,
-        d_u2realpr,
-        d_u2imagpr,
-        np.int32(u0step))
-    
-    cl.enqueue_copy(queue, u2_real,d_u2realpr)
-    cl.enqueue_copy(queue, u2_imag,d_u2imagpr)
-    u2=u2_real+1j*u2_imag
-                                            
-    return u2
-
-def ForwardSimpleMLX(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
-    global queue 
-    global prgcl_mlx
-    global ctx
-    global clp_mlx
-    global sel_device
+    '''
     
     mr2=rf.shape[0]
     
@@ -748,138 +381,90 @@ def ForwardSimpleMLX(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
         assert(mr1==ds.shape[0])
     else:
         mr1=center.shape[0]
-    
-    # Change to mlx arrays
-    d_r1pr = clp_mlx.array(center)
-    d_u1realpr=clp_mlx.array(np.real(u0))
-    d_u1imagpr=clp_mlx.array(np.imag(u0))
-    d_a1pr = clp_mlx.array(ds)
     
     u2 = np.zeros((rf.shape[0]),dtype=np.complex64)
     
-    # Build program from source code
-    knl = clp_mlx.fast.metal_kernel(name = f"{prgcl_mlx['ForwardPropagationKernel']['name']}",
-                                    input_names = prgcl_mlx['ForwardPropagationKernel']['input_names'],
-                                    output_names = prgcl_mlx['ForwardPropagationKernel']['output_names'],
-                                    source = prgcl_mlx['ForwardPropagationKernel']['source'],
-                                    header = prgcl_mlx['ForwardPropagationKernel']['header'],
-                                    atomic_outputs = prgcl_mlx['ForwardPropagationKernel']['atomic_outputs'],
-                                    )
-    
-    # We need to split in small chunks to be sure the kernel does not take too much time
-    # otherwise the OS will kill it
-
-    NonBlockingstep = int(24000e6)
-    step = int(NonBlockingstep/mr1)
-
-    if step > mr2:
-        step = mr2
-    if step < 5:
-        step = 5
-
-    slice_start = 0
-    slice_end = 0
-            
-    while slice_start < mr2:
+    # Setup for kernel call
+    if gpu_backend == 'CUDA':
+        # Transfer input data to gpu
+        d_r2pr= clp.asarray(rf)
+        d_centerpr= clp.asarray(center)
+        d_dspr= clp.asarray(ds)
+        d_u0complex= clp.asarray(u0)
         
-        slice_end = min(slice_start + step, mr2)
-        chunk_size = slice_end-slice_start
+        # Get kernel function
+        ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
         
-        print(f"Working on slices {slice_start} to {slice_end} out of {u2.shape[0]}")
-
-        # Grab section of data
-        d_r2pr = clp_mlx.array(rf[slice_start:slice_end,:]) 
-        d_u2realpr = clp_mlx.zeros_like(d_r2pr)
-        d_u2imagpr = clp_mlx.zeros_like(d_r2pr)
+        # Determine kernel call dimensions
+        CUDA_THREADBLOCKLENGTH = 512 
+        MAX_ELEMS_IN_CONSTANT = 2730
+        dimThreadBlock=(CUDA_THREADBLOCKLENGTH, 1,1)
         
-        # Deploy kernel
-        d_u2realpr,d_u2imagpr = knl(inputs = [np.int32(slice_end),
-                                              np.float32(np.real(cwvnb)),
-                                              np.float32(np.imag(cwvnb)),
-                                              np.float32(MaxDistance),
-                                              np.int32(mr1),
-                                              d_r2pr,
-                                              d_r1pr,
-                                              d_a1pr,
-                                              d_u1realpr,
-                                              d_u1imagpr,
-                                              np.int32(u0step)],
-                                    output_shapes = [(chunk_size,),(chunk_size,)],
-                                    output_dtypes = [clp_mlx.float32,clp_mlx.float32],
-                                    grid=(chunk_size,1,1),
-                                    threadgroup=(256, 1, 1),
-                                    verbose=False,
-                                    stream=sel_device)
-        clp_mlx.synchronize()
+        nBlockSizeX = int((mr2 - 1) / dimThreadBlock[0]) + 1
+        nBlockSizeY = 1
 
-        # Change back to numpy array 
-        u2_real = np.array(d_u2realpr)
-        u2_imag = np.array(d_u2imagpr)
+        if (nBlockSizeX > 65534 ):
+            nBlockSizeY = int(nBlockSizeX / 65534)
+            if (nBlockSizeX %65534 !=0):
+                nBlockSizeY+=1
+            nBlockSizeX = int(nBlockSizeX/nBlockSizeY)+1
         
-        # Combine real & imag parts
-        u2_section = u2_real+1j*u2_imag
+        dimBlockGrid=(nBlockSizeX, nBlockSizeY,1)
         
-        # Update final array
-        u2[slice_start:slice_end] = u2_section
+    elif gpu_backend == 'OpenCL':
+        mf = clp.mem_flags
         
-        # Clean up mlx arrays
-        del d_u2realpr,d_u2imagpr
-        gc.collect()
+        # Transfer input data to gpu
+        d_r2pr = clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=rf)
+        d_r1pr = clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=center)
+        d_u1realpr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.real(u0).copy())
+        d_u1imagpr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=np.imag(u0).copy())
+        d_a1pr = clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ds)
         
-        # Update starting location
-        slice_start += step
-
-    return u2
-
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
-    os.environ['__BabelMetalDevice'] =deviceName
-    bUseMappedMemory=0
-    if np.__version__ >="1.22.0":
-        if 'arm64' in platform.platform() and\
-            np.core.multiarray.get_handler_name(center)=="page_data_allocator":
-            bUseMappedMemory=1
-        #We assume arrays were allocated with page_data_allocator to have aligned date
+        # Get kernel Function
+        knl = prgcl.ForwardPropagationKernel
         
-    
-    mr2=np.array([rf.shape[0]])
+    elif gpu_backend == 'Metal':
+        # Determine if data is aligned
+        os.environ['__BabelMetalDevice'] = gpu_device
+        bUseMappedMemory=0
+        if np.__version__ >="1.22.0":
+            if 'arm64' in platform.platform() and\
+                np.core.multiarray.get_handler_name(center)=="page_data_allocator":
+                bUseMappedMemory=1
+            #We assume arrays were allocated with page_data_allocator to have aligned date
 
-    if u0step!=0:
-        mr1=u0step
-        assert(mr1*rf.shape[0]==u0.shape[0])
-        assert(mr1==center.shape[0])
-        assert(mr1==ds.shape[0])
-    else:
-        mr1=center.shape[0]
-
-    mr1=np.array([mr1])
-    u0step_a=np.array([u0step])
-    MaxDistance_a=np.array([MaxDistance]).astype(np.float32)
-
-    ibUseMappedMemory =np.array([bUseMappedMemory])
-    cwvnb_real=np.array([np.real(cwvnb)])
-    cwvnb_imag=np.array([np.imag(cwvnb)])
-    
-    mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    u0step_ptr = u0step_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-    cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    MaxDistance_ptr= MaxDistance_a.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    r2_ptr=rf.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    deviceName_ptr=ctypes.c_char_p(deviceName.encode())
-    u2_real = np.zeros(rf.shape[0],np.float32)
-    u2_imag = np.zeros(rf.shape[0],np.float32)
-    u2_real_ptr = u2_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    u2_imag_ptr = u2_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    
-
-    ret = swift_fun.ForwardSimpleMetal(mr2_ptr,
+        # Convert inputs to numpy arrrays
+        mr1=np.array([mr1])
+        mr2=np.array([mr2])
+        u0step_a=np.array([u0step])
+        MaxDistance_a=np.array([MaxDistance]).astype(np.float32)
+        ibUseMappedMemory =np.array([bUseMappedMemory])
+        cwvnb_real=np.array([np.real(cwvnb)])
+        cwvnb_imag=np.array([np.imag(cwvnb)])
+        
+        # Create pointers to use with swift call
+        mr1_ptr = mr1.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        mr2_ptr = mr2.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        u0step_ptr = u0step_a.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        bUseMappedMemory_ptr =ibUseMappedMemory.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        cwvnb_real_ptr = cwvnb_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        cwvnb_imag_ptr = cwvnb_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        MaxDistance_ptr= MaxDistance_a.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        r1_ptr=center.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        r2_ptr=rf.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        a1_ptr=ds.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        u1_real_ptr=np.real(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        u1_imag_ptr=np.imag(u0).copy().ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        deviceName_ptr=ctypes.c_char_p(gpu_device.encode())
+        u2_real = np.zeros(rf.shape[0],np.float32)
+        u2_imag = np.zeros(rf.shape[0],np.float32)
+        u2_real_ptr = u2_real.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        u2_imag_ptr = u2_imag.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        
+        # Call swift code that already handles looping
+        ret = swift_fun.ForwardSimpleMetal(mr2_ptr,
                                 cwvnb_real_ptr,
                                 cwvnb_imag_ptr,
                                 MaxDistance_ptr,
@@ -894,34 +479,170 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=
                                 u2_imag_ptr,
                                 bUseMappedMemory_ptr,
                                 u0step_ptr)
-    if ret ==1:
-        raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
+        if ret ==1:
+            raise ValueError("Unable to run simulation (mostly likely name of GPU is incorrect)")
 
-    return u2_real+1j*u2_imag
-
-def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform='Metal',deviceMetal='6800'):
-    '''
-    MAIN function to call for ForwardRayleigh , returns the complex values of particle speed
-    cwvnb is the complex speed of sound
-    center is an [Mx3] array with the position of the decomposed transducer elements
-    ds is an [M] array with the transducer element surface area
-    u0 is [M] complex array with the particle speed at eact transducer element
-    rf is [Nx3] array with the positons where Rayleigh integral will be calculated
-    
-    Function returns a [N] complex array of particle speed at locations rf
-    
-    '''
-    global prgcuda 
-    if sys.platform == "darwin":
-        if MacOsPlatform=='Metal':
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
-        elif MacOsPlatform == 'MLX':
-            return ForwardSimpleMLX(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
-        else:
-            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
+        # Return result
+        return u2_real+1j*u2_imag
     else:
-        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
+        assert(gpu_backend == 'MLX')
+        
+        # Convert input data to MLX arrays
+        d_r1pr = clp.array(center)
+        d_u1realpr=clp.array(np.real(u0))
+        d_u1imagpr=clp.array(np.imag(u0))
+        d_a1pr = clp.array(ds)
+        
+        # Get kernel function
+        knl = clp.fast.metal_kernel(name = f"{prgcl['ForwardPropagationKernel']['name']}",
+                                    input_names = prgcl['ForwardPropagationKernel']['input_names'],
+                                    output_names = prgcl['ForwardPropagationKernel']['output_names'],
+                                    source = prgcl['ForwardPropagationKernel']['source'],
+                                    header = prgcl['ForwardPropagationKernel']['header'],
+                                    atomic_outputs = prgcl['ForwardPropagationKernel']['atomic_outputs'],
+                                    )
+    
+    # Determine step size for looping
+    NonBlockingstep = int(24000e6)
+    step = int(NonBlockingstep/mr1)
 
+    if step > mr2:
+        step = mr2
+    if step < 5:
+        step = 5
+    
+    # Loop gpu kernel calls until all outputs have been calculated
+    detection_point_start_index = 0        
+    while detection_point_start_index < mr2:
+        detection_point_end_index = min(detection_point_start_index + step, mr2)
+        chunk_size = detection_point_end_index - detection_point_start_index
+        
+        print(f"Working on detection points {detection_point_start_index} to {detection_point_end_index} out of {u2.shape[0]}")
+        
+        # Grab section of data
+        data_section = rf[detection_point_start_index:detection_point_end_index,:]
+            
+        if gpu_backend == 'CUDA':
+            
+            # Output section arrays
+            d_u2complex= clp.zeros(data_section[:,0],clp.complex64)
+            
+            # Deploy kernel
+            ForwardPropagationKernel(dimBlockGrid,
+                            dimThreadBlock,
+                            (mr2, 
+                             cwvnb,
+                             MaxDistance,
+                             d_r2pr, 
+                             d_centerpr,
+                             d_dspr,
+                             d_u0complex, 
+                             d_u2complex, 
+                             mr1,
+                             u0step))
+            
+            # Change back to numpy array
+            u2_section = d_u2complex.get()
+            
+            # Update final array
+            u2[detection_point_start_index:detection_point_end_index] = u2_section
+            
+        elif gpu_backend == 'OpenCL':
+            
+            # Determine kernel call dimensions
+            if data_section.shape[0] % 64 ==0:
+                ks = [data_section.shape[0]]
+            else:
+                ks = [int(data_section.shape[0]/64)*64+64]
+            
+            # Output section arrays
+            u2_real = np.zeros_like(data_section[:,0])
+            u2_imag = np.zeros_like(data_section[:,0])
+        
+            # Move to gpu
+            d_r2pr = clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=data_section) 
+            d_u2realpr = clp.Buffer(ctx, mf.WRITE_ONLY,data_section.nbytes)
+            d_u2imagpr = clp.Buffer(ctx, mf.WRITE_ONLY,data_section.nbytes)
+            
+            # Deploy kernel
+            knl(queue, ks, [64],
+                np.int32(rf.shape[0]),
+                np.float32(np.real(cwvnb)),
+                np.float32(np.imag(cwvnb)),
+                np.float32(MaxDistance),
+                np.int32(mr1),
+                d_r2pr,
+                d_r1pr,
+                d_a1pr,
+                d_u1realpr,
+                d_u1imagpr,
+                d_u2realpr,
+                d_u2imagpr,
+                np.int32(u0step))
+            queue.finish()
+
+            # Change back to numpy array 
+            clp.enqueue_copy(queue, u2_real,d_u2realpr)
+            clp.enqueue_copy(queue, u2_imag,d_u2imagpr)
+            
+            # Combine real & imag parts
+            u2_section = u2_real+1j*u2_imag
+            
+            # Update final array
+            u2[detection_point_start_index:detection_point_end_index] = u2_section
+            
+            # Clean up pocl arrays
+            del d_u2realpr,d_u2imagpr
+            gc.collect()
+            
+        elif gpu_backend == 'Metal':
+            pass
+        else:
+            assert(gpu_backend == 'MLX')
+            
+            # Grab section of data
+            d_r2pr = clp.array(data_section) 
+            d_u2realpr = clp.zeros_like(d_r2pr[:,0])
+            d_u2imagpr = clp.zeros_like(d_r2pr[:,0])
+            
+            # Deploy kernel
+            d_u2realpr,d_u2imagpr = knl(inputs = [np.int32(detection_point_end_index),
+                                                np.float32(np.real(cwvnb)),
+                                                np.float32(np.imag(cwvnb)),
+                                                np.float32(MaxDistance),
+                                                np.int32(mr1),
+                                                d_r2pr,
+                                                d_r1pr,
+                                                d_a1pr,
+                                                d_u1realpr,
+                                                d_u1imagpr,
+                                                np.int32(u0step)],
+                                        output_shapes = [(chunk_size,),(chunk_size,)],
+                                        output_dtypes = [clp.float32,clp.float32],
+                                        grid=(chunk_size,1,1),
+                                        threadgroup=(256, 1, 1),
+                                        verbose=False,
+                                        stream=sel_device)
+            clp.synchronize()
+
+            # Change back to numpy array 
+            u2_real = np.array(d_u2realpr)
+            u2_imag = np.array(d_u2imagpr)
+            
+            # Combine real & imag parts
+            u2_section = u2_real+1j*u2_imag
+            
+            # Update final array
+            u2[detection_point_start_index:detection_point_end_index] = u2_section
+            
+            # Clean up mlx arrays
+            del d_u2realpr,d_u2imagpr
+            gc.collect()
+            
+        # Update starting location
+        detection_point_start_index += step
+    
+    return u2
     
 
 def getBHTECoefficient( kappa,rho,c_t,h,t_int,dt=0.1):
@@ -1248,6 +969,90 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         MonitorSlice=d_MonitorSlice.get() 
         TemperaturePoints=d_TemperaturePoints.get() 
 
+    elif Backend=='MLX':
+
+        d_perfArr=clp.array(perfArr)
+        d_bhArr=clp.array(bhArr)
+        d_Qarr=clp.array(Qarr)
+        d_MaterialMap=clp.array(MaterialMap)
+        d_T0 = clp.array(initTemp)
+        d_T1 = clp.array(T1)
+        d_Dose0 = clp.array(Dose0)
+        d_Dose1 = clp.array(Dose1)
+        d_MonitorSlice = clp.array(MonitorSlice.nbytes)
+        d_MonitoringPoints=clp.array(MonitoringPoints)
+        d_TemperaturePoints=clp.array(TemperaturePoints.nbytes)
+
+        # Build program from source code
+        knl = clp.fast.metal_kernel(name = f"{prgcl['BHTEFDTDKernel']['name']}",
+                                    input_names = prgcl['BHTEFDTDKernel']['input_names'],
+                                    output_names = prgcl['BHTEFDTDKernel']['output_names'],
+                                    source = prgcl['BHTEFDTDKernel']['source'],
+                                    header = prgcl['BHTEFDTDKernel']['header'],
+                                    atomic_outputs = prgcl['BHTEFDTDKernel']['atomic_outputs'],
+                                    )
+
+        floatparams = np.array([stableTemp,dt],dtype=np.float32)
+        d_floatparams= clp.array(floatparams)
+        
+        for n in range(TotalDurationSteps):
+            if n<nStepsOn:
+                dUS=1
+            else:
+                dUS=0
+            intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,0,TotalDurationSteps],dtype=np.uint32)
+            d_intparams= clp.array(intparams)
+
+            if (n%2==0):
+                d_T1,d_Dose1,d_MonitorSlice,d_TemperaturePoints = knl(N1*N2*N3,
+                                                                      d_T1,
+                                                                      d_Dose1,
+                                                                      d_T0,
+                                                                      d_Dose0,
+                                                                      d_bhArr,
+                                                                      d_perfArr,
+                                                                      d_MaterialMap,
+                                                                      d_Qarr,
+                                                                      d_MonitoringPoints,
+                                                                      d_MonitorSlice,
+                                                                      d_TemperaturePoints,
+                                                                      d_floatparams,
+                                                                      d_intparams)
+
+            else:
+                d_T0,d_Dose0,d_MonitorSlice,d_TemperaturePoints = handle=knl(N1*N2*N3,
+                                                                             d_T0,
+                                                                             d_Dose0,
+                                                                             d_T1,
+                                                                             d_Dose1,
+                                                                             d_bhArr,
+                                                                             d_perfArr,
+                                                                             d_MaterialMap,
+                                                                             d_Qarr,
+                                                                             d_MonitoringPoints,
+                                                                             d_MonitorSlice,
+                                                                             d_TemperaturePoints,
+                                                                             d_floatparams,
+                                                                             d_intparams)
+                
+            clp.synchronize()
+            
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+    
+        print('Done BHTE')                               
+        T1 = np.array(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
+        Dose1 = np.array(ResDose,dtype=np.float32).reshape((N1,N2,N3))
+        MonitorSlice = np.array(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints = np.array(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
+        
     else:
         assert(Backend=='Metal')
 
