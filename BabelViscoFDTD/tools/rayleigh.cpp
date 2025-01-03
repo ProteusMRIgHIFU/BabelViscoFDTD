@@ -2,12 +2,12 @@
 extern "C" __global__ void ForwardPropagationKernel(int mr2,
                                                     complex<float> c_wvnb,
                                                     FloatingType MaxDistance, 
-                                                    FloatingType *r2pr, 
+                                                    int mr1,
+                                                    FloatingType *r2pr,
                                                     FloatingType *r1pr, 
                                                     FloatingType *a1pr,
                                                     complex<float> * u1complex,
                                                     complex<float> *py_data_u2, 
-                                                    int mr1,
                                                     int mr1step)
 {
     const int si2 = (blockIdx.y*gridDim.x + blockIdx.x)*blockDim.x + threadIdx.x ;		// Grid is a "flatten" 1D, thread blocks are 1D
@@ -80,45 +80,45 @@ __kernel  void ForwardPropagationKernel(const int mr2,
             temp2=cj*c_wvnb;
             temp2=temp2*(-R);
             temp2=cuexpf(temp2);
-            temp2=temp2*u1complex[si1+mr1step*si2];
+            temp2=temp2*u1complex[si1+offset];
             temp2=temp2*a1pr[si1]/R;
             temp=temp+temp2;
             #else
-            // Start of Rayleigh Integral calculation
-            ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
-            tr=ti;
+                // Start of Rayleigh Integral calculation
+                ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
+                tr=ti;
 
-            // Calculate sin and cosine values of distance * real sound speed
-            #if defined(_METAL) || defined(_MLX)
-            pSin=sincos(R*c_wvnb_real,pCos);
-            #else
-            pSin=sincos(R*c_wvnb_real,ppCos);
-            #endif
+                // Calculate sin and cosine values of distance * real sound speed
+                #if defined(_METAL) || defined(_MLX)
+                    pSin=sincos(R*c_wvnb_real,pCos);
+                #else
+                    pSin=sincos(R*c_wvnb_real,ppCos);
+                #endif
 
-            // Real and imaginary terms of rayleigh integral
-            tr*=(u1_real[si1+offset]*pCos+u1_imag[si1+offset]*pSin);
-            ti*=(u1_imag[si1+offset]*pCos-u1_real[si1+offset]*pSin);
+                // Real and imaginary terms of rayleigh integral
+                tr*=(u1_real[si1+offset]*pCos+u1_imag[si1+offset]*pSin);
+                ti*=(u1_imag[si1+offset]*pCos-u1_real[si1+offset]*pSin);
 
-            // Summate real and imaginary terms
-            temp_r += tr;
-            temp_i += ti;
+                // Summate real and imaginary terms
+                temp_r += tr;
+                temp_i += ti;
             #endif
         }
         
         #ifdef _CUDA
-        temp2=cj*c_wvnb;
-        temp=temp*temp2;
+            temp2=cj*c_wvnb;
+            temp=temp*temp2;
 
-        py_data_u2[si2]=temp/((float)(2*pi));
+            py_data_u2[si2]=temp/((float)(2*pi));
         #else
-        // Final cumulative real and imaginary pressure at detection point
-        R = temp_r;
+            // Final cumulative real and imaginary pressure at detection point
+            R = temp_r;
 
-        temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
-        temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
+            temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
+            temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
 
-        py_data_u2_real[si2]=temp_r/(2*pi);
-        py_data_u2_imag[si2]=temp_i/(2*pi);
+            py_data_u2_real[si2]=temp_r/(2*pi);
+            py_data_u2_imag[si2]=temp_i/(2*pi);
         #endif
     }
 }

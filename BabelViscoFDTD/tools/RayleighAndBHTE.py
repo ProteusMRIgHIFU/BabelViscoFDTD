@@ -388,9 +388,9 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
     if gpu_backend == 'CUDA':
         # Transfer input data to gpu
         d_r2pr= clp.asarray(rf)
-        d_centerpr= clp.asarray(center)
-        d_dspr= clp.asarray(ds)
-        d_u0complex= clp.asarray(u0)
+        d_r1pr= clp.asarray(center)
+        d_a1pr= clp.asarray(ds)
+        d_u1complex= clp.asarray(u0)
         
         # Get kernel function
         ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernel")
@@ -410,6 +410,28 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
             nBlockSizeX = int(nBlockSizeX/nBlockSizeY)+1
         
         dimBlockGrid=(nBlockSizeX, nBlockSizeY,1)
+
+        # Output array
+        d_u2complex= clp.zeros(rf.shape[0],clp.complex64)
+        
+        # Deploy kernel
+        ForwardPropagationKernel(dimBlockGrid,
+                                dimThreadBlock,
+                                (mr2, 
+                                 cwvnb,
+                                 MaxDistance,
+                                 mr1,
+                                 d_r2pr, 
+                                 d_r1pr,
+                                 d_a1pr,
+                                 d_u1complex, 
+                                 d_u2complex, 
+                                 u0step))
+        
+        # Change back to numpy array
+        u2 = d_u2complex.get()
+
+        return u2
         
     elif gpu_backend == 'OpenCL':
         mf = clp.mem_flags
@@ -523,29 +545,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
         data_section = rf[detection_point_start_index:detection_point_end_index,:]
             
         if gpu_backend == 'CUDA':
-            
-            # Output section arrays
-            d_u2complex= clp.zeros(data_section[:,0],clp.complex64)
-            
-            # Deploy kernel
-            ForwardPropagationKernel(dimBlockGrid,
-                            dimThreadBlock,
-                            (mr2, 
-                             cwvnb,
-                             MaxDistance,
-                             d_r2pr, 
-                             d_centerpr,
-                             d_dspr,
-                             d_u0complex, 
-                             d_u2complex, 
-                             mr1,
-                             u0step))
-            
-            # Change back to numpy array
-            u2_section = d_u2complex.get()
-            
-            # Update final array
-            u2[detection_point_start_index:detection_point_end_index] = u2_section
+            pass
             
         elif gpu_backend == 'OpenCL':
             
