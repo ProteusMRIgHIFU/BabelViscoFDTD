@@ -92,12 +92,13 @@ kernel  void BHTEFDTDKernel(device float *d_output [[ buffer(0) ]],
     #define SelJ intparams[7]
     #define StartIndexQ intparams[8]
     #define TotalSteps intparams[9]
+    
+    // x,y,z indices for grid
     const int gtidx =  gid/(outerDimy*outerDimz);
     const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
     const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
 #endif
 
-    #define Tref 43.0
     unsigned int DzDy = outerDimz*outerDimy;
     unsigned int coord = gtidx * DzDy + gtidy * outerDimz + gtidz;
     
@@ -110,7 +111,7 @@ kernel  void BHTEFDTDKernel(device float *d_output [[ buffer(0) ]],
         d_output[coord] = d_input[coord] + d_bhArr[label] * 
                           (d_input[coord + 1] + d_input[coord - 1] + d_input[coord + outerDimz] + d_input[coord - outerDimz] +
                            d_input[coord + DzDy] + d_input[coord - DzDy] - 6.0 * d_input[coord]) +
-                          + d_perfArr[label] * (CoreTemp - d_input[coord]);
+                           d_perfArr[label] * (CoreTemp - d_input[coord]);
         if (sonication)
         {
             d_output[coord] += d_Qarr[coord+StartIndexQ];

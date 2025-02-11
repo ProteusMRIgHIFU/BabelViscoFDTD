@@ -9,6 +9,8 @@ using namespace metal;
 #define ppCos &pCos
 #endif
 
+#define Tref 43.0
+
 #ifdef _CUDA
 #include <cupy/complex.cuh>
 #define MAX_ELEMS_IN_CONSTANT  2730 // the total constant memory can't be greater than 64k bytes

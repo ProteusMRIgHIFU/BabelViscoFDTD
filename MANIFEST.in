@@ -1,4 +1,2 @@
 graft src
 include CMakeLists.txt
-include BabelViscoFDTD/tools/*.cpp
-include BabelViscoFDTD/tools/*.hpp

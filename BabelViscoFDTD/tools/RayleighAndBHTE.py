@@ -183,6 +183,7 @@ def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
         
     elif gpu_backend == 'Metal':
         import metalcomputebabel as mc
+        clp = mc
         
         # Loads METAL interface
         os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
@@ -216,6 +217,9 @@ def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
 
         def Stopcapture():
             swift_fun.Stopcapture()
+        
+        preamble = '#define _METAL\n'
+        prgcl, sel_device, ctx = InitMetal(DeviceName,preamble+header,[kernel_files[1]])
     else:
         assert(gpu_backend=='MLX')
         import mlx.core as mx
@@ -231,13 +235,11 @@ def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
                         {'name': 'BHTEFDTDKernel',
                         'file': kernel_files[1],
                         'input_names': ["d_input","d_input2","d_bhArr","d_perfArr","d_labels","d_Qarr",
-                                        "d_pointsMonitoring","CoreTemp","sonication","outerDimx","outerDimy",
-                                        "outerDimz","dt","TotalStepsMonitoring","nFactorMonitoring","n_Step",
-                                        "SelJ","StartIndexQ","TotalSteps"],
+                                        "d_pointsMonitoring","floatParams","intparams"],
                         'output_names': ["d_output","d_output2","d_MonitorSlice","d_Temppoints"],
                         'atomic_outputs': False}]
         
-        prgcl,sel_device = InitMLX(DeviceName,preamble+header,kernel_functions,build_later=True)
+        prgcl,sel_device = InitMLX(DeviceName,preamble+header,kernel_functions)
         
     
 def InitCUDA(DeviceName=None,header='',kernel_files=None,build_later=False):
@@ -330,6 +332,39 @@ def InitOpenCL(DeviceName='AMD',header='',kernel_files=None,build_later=False):
     mf = pocl.mem_flags
 
     return queue, prgcl, ctx
+
+def InitMetal(DeviceName='AMD',header='',kernel_files=None,build_later=False):
+    
+    devices = clp.get_devices()
+    SelDevice=None
+    for n,dev in enumerate(devices):
+        if DeviceName in dev.deviceName:
+            SelDevice=dev
+            break
+    if SelDevice is None:
+        raise SystemError("No Metal device containing name [%s]" %(DeviceName))
+    else:
+        print('Selecting device: ', dev.deviceName)
+    
+    ctx = clp.Device(n)
+    print(ctx)
+    if 'arm64' not in platform.platform():
+        ctx.set_external_gpu(1) 
+    
+    # Build program from source code
+    kernel_codes = [header]
+    for k_file in kernel_files:
+        with open(k_file, 'r') as f:
+            kernel_code = f.read()
+            kernel_codes.append(kernel_code)
+
+    complete_kernel = '\n'.join(kernel_codes)
+    if build_later:
+        prgcl = complete_kernel
+    else:
+        prgcl = ctx.kernel(complete_kernel)
+
+    return prgcl, SelDevice, ctx
     
 def InitMLX(DeviceName='AMD',header='',kernel_files=None,build_later=False):
     import mlx.core as mx
@@ -516,13 +551,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
         d_a1pr = clp.array(ds)
         
         # Get kernel function
-        knl = clp.fast.metal_kernel(name = f"{prgcl['ForwardPropagationKernel']['name']}",
-                                    input_names = prgcl['ForwardPropagationKernel']['input_names'],
-                                    output_names = prgcl['ForwardPropagationKernel']['output_names'],
-                                    source = prgcl['ForwardPropagationKernel']['source'],
-                                    header = prgcl['ForwardPropagationKernel']['header'],
-                                    atomic_outputs = prgcl['ForwardPropagationKernel']['atomic_outputs'],
-                                    )
+        knl = prgcl['ForwardPropagationKernel']
     
     # Determine step size for looping
     NonBlockingstep = int(24000e6)
@@ -693,6 +722,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     global prgcuda
     global ctx
 
+    # Verify valid initT0, initDose values if provided
     for k in [initT0,initDose]:
         if k is not None:
             assert(MaterialMap.shape[0]==k.shape[0] and \
@@ -701,6 +731,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
             assert(k.dtype==np.float32)
 
+    # Verify valid MonitoringPointsMap (i.e. grid points of interest) if provided
     if  MonitoringPointsMap is not None:
         assert(MaterialMap.shape[0]==MonitoringPointsMap.shape[0] and \
             MaterialMap.shape[1]==MonitoringPointsMap.shape[1] and \
@@ -708,7 +739,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
         assert(MonitoringPointsMap.dtype==np.uint32)
 
-
+    # Calculate perfusion, bioheat, and Q coefficients for each material in grid
     perfArr=np.zeros(MaterialMap.max()+1,np.float32)
     bhArr=np.zeros(MaterialMap.max()+1,np.float32)
     if initT0 is None:
@@ -734,13 +765,16 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                                                                   MaterialList['Absorption'][n],
                                                                   dx,dt)*DutyCycle
 
+    # Dimensions of grid
     N1=np.int32(Pressure.shape[0])
     N2=np.int32(Pressure.shape[1])
     N3=np.int32(Pressure.shape[2])
     
+    # If InitDose not supplied, create array of zeros
     if initDose is None:
         initDose = np.zeros(MaterialMap.shape, dtype=np.float32)
 
+    # Create array of temperature points to monitor based on MonitoringPointsMap
     if MonitoringPointsMap is not None:
         MonitoringPoints = MonitoringPointsMap
         TotalPointsMonitoring=np.sum((MonitoringPointsMap>0).astype(int))
@@ -749,13 +783,14 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         MonitoringPoints = np.zeros(MaterialMap.shape, dtype=np.uint32)
         TemperaturePoints=np.zeros((10),np.float32) #just dummy array
 
+     # Ensure valid number of time points for monitoring
     TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
     if TotalStepsMonitoring % nFactorMonitoring!=0:
         TotalStepsMonitoring+=1
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
 
+    # Inital temperature and thermal dose
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
-
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape,dtype=np.float32)
 
@@ -765,24 +800,24 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
     if Backend=='OpenCL':
 
-        mf = cl.mem_flags
+        mf = clp.mem_flags
 
-        d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
-        d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
-        d_Qarr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
-        d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
-        d_MonitoringPoints=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
+        d_perfArr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+        d_bhArr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+        d_Qarr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
+        d_MaterialMap=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+        d_MonitoringPoints=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
 
 
-        d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
-        d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+        d_T0 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+        d_T1 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
 
         
-        d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
-        d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
+        d_Dose0 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+        d_Dose1 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
 
-        d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
-        d_TemperaturePoints = cl.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
+        d_MonitorSlice = clp.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+        d_TemperaturePoints = clp.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
 
         knl = prgcl.BHTEFDTDKernel
 
@@ -868,10 +903,10 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
 
         print('Done BHTE')                               
-        cl.enqueue_copy(queue, T1,ResTemp)
-        cl.enqueue_copy(queue, Dose1,ResDose)
-        cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
-        cl.enqueue_copy(queue, TemperaturePoints,d_TemperaturePoints)
+        clp.enqueue_copy(queue, T1,ResTemp)
+        clp.enqueue_copy(queue, Dose1,ResDose)
+        clp.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
+        clp.enqueue_copy(queue, TemperaturePoints,d_TemperaturePoints)
         queue.finish()
 
     elif Backend=='CUDA':
@@ -882,18 +917,18 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                         int(N2/dimBlockBHTE[1]+1),
                         int(N3/dimBlockBHTE[2]+1))
 
-        d_perfArr=cp.asarray(perfArr)
-        d_bhArr=cp.asarray(bhArr)
-        d_Qarr=cp.asarray(Qarr)
-        d_MaterialMap=cp.asarray(MaterialMap)
-        d_T0 = cp.asarray(initTemp)
-        d_T1 = cp.asarray(T1)
-        d_Dose0 = cp.asarray(Dose0)
-        d_Dose1 = cp.asarray(Dose1)
-        d_MonitoringPoints=cp.asarray(MonitoringPoints)
+        d_perfArr=clp.asarray(perfArr)
+        d_bhArr=clp.asarray(bhArr)
+        d_Qarr=clp.asarray(Qarr)
+        d_MaterialMap=clp.asarray(MaterialMap)
+        d_T0 = clp.asarray(initTemp)
+        d_T1 = clp.asarray(T1)
+        d_Dose0 = clp.asarray(Dose0)
+        d_Dose1 = clp.asarray(Dose1)
+        d_MonitoringPoints=clp.asarray(MonitoringPoints)
      
-        d_MonitorSlice = cp.zeros(MonitorSlice.shape,cp.float32)
-        d_TemperaturePoints=cp.zeros(TemperaturePoints.shape,cp.float32)
+        d_MonitorSlice = clp.zeros(MonitorSlice.shape,clp.float32)
+        d_TemperaturePoints=clp.zeros(TemperaturePoints.shape,clp.float32)
 
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
@@ -955,7 +990,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                     LocationMonitoring,
                     0,
                     TotalDurationSteps))
-            cp.cuda.Stream.null.synchronize()
+            clp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
         
@@ -973,87 +1008,105 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
 
     elif Backend=='MLX':
 
-        d_perfArr=clp.array(perfArr)
-        d_bhArr=clp.array(bhArr)
-        d_Qarr=clp.array(Qarr)
-        d_MaterialMap=clp.array(MaterialMap)
+        # Create mlx arrays
+        d_perfArr = clp.array(perfArr)
+        d_bhArr = clp.array(bhArr)
+        d_Qarr = clp.array(Qarr)
+        d_MaterialMap = clp.array(MaterialMap)
         d_T0 = clp.array(initTemp)
-        d_T1 = clp.array(T1)
         d_Dose0 = clp.array(Dose0)
-        d_Dose1 = clp.array(Dose1)
-        d_MonitorSlice = clp.array(MonitorSlice.nbytes)
-        d_MonitoringPoints=clp.array(MonitoringPoints)
-        d_TemperaturePoints=clp.array(TemperaturePoints.nbytes)
+        d_MonitoringPoints = clp.array(MonitoringPoints)
 
         # Build program from source code
-        knl = clp.fast.metal_kernel(name = f"{prgcl['BHTEFDTDKernel']['name']}",
-                                    input_names = prgcl['BHTEFDTDKernel']['input_names'],
-                                    output_names = prgcl['BHTEFDTDKernel']['output_names'],
-                                    source = prgcl['BHTEFDTDKernel']['source'],
-                                    header = prgcl['BHTEFDTDKernel']['header'],
-                                    atomic_outputs = prgcl['BHTEFDTDKernel']['atomic_outputs'],
-                                    )
+        knl = prgcl['BHTEFDTDKernel']
 
+        # Float variables to be passed to kernel
         floatparams = np.array([stableTemp,dt],dtype=np.float32)
         d_floatparams= clp.array(floatparams)
         
+        # Determine number of loops, we evaluate mlx arrays
+        # if n_eval gets too large, the lazy computation of mlx cause the compute graph 
+        # to become too large and signficantly impacts performance
+        n_eval = int(250e6/d_T0.size) # 250e6 array size was found to be a good point for ensuring fast performance
+        n_eval = max(n_eval,1)
+        
+        # Calculate BHTE for each time point
         for n in range(TotalDurationSteps):
             if n<nStepsOn:
-                dUS=1
+                dUS=1 # Ultrasound on
             else:
-                dUS=0
+                dUS=0 # Ultrasound off
+                
+            # Int variables to be passed to kernel
             intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,0,TotalDurationSteps],dtype=np.uint32)
             d_intparams= clp.array(intparams)
 
+            # We only initialize output arrays for first two loops since
+            # initialization significantly impacts performance
+            if n == 0 or n == 1:
+                init_value_mlx = 0 # output arrays get initialized to 0
+            else:
+                init_value_mlx = None # we skip output arrays initalization
+                
+            # At each time point, the previous output is used as the current input (e.g. d_T0 and d_T1 alternate, same with Dose0 and Dose1)
             if (n%2==0):
-                d_T1,d_Dose1,d_MonitorSlice,d_TemperaturePoints = knl(N1*N2*N3,
-                                                                      d_T1,
-                                                                      d_Dose1,
-                                                                      d_T0,
-                                                                      d_Dose0,
-                                                                      d_bhArr,
-                                                                      d_perfArr,
-                                                                      d_MaterialMap,
-                                                                      d_Qarr,
-                                                                      d_MonitoringPoints,
-                                                                      d_MonitorSlice,
-                                                                      d_TemperaturePoints,
-                                                                      d_floatparams,
-                                                                      d_intparams)
+                d_T1,d_Dose1,d_MonitorSlice,d_TemperaturePoints = knl(inputs= [d_T0,
+                                                                               d_Dose0,
+                                                                               d_bhArr,
+                                                                               d_perfArr,
+                                                                               d_MaterialMap,
+                                                                               d_Qarr,
+                                                                               d_MonitoringPoints,
+                                                                               d_floatparams,
+                                                                               d_intparams],
+                                                                      output_shapes = [T1.shape,Dose1.shape,MonitorSlice.shape,TemperaturePoints.shape],
+                                                                      output_dtypes = [clp.float32,clp.float32,clp.float32,clp.float32],
+                                                                      grid=(N1*N2*N3,1,1),
+                                                                      threadgroup=(256, 1, 1),
+                                                                      verbose=False,
+                                                                      stream=sel_device,
+                                                                      init_value=init_value_mlx)
 
             else:
-                d_T0,d_Dose0,d_MonitorSlice,d_TemperaturePoints = handle=knl(N1*N2*N3,
-                                                                             d_T0,
-                                                                             d_Dose0,
-                                                                             d_T1,
-                                                                             d_Dose1,
-                                                                             d_bhArr,
-                                                                             d_perfArr,
-                                                                             d_MaterialMap,
-                                                                             d_Qarr,
-                                                                             d_MonitoringPoints,
-                                                                             d_MonitorSlice,
-                                                                             d_TemperaturePoints,
-                                                                             d_floatparams,
-                                                                             d_intparams)
-                
-            clp.synchronize()
+                d_T0,d_Dose0,d_MonitorSlice,d_TemperaturePoints = knl(inputs = [d_T1,
+                                                                                d_Dose1,
+                                                                                d_bhArr,
+                                                                                d_perfArr,
+                                                                                d_MaterialMap,
+                                                                                d_Qarr,
+                                                                                d_MonitoringPoints,
+                                                                                d_floatparams,
+                                                                                d_intparams],
+                                                                      output_shapes = [initTemp.shape,Dose0.shape,MonitorSlice.shape,TemperaturePoints.shape],
+                                                                      output_dtypes = [clp.float32,clp.float32,clp.float32,clp.float32],
+                                                                      grid=(N1*N2*N3,1,1),
+                                                                      threadgroup=(256, 1, 1),
+                                                                      verbose=False,
+                                                                      stream=sel_device,
+                                                                      init_value=init_value_mlx)
             
+            # Evaluate values to reset compute graph   
+            if n%n_eval==0:
+                clp.eval(d_T1)
+            
+            # Track progress of BHTE calculation
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
 
+        # Grab final output depending on time point number
         if (n%2==0):
             ResTemp=d_T1
             ResDose=d_Dose1
         else:
             ResTemp=d_T0
             ResDose=d_Dose0
-    
-        print('Done BHTE')                               
-        T1 = np.array(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
-        Dose1 = np.array(ResDose,dtype=np.float32).reshape((N1,N2,N3))
-        MonitorSlice = np.array(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
-        TemperaturePoints = np.array(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
+        print('Done BHTE')
+
+        # Transfer back numpy array                           
+        T1 = np.array(ResTemp,dtype=np.float32)
+        Dose1 = np.array(ResDose,dtype=np.float32)
+        MonitorSlice = np.array(d_MonitorSlice,dtype=np.float32)
+        TemperaturePoints = np.array(d_TemperaturePoints,dtype=np.float32)
         
     else:
         assert(Backend=='Metal')
@@ -1246,21 +1299,21 @@ def BHTEMultiplePressureFields(PressureFields,
 
     if Backend == 'OpenCL':
 
-        mf = cl.mem_flags
+        mf = clp.mem_flags
 
-        d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
-        d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
-        d_QArrList=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
-        d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
-        d_MonitoringPoints=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
+        d_perfArr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+        d_bhArr=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+        d_QArrList=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=QArrList)
+        d_MaterialMap=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+        d_MonitoringPoints=clp.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
 
-        d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
-        d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
-        d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
-        d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
+        d_T0 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+        d_T1 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+        d_Dose0 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+        d_Dose1 = clp.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
 
-        d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
-        d_TemperaturePoints = cl.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
+        d_MonitorSlice = clp.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
+        d_TemperaturePoints = clp.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
 
         knl = prgcl.BHTEFDTDKernel
 
@@ -1351,10 +1404,10 @@ def BHTEMultiplePressureFields(PressureFields,
 
 
         print('Done BHTE')                               
-        cl.enqueue_copy(queue, T1,ResTemp)
-        cl.enqueue_copy(queue, Dose1,ResDose)
-        cl.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
-        cl.enqueue_copy(queue, TemperaturePoints,d_TemperaturePoints)
+        clp.enqueue_copy(queue, T1,ResTemp)
+        clp.enqueue_copy(queue, Dose1,ResDose)
+        clp.enqueue_copy(queue, MonitorSlice,d_MonitorSlice)
+        clp.enqueue_copy(queue, TemperaturePoints,d_TemperaturePoints)
         queue.finish()
     elif Backend=='CUDA':
         dimBlockBHTE = (4,4,4)
@@ -1363,18 +1416,18 @@ def BHTEMultiplePressureFields(PressureFields,
                         int(N2/dimBlockBHTE[1]+1),
                         int(N3/dimBlockBHTE[2]+1))
 
-        d_perfArr=cp.asarray(perfArr)
-        d_bhArr=cp.asarray(bhArr)
-        d_QArrList=cp.asarray(QArrList)
-        d_MaterialMap=cp.asarray(MaterialMap)
-        d_T0 = cp.asarray(initTemp)
-        d_T1 = cp.asarray(T1)
-        d_Dose0 = cp.asarray(Dose0)
-        d_Dose1 = cp.asarray(Dose1)
-        d_MonitoringPoints=cp.asarray(MonitoringPoints)
+        d_perfArr=clp.asarray(perfArr)
+        d_bhArr=clp.asarray(bhArr)
+        d_QArrList=clp.asarray(QArrList)
+        d_MaterialMap=clp.asarray(MaterialMap)
+        d_T0 = clp.asarray(initTemp)
+        d_T1 = clp.asarray(T1)
+        d_Dose0 = clp.asarray(Dose0)
+        d_Dose1 = clp.asarray(Dose1)
+        d_MonitoringPoints=clp.asarray(MonitoringPoints)
      
-        d_MonitorSlice = cp.zeros(MonitorSlice.shape,cp.float32)
-        d_TemperaturePoints=cp.zeros(TemperaturePoints.shape,cp.float32)
+        d_MonitorSlice = clp.zeros(MonitorSlice.shape,clp.float32)
+        d_TemperaturePoints=clp.zeros(TemperaturePoints.shape,clp.float32)
 
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
@@ -1441,7 +1494,7 @@ def BHTEMultiplePressureFields(PressureFields,
                     LocationMonitoring,
                     StartIndexQ,
                     TotalDurationSteps))
-            cp.cuda.Stream.null.synchronize()
+            clp.cuda.Stream.null.synchronize()
             if n % nFraction ==0:
                 print(n,TotalDurationSteps)
         
@@ -1455,6 +1508,110 @@ def BHTEMultiplePressureFields(PressureFields,
         Dose1=ResDose.get()
         MonitorSlice=d_MonitorSlice.get() 
         TemperaturePoints=d_TemperaturePoints.get()  
+    elif Backend == 'MLX':
+        d_perfArr=clp.array(perfArr)
+        d_bhArr=clp.array(bhArr)
+        d_QArrList=clp.array(QArrList)
+        d_MaterialMap=clp.array(MaterialMap)
+        d_T0 = clp.array(initTemp)
+        d_Dose0 = clp.array(Dose0)
+        d_MonitoringPoints=clp.array(MonitoringPoints)
+
+        # Build program from source code
+        knl = prgcl['BHTEFDTDKernel']
+        mlx_stream = clp.default_stream(sel_device)
+
+        # Float variables to be passed to kernel
+        floatparams = np.array([stableTemp,dt],dtype=np.float32)
+        d_floatparams= clp.array(floatparams)
+        
+        # Determine number of loops, we evaluate mlx arrays
+        # if n_eval gets too large, the lazy computation of mlx cause the compute graph 
+        # to become too large and signficantly impacts performance
+        n_eval = int(250e6/d_T0.size) # 250e6 array size was found to be a good point for ensuring fast performance
+        n_eval = max(n_eval,1)
+        
+        # Calculate BHTE for each time point
+        for n in range(TotalDurationSteps):
+            mStep=n % NstepsPerCycle
+            QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
+            if mStep<TimingFields[QSegment,1]:
+                dUS=1 # Ultrasound on
+            else:
+                assert(mStep>=TimingFields[QSegment,1])
+                dUS=0 # Ultrasound off
+            StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+
+            # Int variables to be passed to kernel
+            intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,StartIndexQ,TotalDurationSteps],dtype=np.uint32)
+            d_intparams= clp.array(intparams)
+            
+            # We only initialize output arrays for first two loops since
+            # initialization significantly impacts performance
+            if n == 0 or n == 1:
+                init_value_mlx = 0 # output arrays get initialized to 0
+            else:
+                init_value_mlx = None # we skip output arrays initalization
+            
+            # At each time point, the previous output is used as the current input (e.g. d_T0 and d_T1 alternate, same with Dose0 and Dose1)
+            if (n%2==0):
+                d_T1,d_Dose1,d_MonitorSlice,d_TemperaturePoints = knl(inputs= [d_T0,
+                                                                               d_Dose0,
+                                                                               d_bhArr,
+                                                                               d_perfArr,
+                                                                               d_MaterialMap,
+                                                                               d_QArrList,
+                                                                               d_MonitoringPoints,
+                                                                               d_floatparams,
+                                                                               d_intparams],
+                                                                      output_shapes = [T1.shape,Dose1.shape,MonitorSlice.shape,TemperaturePoints.shape],
+                                                                      output_dtypes = [clp.float32,clp.float32,clp.float32,clp.float32],
+                                                                      grid=(N1*N2*N3,1,1),
+                                                                      threadgroup=(256, 1, 1),
+                                                                      verbose=False,
+                                                                      stream=sel_device,
+                                                                      init_value=init_value_mlx)
+
+            else:
+                d_T0,d_Dose0,d_MonitorSlice,d_TemperaturePoints = knl(inputs = [d_T1,
+                                                                                d_Dose1,
+                                                                                d_bhArr,
+                                                                                d_perfArr,
+                                                                                d_MaterialMap,
+                                                                                d_QArrList,
+                                                                                d_MonitoringPoints,
+                                                                                d_floatparams,
+                                                                                d_intparams],
+                                                                      output_shapes = [initTemp.shape,Dose0.shape,MonitorSlice.shape,TemperaturePoints.shape],
+                                                                      output_dtypes = [clp.float32,clp.float32,clp.float32,clp.float32],
+                                                                      grid=(N1*N2*N3,1,1),
+                                                                      threadgroup=(256, 1, 1),
+                                                                      verbose=False,
+                                                                      stream=sel_device,
+                                                                      init_value=init_value_mlx)
+            
+            # Evaluate values to reset compute graph   
+            if n%n_eval==0:
+                clp.eval(d_T1)
+            
+            # Track progress of BHTE calculation
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+
+        # Grab final output depending on time point number
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+        print('Done BHTE')
+        
+        # Transfer back numpy array                                  
+        T1=np.array(ResTemp,dtype=np.float32)
+        Dose1=np.array(ResDose,dtype=np.float32)
+        MonitorSlice=np.array(d_MonitorSlice,dtype=np.float32)
+        TemperaturePoints=np.array(d_TemperaturePoints,dtype=np.float32)
     else:
         assert(Backend=='Metal')
 
