@@ -31,12 +31,12 @@ def resource_path():  # needed for bundling
 
     return bundle_dir
 
-
-Platforms=None
+Platforms = None
 queue = None
 prgcl = None
 ctx = None
 clp = None
+sel_device = None
 
 def SpeedofSoundWater(Temperature):
     Xcoeff =  [0.00000000314643 ,-0.000001478,0.000334199,-0.0580852,5.03711,1402.32]
@@ -149,15 +149,7 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     Tx = GenerateSurface(lstep,Diam,Foc)
     return Tx
 
-def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
-    global prgcuda
-    global Platforms
-    global queue 
-    global prgcl 
-    global ctx
-    global clp
-    global sel_device
-    global swift_fun
+def GetKernelFiles():
 
     kernel_files = [
        os.path.join(resource_path(), 'rayleigh.cpp'),
@@ -166,67 +158,210 @@ def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
     
     with open(os.path.join(resource_path(), 'rayleighAndBHTE.hpp'), 'r') as f:
         header = f.read()
+            
+    return header, kernel_files
 
-    if gpu_backend == 'CUDA':
-        import cupy as cp
-        clp = cp
-
-        preamble = '#define _CUDA\n'
-        ctx,prgcuda,sel_device = InitCUDA(DeviceName,preamble+header,kernel_files)
-
-    elif gpu_backend == 'OpenCL':
-        import pyopencl as pocl
-        clp = pocl
-
-        preamble = '#define _OPENCL\n'
-        queue,prgcl,ctx = InitOpenCL(DeviceName,preamble+header,kernel_files)
-        
-    elif gpu_backend == 'Metal':
-        import metalcomputebabel as mc
-        clp = mc
-        
-        # Loads METAL interface
-        os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
-        print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
-        swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
-
-        swift_fun.ForwardSimpleMetal.argtypes = [
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_char_p),
-            ctypes.POINTER(ctypes.c_float), 
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.POINTER(ctypes.c_int)]
-
-
-        swift_fun.PrintMetalDevices()
-        print("loaded Metal",str(swift_fun))
-
-        def StartMetaCapture(deviceName='M1'):
-            os.environ['__BabelMetalDevice'] =deviceName
-            swift_fun.StartCapture()
-
-        def Stopcapture():
-            swift_fun.Stopcapture()
-        
-        preamble = '#define _METAL\n'
-        prgcl, sel_device, ctx = InitMetal(DeviceName,preamble+header,[kernel_files[1]])
+def AssembleKernel(preamble,kernel_files,mlx_backend=False):
+    
+    if mlx_backend:
+        kernels = {}
+        for kf in kernel_files:
+            with open(kf['file'], 'r') as f:
+                lines = f.readlines()
+            kernel_code = ''.join(lines[:-1]) # Remove last bracket
+            
+            kernel = clp.fast.metal_kernel(name = kf['name'],
+                                        input_names = kf['input_names'],
+                                        output_names = kf['output_names'],
+                                        atomic_outputs = kf['atomic_outputs'],
+                                        header = preamble,
+                                        source = kernel_code)
+            
+            kernels[kf['name']] = kernel
+                
+        return kernels
     else:
-        assert(gpu_backend=='MLX')
-        import mlx.core as mx
-        clp = mx
+        kernel_codes = [preamble]
+        for k_file in kernel_files:
+            with open(k_file, 'r') as f:
+                kernel_code = f.read()
+                kernel_codes.append(kernel_code)
+        complete_kernel = '\n'.join(kernel_codes)
         
-        preamble = '#define _MLX\n'
-        kernel_functions = [{'name': 'ForwardPropagationKernel',
+        return complete_kernel
+    
+def InitCUDA(DeviceName=None):
+    global clp
+    global prgcuda
+    
+    import cupy as cp
+    clp = cp
+    
+    # Get kernel files
+    header,kernel_files = GetKernelFiles()
+    
+    # Obtain list of gpu devices
+    devCount = cp.cuda.runtime.getDeviceCount()
+    if devCount == 0:
+        raise SystemError("There are no CUDA devices.")
+    
+    # Select device that matches specified name
+    if DeviceName is not None:
+        sel_device = None
+        for deviceID in range(0, devCount):
+            d=cp.cuda.runtime.getDeviceProperties(deviceID)
+            if DeviceName in d['name'].decode('UTF-8'):
+                sel_device=cp.cuda.Device(deviceID)
+                break
+        sel_device.use()
+    
+    # Assemble kernel code
+    kernel_code = AssembleKernel(preamble="#define _CUDA\n"+header,kernel_files=kernel_files)
+    
+
+    # Build program from source code   
+    # Windows sometimes has issues finding CUDA
+    if platform.system()=='Windows':
+        sys.executable.split('\\')[:-1]
+        options=('-I',os.path.join(os.getenv('CUDA_PATH'),'Library','Include'),
+                    '-I',str(resource_path()),
+                    '--ptxas-options=-v')
+    else:
+        options=('-I',str(resource_path()))
+    
+    prgcuda = cp.RawModule(code=kernel_code,options=options)
+ 
+def InitOpenCL(DeviceName=None):
+    global Platforms
+    global queue 
+    global prgcl 
+    global ctx
+    global clp
+    global sel_device
+    
+    import pyopencl as pocl
+    clp = pocl
+    
+    # Get kernel files
+    header,kernel_files = GetKernelFiles()
+    
+    # Obtain list of openCL platforms
+    Platforms=pocl.get_platforms()
+    if len(Platforms)==0:
+        raise SystemError("No OpenCL platforms")
+    
+    # Obtain list of available devices and select one
+    sel_device=None
+    for device in Platforms[0].get_devices():
+        print(device.name)
+        if DeviceName in device.name:
+            sel_device=device
+    if sel_device is None:
+        raise SystemError("No OpenCL device containing name [%s]" %(DeviceName))
+    else:
+        print('Selecting device: ', sel_device.name)
+        
+    # Create context for selected device
+    ctx = pocl.Context([sel_device])
+    
+    # Assemble kernel code
+    kernel_code = AssembleKernel(preamble="#define _OPENCL\n"+header,kernel_files=kernel_files)
+    
+    # Build kernel
+    prgcl = pocl.Program(ctx,kernel_code).build()
+
+
+    # Create command queue for selected device
+    queue = pocl.CommandQueue(ctx)
+
+def InitMetal(DeviceName=None):
+    global ctx
+    global prgcl 
+    global clp
+    global sel_device
+    global swift_fun
+    
+    import metalcomputebabel as mc
+    clp = mc
+    
+    
+    # Loads METAL interface for Rayleigh
+    os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
+    print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
+    swift_fun = ctypes.CDLL(os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
+
+    swift_fun.ForwardSimpleMetal.argtypes = [
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_char_p),
+        ctypes.POINTER(ctypes.c_float), 
+        ctypes.POINTER(ctypes.c_float),
+        ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)]
+
+
+    swift_fun.PrintMetalDevices()
+    print("loaded Metal",str(swift_fun))
+
+    def StartMetaCapture(deviceName='M1'):
+        os.environ['__BabelMetalDevice'] =deviceName
+        swift_fun.StartCapture()
+
+    def Stopcapture():
+        swift_fun.Stopcapture()
+
+    # Setup for BHTE
+    header,kernel_files = GetKernelFiles()
+    
+    # Obtain list of gpu devices     
+    devices = mc.get_devices()
+    sel_device=None
+    for n,dev in enumerate(devices):
+        if DeviceName in dev.deviceName:
+            sel_device=dev
+            break
+    if sel_device is None:
+        raise SystemError("No Metal device containing name [%s]" %(DeviceName))
+    else:
+        print('Selecting device: ', dev.deviceName)
+    
+    # Create context for selected device
+    ctx = mc.Device(n)
+    print(ctx)
+    if 'arm64' not in platform.platform():
+        ctx.set_external_gpu(1) 
+        
+    # Assemble kernel code
+    kernel_code = AssembleKernel(preamble="#define _METAL\n"+header,kernel_files=[kernel_files[1]])
+    
+    # Build program from source code
+    prgcl = ctx.kernel(kernel_code)
+
+def InitMLX(DeviceName=None):
+    global clp
+    global prgcl 
+    global sel_device
+    
+    import mlx.core as mx
+    clp = mx
+    
+    # Setup for BHTE
+    header,kernel_files = GetKernelFiles()
+    
+    # select gpu devices     
+    sel_device = mx.default_device()
+    print('Selecting device: ', sel_device)
+    
+    # MLX requires functions to be separate
+    kernel_functions = [{'name': 'ForwardPropagationKernel',
                         'file': kernel_files[0],
                         'input_names': ["mr2", "c_wvnb_real", "c_wvnb_imag", "MaxDistance", "mr1",
                                         "r2pr","r1pr","a1pr","u1_real","u1_imag","mr1step"],
@@ -238,161 +373,9 @@ def InitRayleighAndBHTE(DeviceName=None,gpu_backend=None):
                                         "d_pointsMonitoring","floatParams","intparams"],
                         'output_names': ["d_output","d_output2","d_MonitorSlice","d_Temppoints"],
                         'atomic_outputs': False}]
-        
-        prgcl,sel_device = InitMLX(DeviceName,preamble+header,kernel_functions)
-        
     
-def InitCUDA(DeviceName=None,header='',kernel_files=None,build_later=False):
-    import cupy as cp
-    # global prgcuda
-    
-    # Obtain list of gpu devices
-    devCount = cp.cuda.runtime.getDeviceCount()
-    if devCount == 0:
-        raise SystemError("There are no CUDA devices.")
-    
-    # Select device that matches specified name
-    if DeviceName is not None:
-        selDevice = None
-        for deviceID in range(0, devCount):
-            d=cp.cuda.runtime.getDeviceProperties(deviceID)
-            if DeviceName in d['name'].decode('UTF-8'):
-                selDevice=cp.cuda.Device(deviceID)
-                break
-        selDevice.use()
-    
-    # Combine kernel codes with header
-    kernel_codes = [header]
-    for k_file in kernel_files:
-        with open(k_file, 'r') as f:
-            kernel_code = f.read()
-            kernel_codes.append(kernel_code)
-    complete_kernel = '\n'.join(kernel_codes)
-    
-    # Build program later, return complete kernel for now
-    if build_later: 
-        prgcuda = complete_kernel
-    # Build program from source code
-    else: 
-        
-        # Windows sometimes has issues finding CUDA
-        if platform.system()=='Windows':
-            sys.executable.split('\\')[:-1]
-            options=('-I',os.path.join(os.getenv('CUDA_PATH'),'Library','Include'),
-                        '-I',str(resource_path()),
-                        '--ptxas-options=-v')
-        else:
-            options=('-I',str(resource_path()))
-        
-        prgcuda = cp.RawModule(code=complete_kernel,options=options)
-
-    return ctx,prgcuda,selDevice
- 
-def InitOpenCL(DeviceName='AMD',header='',kernel_files=None,build_later=False):
-    import pyopencl as pocl
-    
-     # Obtain list of openCL platforms
-    Platforms=pocl.get_platforms()
-    if len(Platforms)==0:
-        raise SystemError("No OpenCL platforms")
-    
-    # Obtain list of available devices and select one
-    SelDevice=None
-    for device in Platforms[0].get_devices():
-        print(device.name)
-        if DeviceName in device.name:
-            SelDevice=device
-    if SelDevice is None:
-        raise SystemError("No OpenCL device containing name [%s]" %(DeviceName))
-    else:
-        print('Selecting device: ', SelDevice.name)
-        
-    # Create context for selected device
-    ctx = pocl.Context([SelDevice])
-    
-    # Combine kernel codes with header
-    kernel_codes = [header]
-    for k_file in kernel_files:
-        with open(k_file, 'r') as f:
-            kernel_code = f.read()
-            kernel_codes.append(kernel_code)
-    complete_kernel = '\n'.join(kernel_codes)
-    
-    # Build program later, return complete kernel for now
-    if build_later:
-        prgcl = complete_kernel 
-    # Build program from source code
-    else:
-        prgcl = pocl.Program(ctx,complete_kernel).build()
-
-    # Create command queue for selected device
-    queue = pocl.CommandQueue(ctx)
-
-    # Allocate device memory
-    mf = pocl.mem_flags
-
-    return queue, prgcl, ctx
-
-def InitMetal(DeviceName='AMD',header='',kernel_files=None,build_later=False):
-    
-    devices = clp.get_devices()
-    SelDevice=None
-    for n,dev in enumerate(devices):
-        if DeviceName in dev.deviceName:
-            SelDevice=dev
-            break
-    if SelDevice is None:
-        raise SystemError("No Metal device containing name [%s]" %(DeviceName))
-    else:
-        print('Selecting device: ', dev.deviceName)
-    
-    ctx = clp.Device(n)
-    print(ctx)
-    if 'arm64' not in platform.platform():
-        ctx.set_external_gpu(1) 
-    
-    # Build program from source code
-    kernel_codes = [header]
-    for k_file in kernel_files:
-        with open(k_file, 'r') as f:
-            kernel_code = f.read()
-            kernel_codes.append(kernel_code)
-
-    complete_kernel = '\n'.join(kernel_codes)
-    if build_later:
-        prgcl = complete_kernel
-    else:
-        prgcl = ctx.kernel(complete_kernel)
-
-    return prgcl, SelDevice, ctx
-    
-def InitMLX(DeviceName='AMD',header='',kernel_files=None,build_later=False):
-    import mlx.core as mx
-    
-    sel_device = mx.default_device()
-    print('Selecting device: ', sel_device)
-    
-    kernels = {}
-    for kf in kernel_files:
-        with open(kf['file'], 'r') as f:
-            lines = f.readlines()
-        kernel_code = ''.join(lines[:-1]) # Remove last bracket
-        
-        if build_later:
-            kf['header'] = header
-            kf['source'] = kernel_code
-            kernels[kf['name']] = kf
-        else:
-            kernel = mx.fast.metal_kernel(name = kf['name'],
-                                          input_names = kf['input_names'],
-                                          output_names = kf['output_names'],
-                                          atomic_outputs = kf['atomic_outputs'],
-                                          header = header,
-                                          source = kernel_code)
-            
-            kernels[kf['name']] = kernel
-    
-    return kernels,sel_device
+    # Assemble kernel
+    prgcl = AssembleKernel(preamble="#define _MLX\n"+header,kernel_files=kernel_functions,mlx_backend=True)
     
 def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='OpenCL',gpu_device='M1'): #MacOsPlatform='Metal',deviceMetal='6800'):
     '''
@@ -400,7 +383,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
     cwvnb is the complex speed of sound
     center is an [Mx3] array with the position of the decomposed transducer elements
     ds is an [M] array with the transducer element surface area
-    u0 is [M] complex array with the particle speed at eact transducer element
+    u0 is [M] complex array with the particle speed at each transducer element
     rf is [Nx3] array with the positons where Rayleigh integral will be calculated
     
     Function returns a [N] complex array of particle speed at locations rf
@@ -652,7 +635,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
                                         threadgroup=(256, 1, 1),
                                         verbose=False,
                                         stream=sel_device)
-            clp.synchronize()
+            clp.eval([d_u2realpr,d_u2imagpr])
 
             # Change back to numpy array 
             u2_real = np.array(d_u2realpr)
@@ -665,8 +648,8 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,gpu_backend='O
             u2[detection_point_start_index:detection_point_end_index] = u2_section
             
             # Clean up mlx arrays
-            del d_u2realpr,d_u2imagpr
-            gc.collect()
+            # del d_u2realpr,d_u2imagpr
+            # gc.collect()
             
         # Update starting location
         detection_point_start_index += step
@@ -717,10 +700,6 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                 MonitoringPointsMap=None,
                 initT0=None,
                 initDose=None):
-    global queue 
-    global prgcl 
-    global prgcuda
-    global ctx
 
     # Verify valid initT0, initDose values if provided
     for k in [initT0,initDose]:
@@ -1209,9 +1188,6 @@ def BHTEMultiplePressureFields(PressureFields,
                 MonitoringPointsMap=None,
                 initT0=None,
                 initDose=None):
-    global queue 
-    global prgcl 
-    global ctx
 
     assert(PressureFields.shape[1]==MaterialMap.shape[0] and \
            PressureFields.shape[2]==MaterialMap.shape[1] and \
@@ -1519,7 +1495,6 @@ def BHTEMultiplePressureFields(PressureFields,
 
         # Build program from source code
         knl = prgcl['BHTEFDTDKernel']
-        mlx_stream = clp.default_stream(sel_device)
 
         # Float variables to be passed to kernel
         floatparams = np.array([stableTemp,dt],dtype=np.float32)
