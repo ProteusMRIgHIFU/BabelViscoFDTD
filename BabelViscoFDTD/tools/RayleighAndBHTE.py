@@ -1261,6 +1261,9 @@ def BHTEMultiplePressureFields(PressureFields,
         
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
     nFraction=int(TotalDurationSteps/10)
+    
+    if nFraction ==0:
+        nFraction=1
 
     if Backend == 'OpenCL':
 
