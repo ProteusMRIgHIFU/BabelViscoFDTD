@@ -222,6 +222,7 @@ Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `T
 
 # Release notes
 * 1.09 - Feb 26, 2025
+    * Fix error in perfusion conversion formula from ml/min/s to kg/m^3/s
     * Fix similar bug for 1.08 but for grouped sonications
 * 1.08 - Dec 3, 2024
     * Fix bug on BHTE Calculations when using a very short duration time
