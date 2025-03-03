@@ -670,12 +670,13 @@ def getBHTECoefficient( kappa,rho,c_t,h,t_int,dt=0.1):
             (dt,t_int,bhc_coeff,best_nt))
     return bhc_coeff
 
-def getPerfusionCoefficient( w_b,c_t,blood_rho,blood_ct,dt=0.1):
+def getPerfusionCoefficient( w_b,rho,blood_rho=1050.0,dt=0.1):
     """Calculates the perfusion coefficient based on the simulation parameters and time step """
     # get the perfusion coeff for a speicfic tissue type and time period  -- independent of surrounding tissue types
-    # wb is in ml/min/kg, needs to be converted to m3/s/kg (1min/60 * 1e-6 m3/ml)
+    # wb is in ml/min/kg, needs to be converted to kg/m3/s (1min/60 * 1e-6 m3/ml) x blood density x tissue density
+    # Camilleri et al. 2022. https://doi.org/10.3390/
 
-    coeff = w_b/60*1.0e-6* blood_rho * blood_ct * dt / c_t  
+    coeff = w_b/60 *1e-6 * blood_rho * rho  * dt
 
     return coeff
 
@@ -731,8 +732,9 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     for n in range(MaterialMap.max()+1):
         bhArr[n]=getBHTECoefficient(MaterialList['Conductivity'][n],MaterialList['Density'][n],
                                     MaterialList['SpecificHeat'][n],dx,TotalDurationSteps,dt=dt)
-        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
-                                           blood_rho,blood_ct,dt=dt)
+        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],
+                                           MaterialList['Density'][n],
+                                           blood_rho=blood_rho,dt=dt)
         if initT0 is None:
             initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         #print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
@@ -1223,8 +1225,10 @@ def BHTEMultiplePressureFields(PressureFields,
     for n in range(MaterialMap.max()+1):
         bhArr[n]=getBHTECoefficient(MaterialList['Conductivity'][n],MaterialList['Density'][n],
                                     MaterialList['SpecificHeat'][n],dx,TotalDurationSteps,dt=dt)
-        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],MaterialList['SpecificHeat'][n],
-                                           blood_rho,blood_ct,dt=dt)
+        perfArr[n]=getPerfusionCoefficient(MaterialList['Perfusion'][n],
+                                           MaterialList['Density'][n],
+                                           blood_rho=blood_rho,
+                                           dt=dt)
         if initT0 is None:
             initTemp[MaterialMap==n]=MaterialList['InitTemperature'][n]
         for m in range(PressureFields.shape[0]):
@@ -1272,6 +1276,9 @@ def BHTEMultiplePressureFields(PressureFields,
         
     MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
     nFraction=int(TotalDurationSteps/10)
+    
+    if nFraction ==0:
+        nFraction=1
 
     if Backend == 'OpenCL':
 
