@@ -101,10 +101,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         with open(gpu_kernelSrc) as f:
             SCode+=f.readlines()
-        AllC=''
-        for l in SCode:
-            AllC+=l
-    
+
 
         N1=arguments['N1']
         N2=arguments['N2']
@@ -138,7 +135,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         print("Number Selected Sensor Maps:", outparams['NumberSelRMSPeakMaps'])
         ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order='F')
         
-        self._InitiateCommands(AllC)
+        self._InitiateCommands(SCode)
 
         ArraysGPUOp={}
         if extra_params["BACKEND"] in ["OPENCL","CUDA"]:

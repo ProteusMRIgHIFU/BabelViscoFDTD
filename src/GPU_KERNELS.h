@@ -52,6 +52,8 @@
 /// PMLS
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _ST_PML
+//MLX_BLOCK_PML_1_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_1_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_1_StressKernel(
@@ -71,7 +73,7 @@ __kernel void PML_1_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -87,10 +89,21 @@ kernel void PML_1_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+//MLX does not need input variable declarations
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_I_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_1_STRESS_END
+//MLX_BLOCK_PML_2_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_2_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_I_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_2_StressKernel(
@@ -110,7 +123,7 @@ __kernel void PML_2_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_2_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -135,10 +148,21 @@ kernel void PML_2_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+//MLX does not need input variable declarations
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_I_TOP
-
+#endif
+//MLX_BLOCK_PML_2_STRESS_END
+//MLX_BLOCK_PML_3_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_3_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_StressKernel(
@@ -158,7 +182,7 @@ __kernel void PML_3_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_3_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -183,10 +207,20 @@ kernel void PML_3_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_J_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_3_STRESS_END
+//MLX_BLOCK_PML_4_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_4_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_J_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_4_StressKernel(
@@ -206,7 +240,7 @@ __kernel void PML_4_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_4_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -231,10 +265,20 @@ kernel void PML_4_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_J_TOP
-
+#endif
+//MLX_BLOCK_PML_4_STRESS_END
+//MLX_BLOCK_PML_5_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_5_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_5_StressKernel(
@@ -254,7 +298,7 @@ __kernel void PML_5_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_5_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -279,10 +323,20 @@ kernel void PML_5_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_K_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_5_STRESS_END
+//MLX_BLOCK_PML_6_STRESS_START
+#if ((defined(MLX)) && defined(MLX_PML_6_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_K_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_6_StressKernel(
@@ -302,7 +356,7 @@ __kernel void PML_6_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -327,13 +381,22 @@ kernel void PML_6_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_K_TOP
-
+#endif
+//MLX_BLOCK_PML_6_STRESS_END
 #undef _ST_PML
 #endif
-
+//MLX_BLOCK_MAIN_1_STRESS_START
+#if ((defined(MLX)) && defined(MLX_MAIN_1_STRESS)) || !defined(MLX)
 #define _ST_MAIN
 #define _MAIN_KERNEL
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
@@ -357,7 +420,7 @@ __kernel void MAIN_1_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if defined(METAL) && !defined(MLX)
 kernel void MAIN_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -388,17 +451,27 @@ kernel void MAIN_1_StressKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "StressKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #undef _ST_PML
 #endif
 #undef _MAIN_KERNEL
 #undef _ST_MAIN
-
+#endif
+//MLX_BLOCK_MAIN_1_STRESS_END
 // PML
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
 #define _PR_PML
+//MLX_BLOCK_PML_1_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_1_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_1_ParticleKernel(
@@ -418,7 +491,7 @@ __kernel void PML_1_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -443,10 +516,20 @@ kernel void PML_1_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_I_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_1_PARTICLE_END
+//MLX_BLOCK_PML_2_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_2_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_I_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_2_ParticleKernel(
@@ -491,10 +574,20 @@ kernel void PML_2_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_I_TOP
-
+#endif
+//MLX_BLOCK_PML_2_PARTICLE_END
+//MLX_BLOCK_PML_3_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_3_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_3_ParticleKernel(
@@ -514,7 +607,7 @@ __kernel void PML_3_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_3_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -539,10 +632,20 @@ kernel void PML_3_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_J_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_3_PARTICLE_END
+//MLX_BLOCK_PML_4_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_4_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_J_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_4_ParticleKernel(
@@ -562,7 +665,7 @@ __kernel void PML_4_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_4_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -587,10 +690,20 @@ kernel void PML_4_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_J_TOP
-
+#endif
+//MLX_BLOCK_PML_4_PARTICLE_END
+//MLX_BLOCK_PML_5_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_5_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
 extern "C" __global__ void PML_5_ParticleKernel(
@@ -610,7 +723,7 @@ __kernel void PML_5_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_5_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -635,10 +748,20 @@ kernel void PML_5_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_K_BOTTOM
-
+#endif
+//MLX_BLOCK_PML_5_PARTICLE_END
+//MLX_BLOCK_PML_6_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_PML_6_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_K_TOP
 #ifdef CUDA
 extern "C" __global__ void PML_6_ParticleKernel(
@@ -658,7 +781,7 @@ __kernel void PML_6_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_6_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -683,13 +806,22 @@ kernel void PML_6_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
     #include "ParticleKernel.h" 
+#if !defined(MLX)
 }
+#endif
 #undef _PML_KERNEL_K_TOP
-
+#endif
+//MLX_BLOCK_PML_6_PARTICLE_END
 #undef _PR_PML
 #endif
-
+//MLX_BLOCK_MAIN_1_PARTICLE_START
+#if ((defined(MLX)) && defined(MLX_MAIN_1_PARTICLE)) || !defined(MLX)
 #define _PR_MAIN
 #define _MAIN_KERNEL
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
@@ -714,7 +846,7 @@ __kernel void MAIN_1_ParticleKernel(
 	_PT j = (_PT) get_global_id(1);
 	_PT k = (_PT) get_global_id(2);
 #endif
-#ifdef METAL
+#if defined(METAL) && !defined(MLX)
 kernel void MAIN_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -745,14 +877,24 @@ kernel void MAIN_1_ParticleKernel(
   	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
 	#endif
 #endif
+#if defined(MLX)
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+  	_PT k = (_PT) thread_position_in_grid.z;
+#endif
 	#include "ParticleKernel.h"
+#if !defined(MLX)
 }
+#endif
 #if defined(OPENCL) || (defined(CUDA) && !defined(USE_MINI_KERNELS_CUDA)) || (defined(METAL) && defined(METAL_SINGLE_KERNEL))
 #undef _PR_PML
 #endif
 #undef _PR_MAIN
 #undef _MAIN_KERNEL
-
+#endif
+//MLX_BLOCK_MAIN_1_PARTICLE_END
+//MLX_BLOCK_SNAPSHOT_START
+#if ((defined(MLX)) && defined(MLX_SNAPSHOT)) || !defined(MLX)
 #if defined(CUDA)
 extern "C" __global__ void SnapShot(unsigned int SelK,mexType * Snapshots_pr,mexType * Sigma_xx_pr,mexType * Sigma_yy_pr,mexType * Sigma_zz_pr,unsigned int CurrSnap)
 {
@@ -765,7 +907,7 @@ __kernel void SnapShot(unsigned int SelK,__global mexType * Snapshots_pr,__globa
   _PT i = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
 #endif
-#ifdef METAL
+#if defined(METAL) && !defined(MLX)
 #define Sigma_xx_pr k_Sigma_xx_pr
 #define Sigma_yy_pr k_Sigma_yy_pr
 #define Sigma_zz_pr k_Sigma_zz_pr
@@ -795,20 +937,23 @@ kernel void SnapShot(
 	_PT i = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
 #endif
+#if defined(MLX)
+#define Sigma_xx_pr k_Sigma_xx_pr
+#define Sigma_yy_pr k_Sigma_yy_pr
+#define Sigma_zz_pr k_Sigma_zz_pr
+	_PT i = (_PT) thread_position_in_grid.x;
+  	_PT j = (_PT) thread_position_in_grid.y;
+#endif
 
     if (i>=N1 || j >=N2)
 		return;
-	// mexType accum=0.0;
-	// for (unsigned int CurZone=0;CurZone<ZoneCount;CurZone++)
-	// 	{
-	// 		_PT index=Ind_Sigma_xx(i,j,(_PT)SelK);
-	// 		accum+=(Sigma_xx_pr[index]+Sigma_yy_pr[index]+Sigma_zz_pr[index])/3.0;
-
-	// 	}
-
-	// 	Snapshots_pr[IndN1N2Snap(i,j)+CurrSnap*N1*N2]=accum/ZoneCount;
+#if !defined(MLX)
 }
-
+#endif
+#endif
+//MLX_BLOCK_SNAPSHOT_END
+//MLX_BLOCK_SENSORS_START
+#if ((defined(MLX)) && defined(MLX_SENSORS)) || !defined(MLX)
 #if defined(CUDA)
 extern "C" __global__ void SensorsKernel(
 	#include "kernelparamsOpenCL.h"
@@ -827,10 +972,8 @@ __kernel void SensorsKernel(
 {
 	_PT sj =(_PT) get_global_id(0);
 #endif
-#ifdef METAL
-
+#if defined(METAL) && !defined(MLX)
 #define IndexSensorMap_pr k_IndexSensorMap_pr
-
 #ifndef METALCOMPUTE
 kernel void SensorsKernel(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
@@ -874,9 +1017,16 @@ kernel void SensorsKernel(
 {
 	_PT sj = (_PT) gid;
 #endif
+#if defined(MLX)
+	_PT sj = (_PT) thread_position_in_grid.x;
+#endif
 
 	if (sj>=(_PT) NumberSensors)
 		return;
 	#include"SensorsKernel.h"
 
+#if !defined(MLX)
 }
+#endif
+#endif
+//MLX_BLOCK_SENSORS_END

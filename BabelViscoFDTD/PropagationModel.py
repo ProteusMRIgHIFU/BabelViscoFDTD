@@ -31,6 +31,11 @@ try:
     print ("StaggeredFDTD_3D_METAL loaded")
 except:
     print ("StaggeredFDTD_3D_METAL NOT loaded")
+try:
+    from .StaggeredFDTD_3D_With_Relaxation_MLX import StaggeredFDTD_3D_MLX
+    print ("StaggeredFDTD_3D_METAL loaded")
+except:
+    print ("StaggeredFDTD_3D_METAL NOT loaded")
 
 #############################################################################################################
 #This global dictionary specifies the order in the MaterialProperties array (Nx5) where N is the numbe of materials
@@ -477,6 +482,9 @@ class PropagationModel:
         elif COMPUTING_BACKEND == 3:
             print ("Performing Simulation with GPU METAL")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_METAL(InputParam)
+        elif COMPUTING_BACKEND == 4:
+            print ("Performing Simulation with GPU MLX")
+            SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D_MLX(InputParam)
         else:
             print ("Performing Simulation with CPU")
             SensorOutput_orig,V,RMSValue,Snapshots_orig=StaggeredFDTD_3D(InputParam)
