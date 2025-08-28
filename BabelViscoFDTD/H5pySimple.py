@@ -3,6 +3,7 @@ from glob import glob
 
 import sys
 if sys.version_info > (3, 2):
+    unicode=str
     def bCheckIfStr(v):
         return type(v) is str
     def cStr(v):
@@ -33,10 +34,13 @@ def ProcType(k,v,f,compatibility,complevel,group):
         if isinstance(k,str):
             indexType='str'
         elif isinstance(k,unicode):
-            indexType='unicode'
-        elif isinstance(k,int):
+            if sys.version_info <= (3, 2):
+                indexType='unicode'
+            else:
+                indexType='str'
+        elif isinstance(k,int) or isinstance(k,numpy.int32) or isinstance(k,numpy.int16) or isinstance(k,numpy.int64):
             indexType='int'
-        elif isinstance(k,float):
+        elif isinstance(k,float) or isinstance(k,numpy.float32) or isinstance(k,numpy.float64):
             indexType='float'
         else:
             raise TypeError('The type of key ' +str(k)+ ' is not supported ( ' + str(type(k)) + ' )')
@@ -145,7 +149,7 @@ def ReadFromH5py(f,group=None,typeattr=None):
                     if typekey=='int':
                         snamevar=int(namevar)
                     elif typekey=='float':
-                        snamevar=int(namevar)
+                        snamevar=float(namevar)
                     elif typekey=='str':
                         snamevar=namevar
                     elif typekey=='unicode':
