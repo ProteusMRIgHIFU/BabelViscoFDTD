@@ -95,18 +95,19 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
         self.ctx=mx
+        self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
         
     
     def _InitSymbol(self, IP,_NameVar,td,SCode):
         if td in ['float','double']:
-            res = '#define '  + _NameVar + '  %0.9g;\n' %(IP[_NameVar])
+            res = '#define '  + _NameVar + '  %0.9g\n' %(IP[_NameVar])
         else:
             lType =' _PT '
-            res = '#define ' + _NameVar + '  %i;\n' %(IP[_NameVar])
+            res = '#define ' + _NameVar + '  %i\n' %(IP[_NameVar])
         SCode.append(res)
         
     def _InitSymbolArray(self, IP,_NameVar,td,SCode):
-        res =  "constant "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
+        res =  " "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
         for n in range(IP[_NameVar].size):
             if td in ['float','double']:
                 res+="%.9g" % (IP[_NameVar][n])
@@ -131,12 +132,12 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         if Name == "Snapshots":
             pass
         elif td == "float":
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims ) 
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.int64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.int64(dims ) 
             self._c_mex_type[self._IndexDataMetal[Name]] += dims
         elif td == "unsigned int":
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.int64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.int64(dims)
             self._c_uint_type += dims
 
     
@@ -144,12 +145,12 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
         SizeCopy = ArrayResCPU[Name].size
         if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.int64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
         elif Name in ['IndexSensorMap','SourceMap','MaterialMap',]: # unsigned int
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(SizeCopy)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.int64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_uint_type += SizeCopy
     
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
@@ -157,9 +158,9 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self._outparams = outparams
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.zeros(nSizes*4))
-        self.uint_buffer=self.ctx.zeros(self._c_uint_type*4)
-        self.constant_buffer_uint=self.ctx.zeros(self.ConstantBufferUINT)
+            self.mex_buffer.append(self.ctx.zeros(int(nSizes*4)))
+        self.uint_buffer=self.ctx.zeros(int(self._c_uint_type*4),self.ctx.uint32)
+        self.constant_buffer_uint=self.ctx.array(self.ConstantBufferUINT)
 
         self._IndexManip()
 
@@ -176,23 +177,25 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
     def _IndexManip(self):
         index=np.zeros((self.LENGTH_INDEX_MEX,2),np.uint32)
         for i in range(self.LENGTH_INDEX_MEX):
-            index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
+            index[i,0] = np.uint32(np.int64(0xFFFFFFFF) & np.int64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
+            index[i,1] = np.uint32(np.int64([self.HOST_INDEX_MEX[i][0]])>>32)
         self.index_mex=self.ctx.array(index)
         
         index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
        
         for i in range(self.LENGTH_INDEX_UINT):
             index[i,0] = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
+            index[i,1] = np.uint32(np.int64([self.HOST_INDEX_MEX[i][0]])>>32)
         self.index_uint=self.ctx.array(index)
 
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
-            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
+            l=int(self.HOST_INDEX_MEX[self.C_IND[Name]][0])
+            self.mex_buffer[self._IndexDataMetal[Name]][l:l+SizeCopy] = args[Name].flatten(order='F')
         elif td == "unsigned int":
-            self.uint_buffer.modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
+            l=int(self.HOST_INDEX_UINT[self.C_IND[Name]][0])
+            self.uint_buffer[l:l+SizeCopy] = args[Name].flatten(order='F')
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
@@ -204,12 +207,12 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         bAdd=True
         for l in OrigLines:
             if '//MLX_BLOCK' in l:
-                if 'START' in l:
+                if '_START' in l:
                     for k in self.IdsToParse:
                         if k in l:
                             if k != Current:
                                 bAdd=False
-                elif f"{k}_END" in l:
+                elif "_END" in l:
                     bAdd=True
             if bAdd:
                 sCode.append(l)
@@ -248,6 +251,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self.AllStressKernels={}
         for k in PartsStress:
             source=self.ParseAndSelectCode(AllC,f"{k}_STRESS")
+            with open('/Users/spichardo/code'+k+'_STRESS.c','w') as f:
+                f.write(source)
             kernel = self.ctx.fast.metal_kernel(
                     name=k+"_StressKernel",
                     input_names=MLXInputNames,
@@ -264,6 +269,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self.AllParticleKernels={}
         for k in PartsParticle:
             source=self.ParseAndSelectCode(AllC,f"{k}_PARTICLE")
+            with open('/Users/spichardo/code'+k+'_PARTICLE.c','w') as f:
+                f.write(source)
             kernel = self.ctx.fast.metal_kernel(
                     name=k+"_ParticleKernel",
                     input_names=MLXInputNames,
@@ -273,6 +280,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             self.AllParticleKernels[k]=kernel
 
         source=self.ParseAndSelectCode(AllC,"SENSORS")
+        with open('/Users/spichardo/codeSENSORS.c','w') as f:
+            f.write(source)
         self.SensorsKernel=self.ctx.fast.metal_kernel(
                 name="SensorsKernel",
                 input_names=MLXInputNames,

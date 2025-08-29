@@ -6,7 +6,7 @@
 #else
 #define CGID uint3
 #endif
-#ifndef METALCOMPUTE
+#if !defined(METALCOMPUTE) && !defined(MLX)
 #define METAL_PARAMS\
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],\
@@ -356,7 +356,7 @@ __kernel void PML_6_StressKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -549,7 +549,7 @@ __kernel void PML_2_ParticleKernel(
   _PT j = (_PT) get_global_id(1);
   _PT k = (_PT) get_global_id(2);
 #endif
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL))
+#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_2_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
@@ -1018,6 +1018,7 @@ kernel void SensorsKernel(
 	_PT sj = (_PT) gid;
 #endif
 #if defined(MLX)
+	#define IndexSensorMap_pr k_IndexSensorMap_pr
 	_PT sj = (_PT) thread_position_in_grid.x;
 #endif
 

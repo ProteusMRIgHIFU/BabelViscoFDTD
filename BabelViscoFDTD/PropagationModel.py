@@ -33,9 +33,9 @@ except:
     print ("StaggeredFDTD_3D_METAL NOT loaded")
 try:
     from .StaggeredFDTD_3D_With_Relaxation_MLX import StaggeredFDTD_3D_MLX
-    print ("StaggeredFDTD_3D_METAL loaded")
+    print ("StaggeredFDTD_3D_MLX loaded")
 except:
-    print ("StaggeredFDTD_3D_METAL NOT loaded")
+    print ("StaggeredFDTD_3D_MLX NOT loaded")
 
 #############################################################################################################
 #This global dictionary specifies the order in the MaterialProperties array (Nx5) where N is the numbe of materials

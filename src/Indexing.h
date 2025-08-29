@@ -318,7 +318,7 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
  	 curMapIndex++; }
 
 #if defined(METAL)
-#ifndef METALCOMPUTE
+#if !defined(METALCOMPUTE) && !defined(MLX)
 #define CInd_N1 0
 #define CInd_N2 1
 #define CInd_N3 2
