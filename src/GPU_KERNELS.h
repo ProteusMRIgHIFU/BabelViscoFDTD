@@ -50,9 +50,10 @@
 #endif
 #endif
 /// PMLS
-#if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
-#define _ST_PML
+
+#if ((defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)) 
 //MLX_BLOCK_PML_1_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_1_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
@@ -101,8 +102,10 @@ kernel void PML_1_StressKernel(
 #endif
 #undef _PML_KERNEL_I_BOTTOM
 #endif
+#undef _ST_PML
 //MLX_BLOCK_PML_1_STRESS_END
 //MLX_BLOCK_PML_2_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_2_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_I_TOP
 #ifdef CUDA
@@ -160,8 +163,10 @@ kernel void PML_2_StressKernel(
 #endif
 #undef _PML_KERNEL_I_TOP
 #endif
+#undef _ST_PML
 //MLX_BLOCK_PML_2_STRESS_END
 //MLX_BLOCK_PML_3_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
@@ -218,8 +223,10 @@ kernel void PML_3_StressKernel(
 #endif
 #undef _PML_KERNEL_J_BOTTOM
 #endif
+#undef _ST_PML
 //MLX_BLOCK_PML_3_STRESS_END
 //MLX_BLOCK_PML_4_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_4_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_J_TOP
 #ifdef CUDA
@@ -276,8 +283,10 @@ kernel void PML_4_StressKernel(
 #endif
 #undef _PML_KERNEL_J_TOP
 #endif
+#undef _ST_PML
 //MLX_BLOCK_PML_4_STRESS_END
 //MLX_BLOCK_PML_5_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_5_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
@@ -334,8 +343,10 @@ kernel void PML_5_StressKernel(
 #endif
 #undef _PML_KERNEL_K_BOTTOM
 #endif
+#undef _ST_PML
 //MLX_BLOCK_PML_5_STRESS_END
 //MLX_BLOCK_PML_6_STRESS_START
+#define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_6_STRESS)) || !defined(MLX)
 #define _PML_KERNEL_K_TOP
 #ifdef CUDA
@@ -392,8 +403,8 @@ kernel void PML_6_StressKernel(
 #endif
 #undef _PML_KERNEL_K_TOP
 #endif
-//MLX_BLOCK_PML_6_STRESS_END
 #undef _ST_PML
+//MLX_BLOCK_PML_6_STRESS_END
 #endif
 //MLX_BLOCK_MAIN_1_STRESS_START
 #if ((defined(MLX)) && defined(MLX_MAIN_1_STRESS)) || !defined(MLX)
@@ -469,8 +480,8 @@ kernel void MAIN_1_StressKernel(
 //MLX_BLOCK_MAIN_1_STRESS_END
 // PML
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) || defined(USE_MINI_KERNELS_CUDA)
-#define _PR_PML
 //MLX_BLOCK_PML_1_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_1_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_I_BOTTOM
 #ifdef CUDA
@@ -527,8 +538,10 @@ kernel void PML_1_ParticleKernel(
 #endif
 #undef _PML_KERNEL_I_BOTTOM
 #endif
+#undef _PR_PML
 //MLX_BLOCK_PML_1_PARTICLE_END
 //MLX_BLOCK_PML_2_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_2_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_I_TOP
 #ifdef CUDA
@@ -585,8 +598,10 @@ kernel void PML_2_ParticleKernel(
 #endif
 #undef _PML_KERNEL_I_TOP
 #endif
+#undef _PR_PML
 //MLX_BLOCK_PML_2_PARTICLE_END
 //MLX_BLOCK_PML_3_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_J_BOTTOM
 #ifdef CUDA
@@ -643,8 +658,10 @@ kernel void PML_3_ParticleKernel(
 #endif
 #undef _PML_KERNEL_J_BOTTOM
 #endif
+#undef _PR_PML
 //MLX_BLOCK_PML_3_PARTICLE_END
 //MLX_BLOCK_PML_4_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_4_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_J_TOP
 #ifdef CUDA
@@ -701,8 +718,10 @@ kernel void PML_4_ParticleKernel(
 #endif
 #undef _PML_KERNEL_J_TOP
 #endif
+#undef _PR_PML
 //MLX_BLOCK_PML_4_PARTICLE_END
 //MLX_BLOCK_PML_5_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_5_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_K_BOTTOM
 #ifdef CUDA
@@ -759,8 +778,10 @@ kernel void PML_5_ParticleKernel(
 #endif
 #undef _PML_KERNEL_K_BOTTOM
 #endif
+#undef _PR_PML
 //MLX_BLOCK_PML_5_PARTICLE_END
 //MLX_BLOCK_PML_6_PARTICLE_START
+#define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_6_PARTICLE)) || !defined(MLX)
 #define _PML_KERNEL_K_TOP
 #ifdef CUDA
@@ -817,8 +838,8 @@ kernel void PML_6_ParticleKernel(
 #endif
 #undef _PML_KERNEL_K_TOP
 #endif
-//MLX_BLOCK_PML_6_PARTICLE_END
 #undef _PR_PML
+//MLX_BLOCK_PML_6_PARTICLE_END
 #endif
 //MLX_BLOCK_MAIN_1_PARTICLE_START
 #if ((defined(MLX)) && defined(MLX_MAIN_1_PARTICLE)) || !defined(MLX)

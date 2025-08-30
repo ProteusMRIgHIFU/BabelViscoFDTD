@@ -107,7 +107,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         SCode.append(res)
         
     def _InitSymbolArray(self, IP,_NameVar,td,SCode):
-        res =  " "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
+        SCode.append('//MLX_CONSTANT_START\n')
+        res =  "constant  "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
         for n in range(IP[_NameVar].size):
             if td in ['float','double']:
                 res+="%.9g" % (IP[_NameVar][n])
@@ -118,6 +119,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             else:
                 res+='};\n'
         SCode.append(res)   
+        SCode.append('//MLX_CONSTANT_END\n')
 
 
     def _UpdateSymbol(self, IP, _NameVar,td, SCode):
@@ -204,7 +206,9 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         This helps to select only the lines of code that are relevant to the current MLX block.
         '''
         sCode=[f'#define MLX_{Current}\n']
+        hCode=[]
         bAdd=True
+        bHeader= False
         for l in OrigLines:
             if '//MLX_BLOCK' in l:
                 if '_START' in l:
@@ -214,9 +218,15 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                                 bAdd=False
                 elif "_END" in l:
                     bAdd=True
-            if bAdd:
+            if '//MLX_CONSTANT_START' in l:
+                bHeader=True
+            if bAdd and not bHeader:
                 sCode.append(l)
-        return ''.join(sCode)
+            if bHeader:
+                hCode.append(l)
+            if bHeader and '//MLX_CONSTANT_END' in l:
+                bHeader=False
+        return ''.join(hCode),''.join(sCode)
 
     def _InitiateCommands(self, AllC):
         if self.bUseSingleKernel:
@@ -250,15 +260,18 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
 
         self.AllStressKernels={}
         for k in PartsStress:
-            source=self.ParseAndSelectCode(AllC,f"{k}_STRESS")
+            header,source=self.ParseAndSelectCode(AllC,f"{k}_STRESS")
             with open('/Users/spichardo/code'+k+'_STRESS.c','w') as f:
+                f.write(header)
+                f.write('//********************\n')
                 f.write(source)
             kernel = self.ctx.fast.metal_kernel(
                     name=k+"_StressKernel",
                     input_names=MLXInputNames,
                     input_rw_status=MLXReadWriteStatus,
                     output_names=["dummy"],
-                    source=source)
+                    source=source,
+                    header=header)
             self.AllStressKernels[k]=kernel
 
         if self.bUseSingleKernel:
@@ -268,7 +281,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         
         self.AllParticleKernels={}
         for k in PartsParticle:
-            source=self.ParseAndSelectCode(AllC,f"{k}_PARTICLE")
+            header,source=self.ParseAndSelectCode(AllC,f"{k}_PARTICLE")
             with open('/Users/spichardo/code'+k+'_PARTICLE.c','w') as f:
                 f.write(source)
             kernel = self.ctx.fast.metal_kernel(
@@ -276,10 +289,11 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                     input_names=MLXInputNames,
                     input_rw_status=MLXReadWriteStatus,
                     output_names=["dummy"],
-                    source=source)
+                    source=source,
+                    header=header)
             self.AllParticleKernels[k]=kernel
 
-        source=self.ParseAndSelectCode(AllC,"SENSORS")
+        header,source=self.ParseAndSelectCode(AllC,"SENSORS")
         with open('/Users/spichardo/codeSENSORS.c','w') as f:
             f.write(source)
         self.SensorsKernel=self.ctx.fast.metal_kernel(
@@ -287,7 +301,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                 input_names=MLXInputNames,
                 input_rw_status=MLXReadWriteStatus,
                 output_names=["dummy"],
-                source=source)
+                source=source,
+                header=header)
 
     def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
         TimeSteps = arguments['TimeSteps']
