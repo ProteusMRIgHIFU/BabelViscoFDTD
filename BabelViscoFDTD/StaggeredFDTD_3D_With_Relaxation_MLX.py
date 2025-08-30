@@ -72,7 +72,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
 
         extra_params = {"BACKEND":"METAL"}
         
-        self.bUseSingleKernel = False
+        self.bUseSingleKernel = True
 
         commonIds=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
         IdsToParse=[]
@@ -99,12 +99,14 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         
     
     def _InitSymbol(self, IP,_NameVar,td,SCode):
+        SCode.append('//MLX_CONSTANT_START\n')
         if td in ['float','double']:
-            res = '#define '  + _NameVar + '  %0.9g\n' %(IP[_NameVar])
+            res = 'constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
         else:
-            lType =' _PT '
-            res = '#define ' + _NameVar + '  %i\n' %(IP[_NameVar])
+            lType =' int '
+            res = 'constant '+ lType  + _NameVar + ' = %i;\n' %(IP[_NameVar])
         SCode.append(res)
+        SCode.append('//MLX_CONSTANT_END\n')
         
     def _InitSymbolArray(self, IP,_NameVar,td,SCode):
         SCode.append('//MLX_CONSTANT_START\n')
@@ -261,10 +263,6 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self.AllStressKernels={}
         for k in PartsStress:
             header,source=self.ParseAndSelectCode(AllC,f"{k}_STRESS")
-            with open('/Users/spichardo/code'+k+'_STRESS.c','w') as f:
-                f.write(header)
-                f.write('//********************\n')
-                f.write(source)
             kernel = self.ctx.fast.metal_kernel(
                     name=k+"_StressKernel",
                     input_names=MLXInputNames,
@@ -282,8 +280,6 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self.AllParticleKernels={}
         for k in PartsParticle:
             header,source=self.ParseAndSelectCode(AllC,f"{k}_PARTICLE")
-            with open('/Users/spichardo/code'+k+'_PARTICLE.c','w') as f:
-                f.write(source)
             kernel = self.ctx.fast.metal_kernel(
                     name=k+"_ParticleKernel",
                     input_names=MLXInputNames,
@@ -294,8 +290,6 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             self.AllParticleKernels[k]=kernel
 
         header,source=self.ParseAndSelectCode(AllC,"SENSORS")
-        with open('/Users/spichardo/codeSENSORS.c','w') as f:
-            f.write(source)
         self.SensorsKernel=self.ctx.fast.metal_kernel(
                 name="SensorsKernel",
                 input_names=MLXInputNames,
