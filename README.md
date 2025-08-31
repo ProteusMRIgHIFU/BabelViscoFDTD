@@ -221,19 +221,21 @@ All three GPU backends have analogous control to split the calculations in the G
 Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS.
 
 # Release notes
-* 1.10 - March 8, 2025
+* 1.1.1 - Aug 31, 2025
+    * Support for MLX backend
+* 1.0.10 - March 8, 2025
     * Undo Fix error in perfusion conversion formula (there was no error (－‸ლ) )
-* 1.09 - Feb 26, 2025
+* 1.0.9 - Feb 26, 2025
     * Fix error in perfusion conversion formula from ml/min/s to kg/m^3/s
     * Fix similar bug for 1.08 but for grouped sonications
-* 1.08 - Dec 3, 2024
+* 1.0.8 - Dec 3, 2024
     * Fix bug on BHTE Calculations when using a very short duration time
-* 1.07 - June 25, 2024
+* 1.0.7 - June 25, 2024
     * Fix bug on Metal for 2D simulations where PML was producing reflections
     * Simplification of 2D kernels for faster calculations 
-* 1.06 - March 5, 2024
+* 1.0.6 - March 5, 2024
     * Change compilation of Rayleigh module in ARM64 Metal to support macOS Monterey and up 
-* 1.05 - Feb 26, 2024
+* 1.0.5 - Feb 26, 2024
     * Fix an issue of reflections on one of the sides of the domain when using Metal backend
     * Improve Swift Metal for Rayleigh calculations, passing scalar parameters now using an structure rather than buffers.
     * Add the possibility to limit Rayleigh calculations to only certain distance, useful when forward propagating between Rayleigh and domains that are very close to the Rayleigh source. The Rayleigh functions now accept an optional MaxDistance parameter, which is >0, limits Rayleigh calculations to be less or equal to that distance. Use this with caution.

@@ -228,7 +228,8 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
             self.LocalSize=None
 
 
-    def _InitiateCommands(self, AllC):
+    def _InitiateCommands(self, SCode):
+        AllC=''.join(SCode)
         prg = cl.Program(self.ctx,AllC).build()
         PartsStress=['MAIN_1']
         self.AllStressKernels={}

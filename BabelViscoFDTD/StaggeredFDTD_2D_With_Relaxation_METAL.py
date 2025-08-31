@@ -179,7 +179,6 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             self.mex_buffer.append(handle)
         self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
-        # self.constant_buffer_mex=self.ctx.buffer(self.ConstantBufferMEX)
 
         self._IndexManip()
 

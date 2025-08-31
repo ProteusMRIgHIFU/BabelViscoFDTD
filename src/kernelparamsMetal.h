@@ -1,4 +1,4 @@
-#ifndef METALCOMPUTE
+#if !defined(METALCOMPUTE) && !defined(MLX)
 #define N1 p_CONSTANT_BUFFER_UINT[CInd_N1]
 #define N2 p_CONSTANT_BUFFER_UINT[CInd_N2]
 #define N3 p_CONSTANT_BUFFER_UINT[CInd_N3]

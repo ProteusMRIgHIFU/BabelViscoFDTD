@@ -57,7 +57,8 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
         extra_params['SCode'] = SCode
         
 
-    def _InitiateCommands(self, AllC):
+    def _InitiateCommands(self, SCode):
+        AllC=''.join(SCode)
         self._prgcuda  = cp.RawModule(code=AllC)
 
         PartsStress=['MAIN_1']

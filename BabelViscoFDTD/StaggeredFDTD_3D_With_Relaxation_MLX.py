@@ -18,6 +18,8 @@ from ctypes import c_byte, c_int, c_uint32, c_float, c_wchar_p, c_uint64
 
 mc = None
 
+import mlx.core as mx
+
 def ListDevices():
     import metalcomputebabel 
     devicesIDs=[]
@@ -26,14 +28,13 @@ def ListDevices():
         devicesIDs.append(dev.deviceName)
     return devicesIDs
 
-class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_Relaxation_BASE):
+class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE):
     '''
     This version is mainly for Mx processors and which is based in a modified+forked version of metalcompute. As X64 will be phased out, in the future the metalcompute version will take over
     '''
     def __init__(self, arguments):
         global mc
-        import metalcomputebabel
-        mc = metalcomputebabel
+        
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self._c_mex_type = np.zeros(12, np.uint64)
@@ -71,46 +72,45 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
         extra_params = {"BACKEND":"METAL"}
         
-        self.bUseSingleKernel = False
+        self.bUseSingleKernel = True
+
+        commonIds=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+        IdsToParse=[]
+        for t in ['STRESS','PARTICLE']:
+            for k in commonIds:
+                IdsToParse.append(f"{k}_{t}")
+        IdsToParse.append('SENSORS')
+        IdsToParse.append('SNAPSHOT')
+        self.IdsToParse = IdsToParse
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
-        print("Attempting Metal Initiation...")
-        devices = mc.get_devices()
-        SelDevice=None
-        for n,dev in enumerate(devices):
-            if arguments['DefaultGPUDeviceName'] in dev.deviceName:
-                SelDevice=dev
-                break
-        if SelDevice is None:
-            raise SystemError("No Metal device containing name [%s]" %(arguments['DefaultGPUDeviceName']))
-        else:
-            print('Selecting device: ', dev.deviceName)
+        print("Attempting MLX Initiation...")
         SCode = []
         SCode.append("#define mexType " + extra_params['td'] +"\n")
         SCode.append("#define METAL\n")
         if self.bUseSingleKernel:
             SCode.append("#define METAL_SINGLE_KERNEL\n")
-        SCode.append("#define METALCOMPUTE\n")
+        SCode.append("#define MLX\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
-        self.ctx = mc.Device(n)
+        self.ctx=mx
         self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
-        print(self.ctx)
-        if 'arm64' not in platform.platform():
-            print('Setting Metal for External or AMD processor')
-            self.ctx.set_external_gpu(1) 
+        
     
     def _InitSymbol(self, IP,_NameVar,td,SCode):
+        SCode.append('//MLX_CONSTANT_START\n')
         if td in ['float','double']:
             res = 'constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
         else:
-            lType =' _PT '
+            lType =' int '
             res = 'constant '+ lType  + _NameVar + ' = %i;\n' %(IP[_NameVar])
         SCode.append(res)
+        SCode.append('//MLX_CONSTANT_END\n')
         
     def _InitSymbolArray(self, IP,_NameVar,td,SCode):
-        res =  "constant "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
+        SCode.append('//MLX_CONSTANT_START\n')
+        res =  "constant  "+ td + " " + _NameVar + "_pr[%i] ={\n" % (IP[_NameVar].size)
         for n in range(IP[_NameVar].size):
             if td in ['float','double']:
                 res+="%.9g" % (IP[_NameVar][n])
@@ -121,11 +121,12 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             else:
                 res+='};\n'
         SCode.append(res)   
+        SCode.append('//MLX_CONSTANT_END\n')
 
 
     def _UpdateSymbol(self, IP, _NameVar,td, SCode):
         if td == "unsigned int": 
-            self.constant_buffer_uint.modify(np.array(IP[_NameVar],dtype=np.uint32),int(self.C_IND[_NameVar]),1)
+            self.constant_buffer_uint[self.C_IND[_NameVar]] = IP[_NameVar]
         else:
             raise ValueError("Something was passed incorrectly in symbol initiation.")
 
@@ -135,12 +136,12 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if Name == "Snapshots":
             pass
         elif td == "float":
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims ) 
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.int64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.int64(dims ) 
             self._c_mex_type[self._IndexDataMetal[Name]] += dims
         elif td == "unsigned int":
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.int64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.int64(dims)
             self._c_uint_type += dims
 
     
@@ -148,12 +149,12 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
         SizeCopy = ArrayResCPU[Name].size
         if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
+            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.int64(self._c_mex_type[self._IndexDataMetal[Name]])
+            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
         elif Name in ['IndexSensorMap','SourceMap','MaterialMap',]: # unsigned int
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(SizeCopy)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.int64(self._c_uint_type)
+            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_uint_type += SizeCopy
     
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
@@ -161,9 +162,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self._outparams = outparams
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.buffer(nSizes*4))
-        self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
-        self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
+            self.mex_buffer.append(self.ctx.zeros(int(nSizes*4)))
+        self.uint_buffer=self.ctx.zeros(int(self._c_uint_type*4),self.ctx.uint32)
+        self.constant_buffer_uint=self.ctx.array(self.ConstantBufferUINT)
 
         self._IndexManip()
 
@@ -175,43 +176,101 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
 
         self.localSensor = [1, 1, 1]
-        self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
+        self.globalSensor = (ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1)
 
     def _IndexManip(self):
         index=np.zeros((self.LENGTH_INDEX_MEX,2),np.uint32)
         for i in range(self.LENGTH_INDEX_MEX):
-            index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-        self.index_mex=self.ctx.buffer(index)
+            index[i,0] = np.uint32(np.int64(0xFFFFFFFF) & np.int64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
+            index[i,1] = np.uint32(np.int64([self.HOST_INDEX_MEX[i][0]])>>32)
+        self.index_mex=self.ctx.array(index)
         
         index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
        
         for i in range(self.LENGTH_INDEX_UINT):
             index[i,0] = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-        self.index_uint=self.ctx.buffer(index)
+            index[i,1] = np.uint32(np.int64([self.HOST_INDEX_MEX[i][0]])>>32)
+        self.index_uint=self.ctx.array(index)
 
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
-            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
+            l=int(self.HOST_INDEX_MEX[self.C_IND[Name]][0])
+            self.mex_buffer[self._IndexDataMetal[Name]][l:l+SizeCopy] = args[Name].flatten(order='F')
         elif td == "unsigned int":
-            self.uint_buffer.modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
+            l=int(self.HOST_INDEX_UINT[self.C_IND[Name]][0])
+            self.uint_buffer[l:l+SizeCopy] = args[Name].flatten(order='F')
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
+    def ParseAndSelectCode(self,OrigLines,Current):
+        '''
+        This helps to select only the lines of code that are relevant to the current MLX block.
+        '''
+        sCode=[f'#define MLX_{Current}\n']
+        hCode=[]
+        bAdd=True
+        bHeader= False
+        for l in OrigLines:
+            if '//MLX_BLOCK' in l:
+                if '_START' in l:
+                    for k in self.IdsToParse:
+                        if k in l:
+                            if k != Current:
+                                bAdd=False
+                elif "_END" in l:
+                    bAdd=True
+            if '//MLX_CONSTANT_START' in l:
+                bHeader=True
+            if bAdd and not bHeader:
+                sCode.append(l)
+            if bHeader:
+                hCode.append(l)
+            if bHeader and '//MLX_CONSTANT_END' in l:
+                bHeader=False
+        return ''.join(hCode),''.join(sCode)
 
-    def _InitiateCommands(self, SCode):
-        AllC=''.join(SCode)
-        prg = self.ctx.kernel(AllC)
+    def _InitiateCommands(self, AllC):
         if self.bUseSingleKernel:
             PartsStress=['MAIN_1']
         else:
             PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
-        
+
+        MLXInputNames=['p_CONSTANT_BUFFER_UINT',
+                       'p_INDEX_MEX',
+                       'p_INDEX_UINT',
+                       'p_UINT_BUFFER',
+                       'p_MEX_BUFFER_0',
+                       'p_MEX_BUFFER_1',
+                       'p_MEX_BUFFER_2',
+                       'p_MEX_BUFFER_3',
+                       'p_MEX_BUFFER_4',
+                       'p_MEX_BUFFER_5',
+                       'p_MEX_BUFFER_6',
+                       'p_MEX_BUFFER_7',
+                       'p_MEX_BUFFER_8',
+                       'p_MEX_BUFFER_9',
+                       'p_MEX_BUFFER_10',
+                       'p_MEX_BUFFER_11']
+
+        MLXReadWriteStatus=[] # only MEX buffers are read+write
+        for e in MLXInputNames:
+            if 'MEX' in e:
+                MLXReadWriteStatus.append(True)
+            else:
+                MLXReadWriteStatus.append(False)
+
         self.AllStressKernels={}
         for k in PartsStress:
-            self.AllStressKernels[k]=prg.function(k+"_StressKernel")
+            header,source=self.ParseAndSelectCode(AllC,f"{k}_STRESS")
+            kernel = self.ctx.fast.metal_kernel(
+                    name=k+"_StressKernel",
+                    input_names=MLXInputNames,
+                    input_rw_status=MLXReadWriteStatus,
+                    output_names=["dummy"],
+                    source=source,
+                    header=header)
+            self.AllStressKernels[k]=kernel
 
         if self.bUseSingleKernel:
             PartsParticle =['MAIN_1']
@@ -220,139 +279,139 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         
         self.AllParticleKernels={}
         for k in PartsParticle:
-            self.AllParticleKernels[k]=prg.function(k+"_ParticleKernel")
-        
-        self.SensorsKernel=prg.function('SensorsKernel')
+            header,source=self.ParseAndSelectCode(AllC,f"{k}_PARTICLE")
+            kernel = self.ctx.fast.metal_kernel(
+                    name=k+"_ParticleKernel",
+                    input_names=MLXInputNames,
+                    input_rw_status=MLXReadWriteStatus,
+                    output_names=["dummy"],
+                    source=source,
+                    header=header)
+            self.AllParticleKernels[k]=kernel
+
+        header,source=self.ParseAndSelectCode(AllC,"SENSORS")
+        self.SensorsKernel=self.ctx.fast.metal_kernel(
+                name="SensorsKernel",
+                input_names=MLXInputNames,
+                input_rw_status=MLXReadWriteStatus,
+                output_names=["dummy"],
+                source=source,
+                header=header)
 
     def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
         TimeSteps = arguments['TimeSteps']
         InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
         outparams=self._outparams
         DimsKernel={}
-        DimsKernel['PML_1']=[outparams['PML_Thickness'],
+        DimsGroup={}
+        DimsKernel['PML_1']=(outparams['PML_Thickness'],
                              outparams['N2'],
-                             outparams['N3']]
-        DimsKernel['PML_2']=[outparams['PML_Thickness'],
+                             outparams['N3'])
+        DimsGroup['PML_1']=(2, 8, 64)
+        DimsKernel['PML_2']=(outparams['PML_Thickness'],
                              outparams['N2'],
-                             outparams['N3']]
-        DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
+                             outparams['N3'])
+        DimsGroup['PML_2']=(2, 8, 64)
+        DimsKernel['PML_3']=(outparams['N1']-outparams['PML_Thickness']*2,
+                             outparams['PML_Thickness'],
+                             outparams['N3'])
+        DimsGroup['PML_3']=(8, 2, 64)
+        DimsKernel['PML_4']=(outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['PML_Thickness'],
-                            outparams['N3']]
-        DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness'],
-                            outparams['N3']]
-        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['N3'])
+        DimsGroup['PML_4']=(8, 2, 64)
+        DimsKernel['PML_5']=(outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
-        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness'])
+        DimsGroup['PML_5']=(16, 16, 4)
+        DimsKernel['PML_6']=(outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
+                            outparams['PML_Thickness'])
+        DimsGroup['PML_6']=(16, 16, 4)
         if self.bUseSingleKernel:
-            DimsKernel['MAIN_1']=[outparams['N1'],
+            DimsKernel['MAIN_1']=(outparams['N1'],
                             outparams['N2'],
-                            outparams['N3']]
+                            outparams['N3'])
+            DimsGroup['MAIN_1']=(8,8, 16)
             kernels=["MAIN_1"]
             
         
         else:
-            DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
+            DimsKernel['MAIN_1']=(outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
+                            outparams['N3']-outparams['PML_Thickness']*2)
+            DimsGroup['MAIN_1']=(8,8, 16)
             kernels =["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
             
 
+        AllHandles=[]
+            
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
                 self._UpdateSymbol(InitDict, i, 'unsigned int', [])
 
-            self.ctx.init_command_buffer()
-            AllHandles=[]
+            inputs=[self.constant_buffer_uint,
+                    self.index_mex,
+                    self.index_uint, 
+                    self.uint_buffer,
+                    self.mex_buffer[0],
+                    self.mex_buffer[1],
+                    self.mex_buffer[2],
+                    self.mex_buffer[3],
+                    self.mex_buffer[4],
+                    self.mex_buffer[5],
+                    self.mex_buffer[6],
+                    self.mex_buffer[7],
+                    self.mex_buffer[8],
+                    self.mex_buffer[9],
+                    self.mex_buffer[10],
+                    self.mex_buffer[11]]
+            for i in kernels:
+                nSize=np.prod(DimsKernel[i])
+
+                handle = self.AllStressKernels[i](
+                                        inputs=inputs,
+                                        grid=DimsKernel[i],
+                                        threadgroup=DimsGroup[i],
+                                        output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
+                                        output_dtypes=[self.ctx.float32],
+                                        )[0]
+
+                
+
+
+                AllHandles.append(handle)
+
+            for i in kernels:
+                handle = self.AllParticleKernels[i](
+                                        inputs=inputs,
+                                        grid=DimsKernel[i],
+                                        threadgroup=DimsGroup[i],
+                                        output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
+                                        output_dtypes=[self.ctx.float32],
+                                        )[0]
+
+                AllHandles.append(handle)
             
-            for i in kernels:
-                nSize=np.prod(DimsKernel[i])
-                handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
-                                               self.index_mex,
-                                               self.index_uint, 
-                                               self.uint_buffer,
-                                               self.mex_buffer[0],
-                                               self.mex_buffer[1],
-                                               self.mex_buffer[2],
-                                               self.mex_buffer[3],
-                                               self.mex_buffer[4],
-                                               self.mex_buffer[5],
-                                               self.mex_buffer[6],
-                                               self.mex_buffer[7],
-                                               self.mex_buffer[8],
-                                               self.mex_buffer[9],
-                                               self.mex_buffer[10],
-                                               self.mex_buffer[11])
-                AllHandles.append(handle)
-
-            for i in kernels:
-                nSize=np.prod(DimsKernel[i])
-                handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
-                                               self.index_mex,
-                                               self.index_uint, 
-                                               self.uint_buffer,
-                                               self.mex_buffer[0],
-                                               self.mex_buffer[1],
-                                               self.mex_buffer[2],
-                                               self.mex_buffer[3],
-                                               self.mex_buffer[4],
-                                               self.mex_buffer[5],
-                                               self.mex_buffer[6],
-                                               self.mex_buffer[7],
-                                               self.mex_buffer[8],
-                                               self.mex_buffer[9],
-                                               self.mex_buffer[10],
-                                               self.mex_buffer[11])
-
-                AllHandles.append(handle)
-            self.ctx.commit_command_buffer()
-            self.ctx.wait_command_buffer()
-            while len(AllHandles)>0:
-                handle = AllHandles.pop(0) 
-                del handle
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.ctx.init_command_buffer()
-                handle=self.SensorsKernel(np.prod(self.globalSensor),
-                                self.constant_buffer_uint,
-                                self.index_mex,
-                                self.index_uint, 
-                                self.uint_buffer,
-                                self.mex_buffer[0],
-                                self.mex_buffer[1],
-                                self.mex_buffer[2],
-                                self.mex_buffer[3],
-                                self.mex_buffer[4],
-                                self.mex_buffer[5],
-                                self.mex_buffer[6],
-                                self.mex_buffer[7],
-                                self.mex_buffer[8],
-                                self.mex_buffer[9],
-                                self.mex_buffer[10],
-                                self.mex_buffer[11])
-                self.ctx.commit_command_buffer()   
-                self.ctx.wait_command_buffer()
-                del handle
-        if 'arm64' not in platform.platform():
-            self.ctx.sync_buffers((self.mex_buffer[0],
-                                    self.mex_buffer[1],
-                                    self.mex_buffer[2],
-                                    self.mex_buffer[3],
-                                    self.mex_buffer[4],
-                                    self.mex_buffer[5],
-                                    self.mex_buffer[6],
-                                    self.mex_buffer[7],
-                                    self.mex_buffer[8],
-                                    self.mex_buffer[9],
-                                    self.mex_buffer[10],
-                                    self.mex_buffer[11]))
+                handle=self.SensorsKernel(
+                                        inputs=inputs,
+                                        grid=self.globalSensor,
+                                        threadgroup=DimsGroup[i],
+                                        output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
+                                        output_dtypes=[self.ctx.float32],
+                                        )[0]
+
+                AllHandles.append(handle)
+
+            while len(AllHandles)>0:
+                self.ctx.eval(AllHandles.pop(0))
+
         for i in ['SqrAcc', 'SensorOutput']:
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
-            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            Buffer=np.array(self.mex_buffer[self._IndexDataMetal[i]][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)])
             ArrayResCPU[i][:,:,:] = np.reshape(Buffer, Shape,order='F')
      
         
@@ -369,7 +428,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
             Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
-            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
+            Buffer=np.array(self.mex_buffer[self._IndexDataMetal[i]])[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
             Buffer=Buffer.reshape(Shape,order='F')
             ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
           
@@ -381,7 +440,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             handle = self.mex_buffer.pop()
             del handle
 
-def StaggeredFDTD_3D_METAL(arguments):
-    Instance = StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(arguments)
+def StaggeredFDTD_3D_MLX(arguments):
+    Instance = StaggeredFDTD_3D_With_Relaxation_MLX(arguments)
     Results = Instance.Results
     return Results
