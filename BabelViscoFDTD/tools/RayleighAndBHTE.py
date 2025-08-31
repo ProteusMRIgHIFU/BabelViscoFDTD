@@ -14,6 +14,7 @@ from sysconfig import get_paths
 import ctypes
 import sys 
 import platform
+import traceback
 
 KernelCoreSourceBHTE="""
     #define Tref 43.0
@@ -73,18 +74,21 @@ KernelCoreSourceBHTE="""
             d_output2[coord] = d_input2[coord];
 
         }
-
+#ifndef _MLX
 }
+#endif
 """
 
 import pyopencl as cl
 
-RayleighOpenCLMetalSource="""
-#ifdef _METAL
+headerPartMetal = """
+#if defined(_METAL) || defined(_MLX)
 #include <metal_stdlib>
 using namespace metal;
 #endif
+"""
 
+RayleighOpenCLMetalSource="""
 #define pi 3.141592653589793
 #define ppCos &pCos
 
@@ -186,7 +190,21 @@ OpenCLMetalHeaderBHTE="""
         const int gtidy =  get_global_id(1);
         const int gtidz =  get_global_id(2);
 #endif
-#ifdef _METAL
+#if defined(_METAL) || defined(_MLX)
+        #define CoreTemp floatParams[0]
+        #define dt floatParams[1]
+        #define sonication intparams[0]
+        #define outerDimx intparams[1]
+        #define outerDimy intparams[2]
+        #define outerDimz intparams[3]
+        #define TotalStepsMonitoring intparams[4]
+        #define nFactorMonitoring intparams[5]
+        #define n_Step intparams[6]
+        #define SelJ intparams[7]
+        #define StartIndexQ intparams[8]
+        #define TotalSteps intparams[9]
+#endif
+#if defined(_METAL) && !defined(_MLX)
         kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]], 
                                     device float 		*d_output2 [[ buffer(1) ]],
                                     device const float 			*d_input [[ buffer(2) ]], 
@@ -202,23 +220,14 @@ OpenCLMetalHeaderBHTE="""
                                         constant unsigned int * intparams [[ buffer(12) ]],
                                         uint gid[[thread_position_in_grid]])	
     {
-
-        #define CoreTemp floatParams[0]
-        #define dt floatParams[1]
-        #define sonication intparams[0]
-        #define outerDimx intparams[1]
-        #define outerDimy intparams[2]
-        #define outerDimz intparams[3]
-        #define TotalStepsMonitoring intparams[4]
-        #define nFactorMonitoring intparams[5]
-        #define n_Step intparams[6]
-        #define SelJ intparams[7]
-        #define StartIndexQ intparams[8]
-        #define TotalSteps intparams[9]
         const int gtidx =  gid/(outerDimy*outerDimz);
         const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
         const int gtidz =  gid - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
-
+#endif
+#ifdef _MLX
+	const int gtidx =  thread_position_in_grid.x/(outerDimy*outerDimz);
+    const int gtidy =  (thread_position_in_grid.x - gtidx*outerDimy*outerDimz)/outerDimz;
+    const int gtidz =  thread_position_in_grid.x - gtidx*outerDimy*outerDimz - gtidy*outerDimz;
 #endif
     """
 
@@ -231,9 +240,6 @@ prgcl = None
 ctx = None
 
 if sys.platform == "darwin":
-    
-    import metalcomputebabel as mc
-
     # Loads METAL interface
     os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
     print('loading',os.path.dirname(os.path.abspath(__file__))+"/libBabelMetal.dylib")
@@ -530,6 +536,10 @@ def InitOpenCL(DeviceName='AMD'):
     prgcl = cl.Program(ctx, '#define _OPENCL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE).build()
 
 def InitMetal(DeviceName='AMD'):
+    print('Iniitalizing BHTE code MetalCompute')
+
+    import metalcomputebabel as mc
+    
     global ctx
     global prgcl 
 
@@ -548,8 +558,28 @@ def InitMetal(DeviceName='AMD'):
     print(ctx)
     if 'arm64' not in platform.platform():
         ctx.set_external_gpu(1) 
-    prgcl = ctx.kernel('#define _METAL\n'+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
-    
+    prgcl = ctx.kernel('#define _METAL\n'+headerPartMetal+RayleighOpenCLMetalSource+OpenCLKernelBHTE)
+
+def InitMLX(DeviceName='AMD'):
+    print('Iniitalizing BHTE code MLX')
+    global ctx
+    global prgcl 
+    import mlx.core as mx
+    MLXInputNames=['d_output','d_output2','d_input','d_input2',
+                   'd_bhArr','d_perfArr','d_labels','d_Qarr','d_pointsMonitoring',
+                   'd_MonitorSlice','d_Temppoints','floatParams','intparams']
+
+    MLXReadWriteStatus=[True,True,False,False,False,False,False,False,False,True,True,False,False]
+    ctx =  mx
+    prgcl  = ctx.fast.metal_kernel(
+                    name="BHTE",
+                    input_names=MLXInputNames,
+                    input_rw_status=MLXReadWriteStatus,
+                    output_names=["dummy"],
+                    source=OpenCLKernelBHTE,
+                    header='#define _MLX\n'+headerPartMetal)
+
+
 def ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     if u0step!=0:
         mr1=u0step
@@ -738,7 +768,7 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform=
     '''
     global prgcuda 
     if sys.platform == "darwin":
-        if MacOsPlatform=='Metal':
+        if MacOsPlatform in ['Metal','MLX']:
             return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
@@ -1080,8 +1110,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         MonitorSlice=d_MonitorSlice.get() 
         TemperaturePoints=d_TemperaturePoints.get() 
 
-    else:
-        assert(Backend=='Metal')
+    elif Backend =='Metal':
 
         d_perfArr=ctx.buffer(perfArr)
         d_bhArr=ctx.buffer(bhArr)
@@ -1158,6 +1187,88 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
         MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
+    elif Backend =='MLX':
+        d_perfArr=ctx.array(perfArr)
+        d_bhArr=ctx.array(bhArr)
+        d_Qarr=ctx.array(Qarr)
+        d_MaterialMap=ctx.array(MaterialMap)
+        d_T0 = ctx.array(initTemp)
+        d_T1 = ctx.array(T1)
+        d_Dose0 = ctx.array(Dose0)
+        d_Dose1 = ctx.array(Dose1)
+        d_MonitorSlice = ctx.zeros(MonitorSlice.shape)
+        d_MonitoringPoints=ctx.array(MonitoringPoints)
+        d_TemperaturePoints=ctx.zeros(TemperaturePoints.shape)
+
+        knl = prgcl
+
+        floatparams = np.array([stableTemp,dt],dtype=np.float32)
+        d_floatparams= ctx.array(floatparams)
+        AllHandles=[]
+        for n in range(TotalDurationSteps):
+            if n<nStepsOn:
+                dUS=1
+            else:
+                dUS=0
+            intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,0,TotalDurationSteps],dtype=np.uint32)
+            d_intparams= ctx.array(intparams)
+            
+            if (n%2==0):
+                inputparams=[d_T1,
+                    d_Dose1,
+                    d_T0,
+                    d_Dose0,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_Qarr,
+                    d_MonitoringPoints,
+                    d_MonitorSlice,
+                    d_TemperaturePoints,
+                    d_floatparams,
+                    d_intparams]
+            else:
+                inputparams=[d_T0,
+                    d_Dose0,
+                    d_T1,
+                    d_Dose1,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_Qarr,
+                    d_MonitoringPoints,
+                    d_MonitorSlice,
+                    d_TemperaturePoints,
+                    d_floatparams,
+                    d_intparams]
+            handle =knl(
+                        inputs=inputparams,
+                        grid=[N1*N2*N3,1,1],
+                        threadgroup=[1024,1,1],
+                        output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
+                        output_dtypes=[ctx.float32],
+                        )[0]
+                
+            AllHandles.append(handle)
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+            if (n+1)%10==0:
+                while len(AllHandles)>0:
+                    ctx.eval(AllHandles.pop(0))
+        while len(AllHandles)>0:
+                    ctx.eval(AllHandles.pop(0))
+
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+    
+        T1=np.array(ResTemp).reshape((N1,N2,N3))
+        Dose1=np.array(ResDose).reshape((N1,N2,N3))
+        MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
 
     if MonitoringPointsMap is not None:
         return T1,Dose1,MonitorSlice,Qarr,TemperaturePoints
@@ -1486,9 +1597,7 @@ def BHTEMultiplePressureFields(PressureFields,
         Dose1=ResDose.get()
         MonitorSlice=d_MonitorSlice.get() 
         TemperaturePoints=d_TemperaturePoints.get()  
-    else:
-        assert(Backend=='Metal')
-
+    elif Backend=='Metal':
         d_perfArr=ctx.buffer(perfArr)
         d_bhArr=ctx.buffer(bhArr)
         d_QArrList=ctx.buffer(QArrList)
@@ -1569,6 +1678,96 @@ def BHTEMultiplePressureFields(PressureFields,
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
         MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
+    else:
+        assert(Backend=='MLX')
+        d_perfArr=ctx.array(perfArr)
+        d_bhArr=ctx.array(bhArr)
+        d_QArrList=ctx.array(QArrList)
+        d_MaterialMap=ctx.array(MaterialMap)
+        d_T0 = ctx.array(initTemp)
+        d_T1 = ctx.array(T1)
+        d_Dose0 = ctx.array(Dose0)
+        d_Dose1 = ctx.array(Dose1)
+        d_MonitorSlice = ctx.zeros(MonitorSlice.shape)
+        d_MonitoringPoints=ctx.array(MonitoringPoints)
+        d_TemperaturePoints=ctx.zeros(TemperaturePoints.shape)
+
+        knl = prgcl
+
+        floatparams = np.array([stableTemp,dt],dtype=np.float32)
+        d_floatparams= ctx.array(floatparams)
+        AllHandles=[]
+        for n in range(TotalDurationSteps):
+            mStep=n % NstepsPerCycle
+            QSegment=np.where((TimingFields[:,0]<=mStep) & (TimingFields[:,2]>mStep))[0][0]
+            if mStep<TimingFields[QSegment,1]:
+                dUS=1
+            else:
+                assert(mStep>=TimingFields[QSegment,1])
+                dUS=0
+            StartIndexQ=np.prod(np.array(QArrList.shape[1:]))*QSegment
+
+            intparams = np.array([dUS,N1,N2,N3,TotalStepsMonitoring,nFactorMonitoring,n,LocationMonitoring,StartIndexQ,TotalDurationSteps],dtype=np.uint32)
+            d_intparams= ctx.array(intparams)
+
+            if (n%2==0):
+                inputparams=[d_T1,
+                    d_Dose1,
+                    d_T0,
+                    d_Dose0,
+                    d_bhArr,
+                    d_perfArr,
+                    d_MaterialMap,
+                    d_QArrList,
+                    d_MonitoringPoints,
+                    d_MonitorSlice,
+                    d_TemperaturePoints,
+                    d_floatparams,
+                    d_intparams]
+
+            else:
+                inputparams=[d_T0,
+                             d_Dose0,
+                             d_T1,
+                             d_Dose1,
+                             d_bhArr,
+                             d_perfArr,
+                             d_MaterialMap,
+                             d_QArrList,
+                             d_MonitoringPoints,
+                             d_MonitorSlice,
+                             d_TemperaturePoints,
+                             d_floatparams,
+                             d_intparams]
+            handle =knl(
+                        inputs=inputparams,
+                        grid=[N1*N2*N3,1,1],
+                        threadgroup=[1024,1,1],
+                        output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
+                        output_dtypes=[ctx.float32],
+                        )[0]
+            AllHandles.append(handle)
+            if n % nFraction ==0:
+                print(n,TotalDurationSteps)
+
+            if (n+1)%10==0:
+                while len(AllHandles)>0:
+                    ctx.eval(AllHandles.pop(0))
+        while len(AllHandles)>0:
+                    ctx.eval(AllHandles.pop(0))
+        if (n%2==0):
+            ResTemp=d_T1
+            ResDose=d_Dose1
+        else:
+            ResTemp=d_T0
+            ResDose=d_Dose0
+
+        
+        print('Done BHTE')                               
+        T1=np.array(ResTemp).reshape((N1,N2,N3))
+        Dose1=np.array(ResDose).reshape((N1,N2,N3))
+        MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
     if MonitoringPointsMap is not None:
         return T1,Dose1,MonitorSlice,QArrList,TemperaturePoints
     else:

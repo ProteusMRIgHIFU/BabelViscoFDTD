@@ -344,6 +344,8 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             kernels =["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
             
 
+        AllHandles=[]
+            
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
@@ -365,7 +367,6 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                     self.mex_buffer[9],
                     self.mex_buffer[10],
                     self.mex_buffer[11]]
-            AllHandles=[]
             for i in kernels:
                 nSize=np.prod(DimsKernel[i])
 
@@ -392,8 +393,6 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                                         )[0]
 
                 AllHandles.append(handle)
-            while len(AllHandles)>0:
-                self.ctx.eval(AllHandles.pop(0))
             
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
                 handle=self.SensorsKernel(
@@ -404,7 +403,10 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                                         output_dtypes=[self.ctx.float32],
                                         )[0]
 
-                self.ctx.eval(handle)
+                AllHandles.append(handle)
+
+            while len(AllHandles)>0:
+                self.ctx.eval(AllHandles.pop(0))
 
         for i in ['SqrAcc', 'SensorOutput']:
             SizeCopy = ArrayResCPU[i].size
