@@ -92,9 +92,12 @@ kernel void PML_1_StressKernel(
 #endif
 //MLX does not need input variable declarations
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
+    _PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -153,9 +156,21 @@ kernel void PML_2_StressKernel(
 #endif
 //MLX does not need input variable declarations
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -213,9 +228,21 @@ kernel void PML_3_StressKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -273,9 +300,21 @@ kernel void PML_4_StressKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -333,9 +372,21 @@ kernel void PML_5_StressKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -393,9 +444,21 @@ kernel void PML_6_StressKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -463,9 +526,27 @@ kernel void MAIN_1_StressKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#ifdef METAL_SINGLE_KERNEL
+	#define nN1 (N1)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	#else
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	#endif
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -528,9 +609,21 @@ kernel void PML_1_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
+    _PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -588,9 +681,21 @@ kernel void PML_2_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness)
+	#define nN2 (N2)
+	#define nN3 (N3)
+    _PT k = (_PT) ( thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) (( thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) ( thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -648,9 +753,21 @@ kernel void PML_3_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -708,9 +825,21 @@ kernel void PML_4_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (PML_Thickness)
+	#define nN3 (N3)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -768,9 +897,21 @@ kernel void PML_5_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -828,9 +969,21 @@ kernel void PML_6_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness)
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -899,9 +1052,27 @@ kernel void MAIN_1_ParticleKernel(
 	#endif
 #endif
 #if defined(MLX)
-	_PT i = (_PT) thread_position_in_grid.x;
-  	_PT j = (_PT) thread_position_in_grid.y;
-  	_PT k = (_PT) thread_position_in_grid.z;
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#ifdef METAL_SINGLE_KERNEL
+	#define nN1 (N1)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	#else
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (N3-PML_Thickness*2)
+	#endif
+	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
+  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
+  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
 #endif
 	#include "ParticleKernel.h"
 #if !defined(MLX)

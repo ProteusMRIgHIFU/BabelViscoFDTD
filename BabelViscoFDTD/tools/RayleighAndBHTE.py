@@ -1247,6 +1247,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
                         threadgroup=[1024,1,1],
                         output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
                         output_dtypes=[ctx.float32],
+                        use_optimal_threadgroups=True,
                         )[0]
                 
             AllHandles.append(handle)
@@ -1745,6 +1746,7 @@ def BHTEMultiplePressureFields(PressureFields,
                         threadgroup=[1024,1,1],
                         output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
                         output_dtypes=[ctx.float32],
+                        use_optimal_threadgroups=True,
                         )[0]
             AllHandles.append(handle)
             if n % nFraction ==0:

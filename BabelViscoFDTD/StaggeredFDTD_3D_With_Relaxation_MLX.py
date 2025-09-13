@@ -372,10 +372,11 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
 
                 handle = self.AllStressKernels[i](
                                         inputs=inputs,
-                                        grid=DimsKernel[i],
+                                        grid=[nSize,1,1],
                                         threadgroup=DimsGroup[i],
                                         output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
                                         output_dtypes=[self.ctx.float32],
+                                        use_optimal_threadgroups=True
                                         )[0]
 
                 
@@ -386,10 +387,11 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             for i in kernels:
                 handle = self.AllParticleKernels[i](
                                         inputs=inputs,
-                                        grid=DimsKernel[i],
+                                        grid=[nSize,1,1],
                                         threadgroup=DimsGroup[i],
                                         output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
                                         output_dtypes=[self.ctx.float32],
+                                        use_optimal_threadgroups=True
                                         )[0]
 
                 AllHandles.append(handle)
@@ -401,6 +403,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                                         threadgroup=DimsGroup[i],
                                         output_shapes=[[1,1,1]], # dummy output is just 1 float, as we never write to it
                                         output_dtypes=[self.ctx.float32],
+                                        use_optimal_threadgroups=True
                                         )[0]
 
                 AllHandles.append(handle)
