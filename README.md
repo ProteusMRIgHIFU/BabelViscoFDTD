@@ -41,8 +41,8 @@ Please note that not every backend is available in a given combination of OS+Pyt
 
 
 # Requirements
-## Python 3.8 and up
-The use of virtual environments is recommended. Anaconda Python and Enthought EDM are great choices as the main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for the latest versions of pyopencl are available for Python >=3.8. For Apple Silicon systems, it is recommended to use a native Python for arm64 (see below details).
+## Python 3.9 and up
+The use of virtual environments is recommended. Anaconda Python and Enthought EDM are great choices as the main environment in any OS, but overall any Python distribution should do the work. The only limitation in Windows is that wheels for the latest versions of pyopencl are available for Python >=3.9. For Apple Silicon systems, it is recommended to use a native Python for ARM64.
 
 ## CUDA (For Windows and Linux)
 The code has been verified to work from CUDA 9 to CUDA 11. Highly likely older versions of CUDA (7, 8) should work without a problem. Be sure of installing the CUDA samples and take note of the location where they were installed.
@@ -66,12 +66,16 @@ latest version of `pip`
 
 `h5py`, `hdf5plugin`, `pydicom` and `pyopencl` are installed automatically as requirements if they are no present in the Python enviroment..
 
-### macOS systems: Manual installation of modified `metalcompute`
+### macOS systems: Manual installation of modified `metalcompute` and 'MLX'
 As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library, the modified version needs to be installed manually with
 
 `pip install  git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git`
 
 This modified version will be installed with a different library name (metalcomputebabel) that is different from the original (metalcompute) to avoid conflicts.
+
+For ARM64 systems (M1, M2, etc.), a modified version of MLX needs also to be installed with 
+
+`pip install git+https://github.com/spichardo/mlx.git@102e8fd398308fb05adea654ca21893d78a6b782`
 
 ### Extra dependencies required in some of the tutorials
 * matplotlib
@@ -119,25 +123,10 @@ You will need a VStudio installation that is compatible with your CUDA version; 
 ### macOS
 Any recent version of macOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in macOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental; by default, it will run only single-thread. See below for details on how to enable it. For ARM64 version will have OpenMP fully enabled by default.
 
-The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There are, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. Overall, Metal is the recommended backend for M1 processors and AMD GPUs.
+The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There are, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. MLX is only supported for Apple Silicon. Overall, MLX is the recommended backend for M1 processors and Metal for x64 systems with AMD GPUs.
 
-Best scenario for both X64 and ARM64-based systems is to use fully native Python distributions using homebrew:
-1. Install  [homebrew](https://brew.sh/)
-`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-1. Install miniforge
-`brew install miniforge`
-1. Create and activate a Python environment (for ARM64, Python 3.9 is recommended)
-`conda create —-name Babel python=3.9 scipy numpy`
-`conda activate Babel`
-1. Install BabelViscoFDTD
-`pip install BabelViscoFDTD`
 
 #### macOS experimental OpenMP in X86-64
-
-Thanks to the people who have reported the mitigated success with OpenMP. In my current systems, I didn't have problems, but later some users reported having issues with OpenMP. Then, we turned this feature as **experimental**, the time we can figure out a more stable approach.
-For Intel or Apple Silicon CPU, `libomp` and `mkl` must be installed first, otherwise compilation and execution for OpenMP will fail.
-Install `mkl` with `pip install mkl` or `conda install mkl`
-
 Using Homebrew, install OpenMP and hint location to CMake:
 
 ```sh
@@ -177,7 +166,7 @@ Regardless if using CUDA, OpenCL or Metal, conceptually the workflow is very sim
 
 # Important information specific to the different environments for use
 ### macOS notes
-macOS support for HPC has shifted in recent years significantly. In modern macOS versions, the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For macOS, Metal backend is recommended for AMD processors. OpenCL in macOS X86_64 may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For ARM64 processors, OpenCL drivers can support 64 bit addressing. For an AMD W6800 (32 GB RAM) it only supports 32 bits. The `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers support 64 bits addressing. The OpenCL implementation with ARM64 processors works only with a native Python arm64 installation.
+macOS support for HPC has shifted in recent years significantly. In modern macOS versions, the support for NVIDIA cards is inexistent and OpenCL *was supposed to be* officially out of support beyond Big Slur (*it is still running quite well in Monterey*). For macOS, Metal backend is recommended for AMD processors and MLX for Apple Silicon processions. OpenCL in macOS X86_64 may have other limitations such as the underlying driver may only support 32 bits memory access, even if the card has more than 4 GB of RAM. However, this limitation seems to be case by case. For ARM64 processors, OpenCL drivers can support 64 bit addressing. For an AMD W6800 (32 GB RAM) it only supports 32 bits. The `clinfo` tool (available with homebrew) can provide details if your current GPU and drivers support 64 bits addressing. The OpenCL implementation with ARM64 processors works only with a native Python arm64 installation.
 
 ### Metal support
 Overall, Metal requires a bit more coding to prepare the pipelines for compute execution.  A challenge is that Metal for scientific computing still lacks serious examples. Nevertheless, the support for Metal is desirable for Apple Silicon systems. As toolchains, including native Python in arm64, are now becoming widespread available, it is interesting to see how well these devices stand quite well compared to Nvidia or AMD-based systems. There are some limitations such as the maximal number of kernel parameters (32) and that each GPU buffer memory is limited to 3.5 GB RAM for Metal-supported GPUs. But this is a limitation manageable by packing multiple logical arrays across multiple buffers. We explored the use of Metal Argument Buffers, but it ended in poorer performance than packing multiple arrays logically. In the current release of BabelViscoFDTD, it is completely stable to run large domains with AMD GPUs and ARM64-based processors with 32 or more GB of RAM.
