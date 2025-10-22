@@ -21,7 +21,7 @@ dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
 version = '1.1.3'
 
-npinc=np.get_include()+os.sep+'numpy'
+npinc=np.get_include()
 # Filename for the C extension module library
 c_module_name = '_FDTDStaggered3D_with_relaxation'
 
