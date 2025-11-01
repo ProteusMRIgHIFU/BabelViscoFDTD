@@ -239,6 +239,8 @@ queue = None
 prgcl = None
 ctx = None
 
+cp = None
+
 if sys.platform == "darwin":
     # Loads METAL interface
     os.environ['__BabelMetal'] =os.path.dirname(os.path.abspath(__file__))
@@ -496,7 +498,9 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
 
 def InitCuda(DeviceName=None):
     global prgcuda
-    import cupy as cp
+    global cp
+    import cupy
+    cp = cupy
     devCount = cp.cuda.runtime.getDeviceCount()
     if devCount == 0:
         raise SystemError("There are no CUDA devices.")
