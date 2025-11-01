@@ -16,6 +16,13 @@ else:
         return (type(v) is str or type(v) is unicode)
     def cStr(v):
         return v
+    
+def bCheckdNumpyStr(v):
+    if numpy.__version__ < "2.0.0":
+        return type(v) is numpy.string_ or type(v) is numpy.unicode_ 
+    else:
+        return type(v) is numpy.str_
+
 '''
 Generic BackEnd to save hdf5 files using h5py, it seems more efficient than Pytables for "very-general-purpose saving". For better designed groups and datasets, pytables is way better
 
@@ -76,9 +83,7 @@ def ProcType(k,v,f,compatibility,complevel,group):
         else:
             ds=group.create_dataset(k, data=v)
         ds.attrs["type"]="ndarray"
-    elif  bCheckIfStr(v) or type(v)  is  numpy.string_ or \
-         type(v)  is numpy.unicode_ :
-        ##we'll apply compression rules for larger arrays
+    elif  bCheckIfStr(v) or bCheckdNumpyStr(v):
         ds=group.create_dataset(k, data=v)
         ds.attrs["type"]=str(type(v))
     elif numpy.isscalar(v):
