@@ -276,8 +276,6 @@ if sys.platform == "darwin":
 else:
 
     prgcuda = None
-
-    import cupy as cp
     
     RayleighCUDASource="""
    #include <cupy/complex.cuh>
@@ -498,6 +496,7 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
 
 def InitCuda(DeviceName=None):
     global prgcuda
+    import cupy as cp
     devCount = cp.cuda.runtime.getDeviceCount()
     if devCount == 0:
         raise SystemError("There are no CUDA devices.")

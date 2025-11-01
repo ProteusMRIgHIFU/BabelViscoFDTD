@@ -189,7 +189,7 @@ if 'Darwin' not in platform.system():
 
 
     print('Adding  CPU')
-    ext_modules=[CMakeExtension(c_module_name+'_single',),
+    ext_modules=[CMakeExtension(c_module_name+'_single'),
                 CMakeExtension(c_module_name+'_double')]
     
     cmdclass= {'build_ext': CMakeBuild}
