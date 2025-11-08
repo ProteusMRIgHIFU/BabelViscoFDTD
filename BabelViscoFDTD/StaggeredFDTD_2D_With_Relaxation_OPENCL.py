@@ -20,9 +20,10 @@ AllC=''
 def ListDevices():
     devicesIDs=[]
     platforms = cl.get_platforms()
-    devices=platforms[0].get_devices() 
-    for device in devices:
-        devicesIDs.append(device.name)
+    for p in platforms:
+        devices=p.get_devices() 
+        for device in devices:
+            devicesIDs.append(device.name)
     return devicesIDs
 
 class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_BASE):
@@ -35,12 +36,14 @@ class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_B
         TotalAllocs=0
         SCode = []
         platforms = cl.get_platforms()
-        devices=platforms[0].get_devices()  
         bFound=False
-        for device in devices:
-            if arguments['DefaultGPUDeviceName'] in device.name:
-                bFound=True
-                break
+        for p in platforms:
+            devices=p.get_devices()  
+            for device in devices:
+                if arguments['DefaultGPUDeviceName'] in device.name:
+                    bFound=True
+                    break
+            if bFound: break
         
         if bFound:
             print('Device ', arguments['DefaultGPUDeviceName'], ' Found!')

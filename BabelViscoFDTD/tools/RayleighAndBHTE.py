@@ -496,9 +496,12 @@ def GenerateFocusTx(f,Foc,Diam,c,PPWSurface=4):
     Tx = GenerateSurface(lstep,Diam,Foc)
     return Tx
 
+SelBackend=''
 def InitCuda(DeviceName=None):
     global prgcuda
     global cp
+    global SelBackend
+    SelBackend='CUDA'
     import cupy
     cp = cupy
     devCount = cp.cuda.runtime.getDeviceCount()
@@ -521,15 +524,18 @@ def InitOpenCL(DeviceName='AMD'):
     global queue 
     global prgcl 
     global ctx
+    global SelBackend
+    SelBackend='OpenCL'
     
     Platforms=cl.get_platforms()
     if len(Platforms)==0:
         raise SystemError("No OpenCL platforms")
     SelDevice=None
-    for device in Platforms[0].get_devices():
-        print(device.name)
-        if DeviceName in device.name:
-            SelDevice=device
+    for platform in Platforms:
+        for device in platform.get_devices():
+            print(device.name)
+            if DeviceName in device.name:
+                SelDevice=device
     if SelDevice is None:
         raise SystemError("No OpenCL device containing name [%s]" %(DeviceName))
     else:
@@ -545,6 +551,8 @@ def InitMetal(DeviceName='AMD'):
     
     global ctx
     global prgcl 
+    global SelBackend
+    SelBackend='Metal'
 
     devices = mc.get_devices()
     SelDevice=None
@@ -567,6 +575,8 @@ def InitMLX(DeviceName='AMD'):
     print('Iniitalizing BHTE code MLX')
     global ctx
     global prgcl 
+    global SelBackend
+    SelBackend='MLX'
     import mlx.core as mx
     MLXInputNames=['d_output','d_output2','d_input','d_input2',
                    'd_bhArr','d_perfArr','d_labels','d_Qarr','d_pointsMonitoring',
@@ -776,8 +786,11 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform=
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
     else:
-        return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
-
+        if SelBackend=='CUDA':
+            return ForwardSimpleCUDA(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
+        else:
+            return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
+  
     
 
 def getBHTECoefficient( kappa,rho,c_t,h,t_int,dt=0.1):
