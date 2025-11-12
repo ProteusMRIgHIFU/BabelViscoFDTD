@@ -107,11 +107,11 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
 
         for nStep in range(TimeSteps):
             for k in self.AllStressKernels:
-                self.AllStressKernels[k].set_arg(54,np.uint32(nStep))
-                self.AllStressKernels[k].set_arg(55,arguments['TypeSource'])
+                self.AllStressKernels[k].set_arg(55,np.uint32(nStep))
+                self.AllStressKernels[k].set_arg(56,arguments['TypeSource'])
             for k in self.AllParticleKernels:
-                self.AllParticleKernels[k].set_arg(54,np.uint32(nStep))
-                self.AllParticleKernels[k].set_arg(55,arguments['TypeSource'])
+                self.AllParticleKernels[k].set_arg(55,np.uint32(nStep))
+                self.AllParticleKernels[k].set_arg(56,arguments['TypeSource'])
             for k in self.AllStressKernels:
                 ev = cl.enqueue_nd_range_kernel(self.queue, self.AllStressKernels[k], self.AllGroupSizes[k], self.LocalSize)
             # queue.finish()
@@ -119,7 +119,7 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
                 ev = cl.enqueue_nd_range_kernel(self.queue, self.AllParticleKernels[k], self.AllGroupSizes[k], self.LocalSize)
             # queue.finish()
             if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.SensorsKernel.set_arg(56,np.uint32(nStep))
+                self.SensorsKernel.set_arg(57,np.uint32(nStep))
                 ev = cl.enqueue_nd_range_kernel(self.queue, self.SensorsKernel, (NumberSensors,1), None)
             self.queue.finish()
 
@@ -203,8 +203,9 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
             "Ox",
             "Oy",
             "Oz",
-            "Pressure"]
-        assert len(_IndexDataKernel)==54
+            "Pressure",
+            "ReflectorMask"]
+        assert len(_IndexDataKernel)==55
         
         for n,k in enumerate(_IndexDataKernel):
             for k2 in self.AllStressKernels:
@@ -213,8 +214,8 @@ class StaggeredFDTD_3D_With_Relaxation_OPENCL(StaggeredFDTD_3D_With_Relaxation_B
                 self.AllParticleKernels[k2].set_arg(n,ArraysGPUOp[k])
 
             self.SensorsKernel.set_arg(n,ArraysGPUOp[k])
-        self.SensorsKernel.set_arg(54,ArraysGPUOp['SensorOutput'])
-        self.SensorsKernel.set_arg(55,ArraysGPUOp['IndexSensorMap'])
+        self.SensorsKernel.set_arg(55,ArraysGPUOp['SensorOutput'])
+        self.SensorsKernel.set_arg(56,ArraysGPUOp['IndexSensorMap'])
 
         if arguments['ManualGroupSize'][0]!=-1:
             GroupSize=(arguments['ManualGroupSize'][0],arguments['ManualGroupSize'][1],arguments['ManualGroupSize'][2])

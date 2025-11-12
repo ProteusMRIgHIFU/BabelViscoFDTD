@@ -207,6 +207,14 @@ _PT  CurZone;
 			{
 
 	#if defined(_PR_MAIN) 
+				if (EL(ReflectorMask,i,j,k)==1)
+				{
+				#if defined(CPU)
+				    continue;
+				#else
+					return;
+				#endif
+				}
 				index=Ind_MaterialMap(i,j,k);
 				AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
 				

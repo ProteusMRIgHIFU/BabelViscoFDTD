@@ -343,6 +343,14 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	else
 	{
 #if defined(_ST_MAIN)
+		if (EL(ReflectorMask,i,j,k)==1)
+		{
+		#if defined(CPU)
+			continue;
+		#else
+			return;
+		#endif
+		}
   		//We are in the center, no need to check any limits, the use of the PML simplify this
   		index=Ind_Sigma_xx(i,j,k);
 

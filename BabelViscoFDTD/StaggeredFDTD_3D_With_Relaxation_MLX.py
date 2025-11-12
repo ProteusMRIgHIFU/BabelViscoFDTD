@@ -40,9 +40,9 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         self._c_mex_type = np.zeros(12, np.uint64)
         self._c_uint_type = np.uint64(0)
         self.HOST_INDEX_MEX = np.zeros((53, 2), np.uint64)
-        self.HOST_INDEX_UINT = np.zeros((3, 2), np.uint64)
+        self.HOST_INDEX_UINT = np.zeros((4, 2), np.uint64)
         self.LENGTH_INDEX_MEX = 53
-        self.LENGTH_INDEX_UINT = 3
+        self.LENGTH_INDEX_UINT = 4
         self.ZoneCount = arguments['SPP_ZONES']
         self._IndexDataMetal = {
             "V_x_x":0, "V_y_x":0, "V_z_x":0, "V_x_y":0, "V_y_y":0, "V_z_y":0, "V_x_z":0, "V_y_z":0, "V_z_z":0,
@@ -59,7 +59,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             "SensorOutput":11
             }
         self.C_IND = {
-            "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,
+            "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,"ReflectorMask":3,
             "nStep":0, "TypeSource":1, 
             "V_x_x":0, "V_y_x":1, "V_z_x":2, "V_x_y":3, "V_y_y":4, "V_z_y":5, "V_x_z":6, "V_y_z":7, "V_z_z":8, "Vx":9, "Vy":10, "Vz":11, "Rxx":12, "Ryy":13, "Rzz":14, "Rxy":15, "Rxz":16, "Ryz":17,
             "Sigma_x_xx":18, "Sigma_y_xx":19, "Sigma_z_xx":20, "Sigma_x_yy":21, "Sigma_y_yy":22, "Sigma_z_yy":23, "Sigma_x_zz":24, "Sigma_y_zz":25, "Sigma_z_zz":26, 
@@ -152,7 +152,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.int64(self._c_mex_type[self._IndexDataMetal[Name]])
             self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
-        elif Name in ['IndexSensorMap','SourceMap','MaterialMap',]: # unsigned int
+        elif Name in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']: # unsigned int
             self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.int64(self._c_uint_type)
             self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.int64(SizeCopy)
             self._c_uint_type += SizeCopy
@@ -161,7 +161,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self._outparams = outparams
         self.mex_buffer=[]
-        for nSizes in enumerate(self._c_mex_type):
+        for nSizes in self._c_mex_type:
             self.mex_buffer.append(self.ctx.zeros((int(nSizes))))
         self.uint_buffer=self.ctx.zeros(int(self._c_uint_type),self.ctx.uint32)
         self.constant_buffer_uint=self.ctx.array(self.ConstantBufferUINT)
@@ -172,7 +172,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
                     'Ox','Oy','Oz','SourceFunctions']:
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "float")
 
-        for k in ['IndexSensorMap','SourceMap','MaterialMap']:
+        for k in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
             self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
 
         self.localSensor = [1, 1, 1]

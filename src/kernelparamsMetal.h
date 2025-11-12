@@ -82,10 +82,6 @@
 
 #define __def_UINT_VAR(__NameVar)  (&p_UINT_BUFFER[ ((unsigned long) (p_INDEX_UINT[CInd_ ##__NameVar*2])) | (((unsigned long) (p_INDEX_UINT[CInd_ ##__NameVar*2+1]))<<32) ])
 
-// #define __def_MEX_VAR(__NameVar)  (&p_MEX_BUFFER[ p_INDEX_MEX[CInd_ ##__NameVar ]]) 
-// #define __def_UINT_VAR(__NameVar)  (&p_UINT_BUFFER[ p_INDEX_UINT[CInd_ ##__NameVar]])
-
-
 #define k_V_x_x_pr  __def_MEX_VAR_0(V_x_x)
 #define k_V_y_x_pr  __def_MEX_VAR_0(V_y_x)
 #define k_V_z_x_pr  __def_MEX_VAR_0(V_z_x)
@@ -154,3 +150,4 @@
 #define k_IndexSensorMap_pr  __def_UINT_VAR(IndexSensorMap)
 #define k_SourceMap_pr		 __def_UINT_VAR(SourceMap)
 #define k_MaterialMap_pr	 __def_UINT_VAR(MaterialMap)
+#define k_ReflectorMask_pr	 __def_UINT_VAR(ReflectorMask)
