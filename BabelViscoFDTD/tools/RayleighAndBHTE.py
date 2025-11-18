@@ -697,16 +697,15 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
     u2_real = np.zeros((rf.shape[0]),dtype=np.float32)
     u2_imag = np.zeros((rf.shape[0]),dtype=np.float32)
     
-    d_u2realpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
-    d_u2imagpr = cl.Buffer(ctx, mf.WRITE_ONLY, u2_real.nbytes)
-    
-    
+    d_u2realpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, u2_real)
+    d_u2imagpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, u2_real)
     
     knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
     if u2_real.shape[0] % 64 ==0:
         ks=[u2_real.shape[0]]
     else:
         ks=[int(u2_real.shape[0]/64)*64+64]
+
     knl(queue, ks, [64],
         np.int32(rf.shape[0]),
         np.float32(np.real(cwvnb)),
@@ -721,7 +720,7 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
         d_u2realpr,
         d_u2imagpr,
         np.int32(u0step))
-    
+        
     cl.enqueue_copy(queue, u2_real,d_u2realpr)
     cl.enqueue_copy(queue, u2_imag,d_u2imagpr)
     u2=u2_real+1j*u2_imag
@@ -764,7 +763,9 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
 
     knl = prgcl.function('ForwardSimpleMetal2')
 
-    cutOutSources=5000
+    cutOutSources=15000
+
+    allHandles=[]
 
     for nSource in range(0,center.shape[0],cutOutSources):
 
@@ -789,9 +790,14 @@ def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
                         d_u2realpr,
                         d_u2imagpr
                         )
+        allHandles.append(handle)
         ctx.commit_command_buffer()
         ctx.wait_command_buffer()
-        del handle
+        if len(allHandles)==5:
+            while len(allHandles)>0:
+                del allHandles.pop(0)
+    while len(allHandles)>0:
+        del allHandles.pop(0)
     u2_real=np.frombuffer(d_u2realpr,dtype=np.float32)
     u2_imag=np.frombuffer(d_u2imagpr,dtype=np.float32)
     u2=u2_real+1j*u2_imag
