@@ -84,6 +84,7 @@ import pyopencl as cl
 headerPartMetal = """
 #if defined(_METAL) || defined(_MLX)
 #include <metal_stdlib>
+#include <metal_math>
 using namespace metal;
 #endif
 """
@@ -94,7 +95,7 @@ RayleighOpenCLMetalSource="""
 
 typedef float FloatingType;
 
-#ifdef _OPENCL
+#if defined(_OPENCL)
 __kernel  void ForwardPropagationKernel(  const int mr2,
                                             const FloatingType c_wvnb_real,
                                             const FloatingType c_wvnb_imag,
@@ -111,7 +112,31 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
                                             )
     {
     int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
+#endif
 
+#if defined(_METAL) 
+#define mr1 (argsi[0])
+#define mr2 (argsi[1])
+#define mr1step (argsi[2])
+#define c_wvnb_real (argsf[0])
+#define c_wvnb_imag (argsf[1])
+#define MaxDistance (argsf[2])
+
+// This version limits the calculation to locations that are close, this is to explore
+kernel void ForwardSimpleMetal2(constant FloatingType *argsf [[ buffer(0) ]],
+                               constant int *argsi [[ buffer(1) ]], 
+                               const device FloatingType *r2pr        [[ buffer(2) ]],
+                               const device FloatingType *r1pr        [[ buffer(3) ]],
+                               const device FloatingType *a1pr        [[ buffer(4) ]],
+                               const device FloatingType *u1_real     [[ buffer(5) ]],
+                               const device FloatingType *u1_imag     [[ buffer(6) ]],
+                               device FloatingType *py_data_u2_real   [[ buffer(7) ]],
+                               device FloatingType *py_data_u2_imag   [[ buffer(8) ]],
+                               uint si2 [[ thread_position_in_grid ]])
+    {
+#endif
+
+#if defined(_OPENCL) || defined(_METAL) 
     FloatingType dx,dy,dz,R,r2x,r2y,r2z;
     FloatingType temp_r,tr ;
     FloatingType temp_i,ti,pCos,pSin ;
@@ -139,7 +164,11 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
             ti=(exp(R*c_wvnb_imag)*a1pr[si1]/R);
 
             tr=ti;
+            #if defined(_OPENCL)
             pSin=sincos(R*c_wvnb_real,ppCos);
+            #else
+            pSin=sincos(R*c_wvnb_real,pCos);
+            #endif
 
             tr*=(u1_real[si1+mr1step*si2]*pCos+u1_imag[si1+mr1step*si2]*pSin);
                         ti*=(u1_imag[si1+mr1step*si2]*pCos-u1_real[si1+mr1step*si2]*pSin);
@@ -153,10 +182,10 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
         temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
         temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
 
-        py_data_u2_real[si2]=temp_r/(2*pi);
-        py_data_u2_imag[si2]=temp_i/(2*pi);
+        py_data_u2_real[si2]+=temp_r/(2*pi);
+        py_data_u2_imag[si2]+=temp_i/(2*pi);
     }
-    }
+}
 #endif
     """
 
@@ -699,7 +728,77 @@ def ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
                                             
     return u2
 
-def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
+def ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0):
+    global ctx
+    global prgcl
+
+    if u0step!=0:
+        mr1=u0step
+        assert(mr1*rf.shape[0]==u0.shape[0])
+        assert(mr1==center.shape[0])
+        assert(mr1==ds.shape[0])
+    else:
+        mr1=center.shape[0]
+     
+    d_r2pr = ctx.buffer(rf)
+
+    
+    
+    u2_real = np.zeros((rf.shape[0]),dtype=np.float32)
+    u2_imag = np.zeros((rf.shape[0]),dtype=np.float32)
+    
+    d_u2realpr = ctx.buffer(u2_real)
+    d_u2imagpr = ctx.buffer(u2_imag)
+
+    intParams=np.zeros(3,np.int32)
+    intParams[0]=mr1
+    intParams[1]=rf.shape[0]
+    intParams[2]=u0step
+    fParams=np.zeros(3,np.float32)
+    fParams[0]=np.real(cwvnb)
+    fParams[1]=np.imag(cwvnb)
+    fParams[2]=MaxDistance
+
+    
+    d_fParams=ctx.buffer(fParams)
+
+    knl = prgcl.function('ForwardSimpleMetal2')
+
+    cutOutSources=5000
+
+    for nSource in range(0,center.shape[0],cutOutSources):
+
+        intParams[0]=np.min([cutOutSources,center.shape[0]-nSource])
+        d_intParams=ctx.buffer(intParams)
+
+        d_u1realpr=ctx.buffer(np.real(u0[nSource:nSource+cutOutSources]).copy())
+        d_u1imagpr=ctx.buffer(np.imag(u0[nSource:nSource+cutOutSources]).copy())
+        d_a1pr = ctx.buffer(ds[nSource:nSource+cutOutSources])
+        d_r1pr = ctx.buffer(center[nSource:nSource+cutOutSources,:])
+
+        ctx.init_command_buffer()
+
+        handle=knl(u2_real.shape[0],
+                        d_fParams,
+                        d_intParams,
+                        d_r2pr,
+                        d_r1pr,
+                        d_a1pr,
+                        d_u1realpr,
+                        d_u1imagpr,
+                        d_u2realpr,
+                        d_u2imagpr
+                        )
+        ctx.commit_command_buffer()
+        ctx.wait_command_buffer()
+        del handle
+    u2_real=np.frombuffer(d_u2realpr,dtype=np.float32)
+    u2_imag=np.frombuffer(d_u2imagpr,dtype=np.float32)
+    u2=u2_real+1j*u2_imag
+                                            
+    return u2
+
+def ForwardSimpleMetalLib(cwvnb,center,ds,u0,rf,deviceName,MaxDistance=-1.0,u0step=0):
     os.environ['__BabelMetalDevice'] =deviceName
     bUseMappedMemory=0
     if np.__version__ >="1.22.0":
@@ -781,8 +880,10 @@ def ForwardSimple(cwvnb,center,ds,u0,rf,MaxDistance=-1.0,u0step=0,MacOsPlatform=
     '''
     global prgcuda 
     if sys.platform == "darwin":
-        if MacOsPlatform in ['Metal','MLX']:
-            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
+        if MacOsPlatform =='Metal':
+            return ForwardSimpleMetal(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
+        elif MacOsPlatform == 'MLX':
+            return ForwardSimpleMetalLib(cwvnb,center,ds,u0,rf,deviceMetal,MaxDistance=MaxDistance,u0step=u0step)
         else:
             return ForwardSimpleOpenCL(cwvnb,center,ds,u0,rf,MaxDistance=MaxDistance,u0step=u0step)
     else:
