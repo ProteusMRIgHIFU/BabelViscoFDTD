@@ -18,8 +18,8 @@ import traceback
 
 KernelCoreSourceBHTE="""
     #define Tref 43.0
-     unsigned int DzDy=outerDimz*outerDimy;
-     unsigned int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
+     int DzDy=outerDimz*outerDimy;
+     int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
     
     float R1,R2,dtp;
     if(gtidx > 0 && gtidx < outerDimx-1 && gtidy > 0 && gtidy < outerDimy-1 && gtidz > 0 && gtidz < outerDimz-1)
@@ -172,19 +172,19 @@ OpenCLMetalHeaderBHTE="""
                                     __global const float 			*d_Qarr,
                                     __global const unsigned int		*d_pointsMonitoring,
                                         const float 			CoreTemp,
-                                        const  unsigned int				sonication,
-                                        const  unsigned int				outerDimx, 
-                                        const  unsigned int              outerDimy, 
-                                        const  unsigned int              outerDimz,
+                                        const  int				sonication,
+                                        const  int				outerDimx, 
+                                        const  int              outerDimy, 
+                                        const  int              outerDimz,
                                         const float 			dt,
                                         __global  float 	*d_MonitorSlice,
                                         __global float      *d_Temppoints,
-                                        const  unsigned int TotalStepsMonitoring,
-                                        const  unsigned int nFactorMonitoring,
-                                        const  unsigned int n_Step,
-                                        const unsigned int SelJ,
-                                        const unsigned int StartIndexQ,
-                                        const  unsigned TotalSteps)	
+                                        const  int TotalStepsMonitoring,
+                                        const  int nFactorMonitoring,
+                                        const  int n_Step,
+                                        const int SelJ,
+                                        const int StartIndexQ,
+                                        const  int TotalSteps)	
     {
         const int gtidx =  get_global_id(0);
         const int gtidy =  get_global_id(1);
@@ -217,7 +217,7 @@ OpenCLMetalHeaderBHTE="""
                                     device  float 	*d_MonitorSlice [[ buffer(9) ]],
                                     device  float 	*d_Temppoints [[ buffer(10) ]],
                                         constant float * floatParams [[ buffer(11) ]],
-                                        constant unsigned int * intparams [[ buffer(12) ]],
+                                        constant int * intparams [[ buffer(12) ]],
                                         uint gid[[thread_position_in_grid]])	
     {
         const int gtidx =  gid/(outerDimy*outerDimz);
@@ -891,7 +891,11 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
     if TotalStepsMonitoring % nFactorMonitoring!=0:
         TotalStepsMonitoring+=1
-    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+
+    if LocationMonitoring>=0:
+        MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    else: #just dummy size
+        MonitorSlice=np.zeros((10),np.float32)
 
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
 
@@ -1271,6 +1275,9 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
 
+    if LocationMonitoring<0: #we overwrite with empty array
+        MonitorSlice=np.zeros((0),np.float32)
+
     if MonitoringPointsMap is not None:
         return T1,Dose1,MonitorSlice,Qarr,TemperaturePoints
     else:
@@ -1381,7 +1388,10 @@ def BHTEMultiplePressureFields(PressureFields,
     if TotalStepsMonitoring % nFactorMonitoring!=0:
         TotalStepsMonitoring+=1
         
-    MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    if LocationMonitoring>=0:
+        MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    else: #just dummy size
+        MonitorSlice=np.zeros((10),np.float32)
     nFraction=int(TotalDurationSteps/10)
     
     if nFraction ==0:
@@ -1770,6 +1780,9 @@ def BHTEMultiplePressureFields(PressureFields,
         Dose1=np.array(ResDose).reshape((N1,N2,N3))
         MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
+    if LocationMonitoring<0: #we overwrite with empty array
+        MonitorSlice=np.zeros((0),np.float32)
+
     if MonitoringPointsMap is not None:
         return T1,Dose1,MonitorSlice,QArrList,TemperaturePoints
     else:
