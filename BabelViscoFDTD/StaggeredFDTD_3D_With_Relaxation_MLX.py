@@ -161,9 +161,9 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self._outparams = outparams
         self.mex_buffer=[]
-        for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.zeros(int(nSizes*4)))
-        self.uint_buffer=self.ctx.zeros(int(self._c_uint_type*4),self.ctx.uint32)
+        for nSizes in enumerate(self._c_mex_type):
+            self.mex_buffer.append(self.ctx.zeros((int(nSizes))))
+        self.uint_buffer=self.ctx.zeros(int(self._c_uint_type),self.ctx.uint32)
         self.constant_buffer_uint=self.ctx.array(self.ConstantBufferUINT)
 
         self._IndexManip()

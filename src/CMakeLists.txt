@@ -67,7 +67,7 @@ if(STAGGERED_PYTHON_SUPPORT)
 
     # Find NumPy headers
     exec_program(${PYTHON_EXECUTABLE}
-        ARGS "-c \"import numpy;import os; print(numpy.get_include()+os.sep+'numpy')\""
+        ARGS "-c \"import numpy;import os; print(numpy.get_include())\""
         OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
         RETURN_VALUE NUMPY_NOT_FOUND
         )

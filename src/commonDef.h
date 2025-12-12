@@ -116,9 +116,9 @@ typedef double mexType;
 
 	#define VALIDATE_FIELD_MEX_TYPE(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=_numpy_type) \
 												ERROR_STRING("The variable " #_VarName " is not the right type!");
-	#define VALIDATE_FIELD_UINT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=PyArray_UINT32) \
+	#define VALIDATE_FIELD_UINT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=NPY_UINT32) \
 										ERROR_STRING("The variable " #_VarName " is not uint32");
-	#define VALIDATE_FIELD_INT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=PyArray_INT32) \
+	#define VALIDATE_FIELD_INT32(_VarName) if (PyArray_TYPE(_VarName ##_mx)!=NPY_INT32) \
 										ERROR_STRING("The variable " #_VarName " is not int32");
 
 	#define GET_FIELD_GENERIC(_VarName) PyObject * _VarName ##_mx = (PyObject *)PyDict_GetItemString((PyObject*)py_argDict, #_VarName);\
@@ -158,7 +158,7 @@ typedef double mexType;
 	 }
 	#define BaseArray PyArrayObject
 	#define CREATE_ARRAY(_varName)  __descr = PyArray_DescrFromType(_numpy_type);\
-									 BaseArray * _varName ##_mx = (PyArrayObject* )PyArray_NewFromDescr(&PyArray_Type, __descr, ndim,dims, NULL,NULL,NPY_FORTRAN,NULL);\
+									 BaseArray * _varName ##_mx = (PyArrayObject* )PyArray_NewFromDescr(&PyArray_Type, __descr, ndim,dims, NULL,NULL,NPY_FORTRANORDER,NULL);\
 									if (_varName ##_mx ==NULL)\
 										ERROR_STRING("Out of memory when allocating " #_varName "_mx !!");
 

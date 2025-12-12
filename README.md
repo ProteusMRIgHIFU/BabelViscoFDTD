@@ -55,18 +55,11 @@ OpenCL for Windows and Apple Silicon systems is operational via `pyopencl`. In m
 
 ### Basic Python dependencies:
 latest version of `pip`
-* numpy>=1.15.1 (have this already installed if starting from a clean environment)
-* scipy>=1.1.0 (have this already installed if starting from a clean environment)
-* h5py>=2.9.0 (in native arm64 Python for Apple Silicon, install this via `conda install h5py`)
-* hdf5plugin>=3.2.0
-* pydicom>=1.3.0
-* setuptools >=51.0.0
-* pyopencl>=2020 (if in Windows, install manually a wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyopencl)
-* cupy-cuda11x in Linux (via pip). In Windows install with conda in windows with `conda install -c conda-forge cupy`
-
-`h5py`, `hdf5plugin`, `pydicom` and `pyopencl` are installed automatically as requirements if they are no present in the Python enviroment..
+* numpy>=1.15.1 (have this previously installed as numpy headers are required)
 
 ### macOS systems: Manual installation of modified `metalcompute` and 'MLX'
+Install `llvm-openmp` for required OpenMP support. In Anaconda, install with `conda install llvm-openmp`
+
 As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library, the modified version needs to be installed manually with
 
 `pip install  git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git`
@@ -123,8 +116,7 @@ You will need a VStudio installation that is compatible with your CUDA version; 
 ### macOS
 Any recent version of macOS and XCode with the command-line tools should be enough. Most tests have been done in Big Slur and Monterey. The CPU version in macOS supports OpenMP in ARM64 processors (M1, M1 Max, M2 ultra, M2). In X86-64, the OpenMP feature is now turned as experimental; by default, it will run only single-thread. See below for details on how to enable it. For ARM64 version will have OpenMP fully enabled by default.
 
-The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There are, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. MLX is only supported for Apple Silicon. Overall, MLX is the recommended backend for M1 processors and Metal for x64 systems with AMD GPUs.
-
+The OpenCL and Metal backed have been tested in Intel-based integrated GPUs, AMD GPUs and  ARM64-based systems. There are, however, some limitations of AMD GPUs with OpenCL (see below macOS notes for more details). Metal backend is available for both X86-64 and Apple Silicon systems. MLX is only supported for Apple Silicon. 
 
 #### macOS experimental OpenMP in X86-64
 Using Homebrew, install OpenMP and hint location to CMake:
@@ -210,7 +202,13 @@ All three GPU backends have analogous control to split the calculations in the G
 Since v0.9.2 Rayleigh-Sommerfeld's integral was added as a tool (see tutorial `Tutorial Notebooks\Tools -1 - Rayleigh Integral.ipynb`). This will be useful to combine models that include large volumes of water as the Rayleigh integral benefits considerably a GPU as the Rayleigh-Sommerfeld integral is hyper-parallel. The tool has support for 3 GPU backends: CUDA and OpenCL for Windows and Linux, and Metal and OpenCL for macOS.
 
 # Release notes
-* 1.1.2 - Aug 31, 2025
+* 1.1.6 - Nov 10th, 2025
+    * Fixing OpenCL operation 
+* 1.1.5 - Nov 1st, 2025
+    * Extra Fix support for Numpu >=2.0 in Windows and Linux
+* 1.1.4 - Oct 24, 2025
+    * Fix support for Numpu >=2.0 for CPU calculations
+* 1.1.2 - Oct 22, 2025
     * Use of automatic group size for MLX
 * 1.1.1 - Aug 31, 2025
     * Support for MLX backend

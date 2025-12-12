@@ -36,7 +36,7 @@
 
 
 #include <Python.h>
-#include <ndarrayobject.h>
+#include <numpy/ndarrayobject.h>
 
 
 #include <math.h>
