@@ -109,13 +109,14 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
                                             __global const FloatingType *u1_imag,
                                             __global  FloatingType  *py_data_u2_real,
                                             __global  FloatingType  *py_data_u2_imag,
-                                            const int mr1step
+                                            const int mr1step,
+                                            const int mr1base
                                             )
     {
     int si2 = get_global_id(0);		// Grid is a "flatten" 1D, thread blocks are 1D
 #endif
 
-#if defined(_METAL)
+#if defined(_METAL)  || defined(_MLX)
 #define mr1 (argsi[0])
 #define mr2 (argsi[1])
 #define mr1step (argsi[2])
@@ -123,22 +124,26 @@ __kernel  void ForwardPropagationKernel(  const int mr2,
 #define c_wvnb_real (argsf[0])
 #define c_wvnb_imag (argsf[1])
 #define MaxDistance (argsf[2])
+#endif
 
+#if defined(_METAL)  && !defined(MLX)
 // This version limits the calculation to locations that are close, this is to explore
 kernel void ForwardSimpleMetal2(constant FloatingType *argsf [[ buffer(0) ]],
                                constant int *argsi [[ buffer(1) ]],
-                               const device FloatingType *r2pr        [[ buffer(2) ]],
-                               const device FloatingType *r1pr        [[ buffer(3) ]],
-                               const device FloatingType *a1pr        [[ buffer(4) ]],
-                               const device FloatingType *u1_real     [[ buffer(5) ]],
-                               const device FloatingType *u1_imag     [[ buffer(6) ]],
+                               constant FloatingType *r2pr        [[ buffer(2) ]],
+                               constant FloatingType *r1pr        [[ buffer(3) ]],
+                               constant FloatingType *a1pr        [[ buffer(4) ]],
+                               constant FloatingType *u1_real     [[ buffer(5) ]],
+                               constant FloatingType *u1_imag     [[ buffer(6) ]],
                                device FloatingType *py_data_u2_real   [[ buffer(7) ]],
                                device FloatingType *py_data_u2_imag   [[ buffer(8) ]],
                                uint si2 [[ thread_position_in_grid ]])
     {
 #endif
-
-#if defined(_OPENCL) || defined(_METAL)
+#if defined(_MLX)
+	#define si2 thread_position_in_grid.x
+#endif
+#if defined(_OPENCL) || defined(_METAL) ||  defined(_MLX)
     FloatingType dx,dy,dz,R,r2x,r2y,r2z;
     FloatingType temp_r,tr ;
     FloatingType temp_i,ti,pCos,pSin ;
@@ -187,9 +192,11 @@ kernel void ForwardSimpleMetal2(constant FloatingType *argsf [[ buffer(0) ]],
         py_data_u2_real[si2]+=temp_r/(2*pi);
         py_data_u2_imag[si2]+=temp_i/(2*pi);
     }
+#if !defined(_MLX)
 }
 #endif
-#if defined(_METAL)
+#endif
+#if defined(_METAL)  || defined(_MLX)
 #undef mr1
 #undef mr2
 #undef mr1step
@@ -198,9 +205,10 @@ kernel void ForwardSimpleMetal2(constant FloatingType *argsf [[ buffer(0) ]],
 #undef c_wvnb_imag
 #undef MaxDistance
 #endif
+"""
 
-
-#if defined(_METAL)
+RayleigForwardLayerlSource="""
+#if defined(_METAL) 
 #define mr1 (argsi[0])
 #define mr2 (argsi[1])
 #define mr1step (argsi[2])
@@ -215,11 +223,11 @@ kernel void ForwardSimpleMetal2(constant FloatingType *argsf [[ buffer(0) ]],
 // This version limits the calculation to locations that are close, this is to explore
 kernel void Forward2Layer(constant FloatingType *argsf [[ buffer(0) ]],
                                constant int *argsi [[ buffer(1) ]],
-                               const device FloatingType *r2pr        [[ buffer(2) ]],
-                               const device FloatingType *r1pr        [[ buffer(3) ]],
-                               const device FloatingType *a1pr        [[ buffer(4) ]],
-                               const device FloatingType *u1_real     [[ buffer(5) ]],
-                               const device FloatingType *u1_imag     [[ buffer(6) ]],
+                               constant FloatingType *r2pr        [[ buffer(2) ]],
+                               constant FloatingType *r1pr        [[ buffer(3) ]],
+                               constant FloatingType *a1pr        [[ buffer(4) ]],
+                               constant FloatingType *u1_real     [[ buffer(5) ]],
+                               constant FloatingType *u1_imag     [[ buffer(6) ]],
                                device FloatingType *py_data_u2_real   [[ buffer(7) ]],
                                device FloatingType *py_data_u2_imag   [[ buffer(8) ]],
                                uint si2 [[ thread_position_in_grid ]])
@@ -343,13 +351,13 @@ OpenCLMetalHeaderBHTE = """
 #if defined(_METAL) && !defined(_MLX)
         kernel  void BHTEFDTDKernel( device float 		*d_output [[ buffer(0) ]],
                                     device float 		*d_output2 [[ buffer(1) ]],
-                                    device const float 			*d_input [[ buffer(2) ]],
-                                    device const float 			*d_input2 [[ buffer(3) ]],
-                                    device const float 			*d_bhArr [[ buffer(4) ]],
-                                    device const float 			*d_perfArr [[ buffer(5) ]],
-                                    device const unsigned int		*d_labels [[ buffer(6) ]],
-                                    device const float 			*d_Qarr [[ buffer(7) ]],
-                                    device const unsigned int		*d_pointsMonitoring [[ buffer(8) ]],
+                                    constant float 			*d_input [[ buffer(2) ]],
+                                    constant float 			*d_input2 [[ buffer(3) ]],
+                                    constant float 			*d_bhArr [[ buffer(4) ]],
+                                    constant float 			*d_perfArr [[ buffer(5) ]],
+                                    constant unsigned int		*d_labels [[ buffer(6) ]],
+                                    constant float 			*d_Qarr [[ buffer(7) ]],
+                                    constant unsigned int		*d_pointsMonitoring [[ buffer(8) ]],
                                     device  float 	*d_MonitorSlice [[ buffer(9) ]],
                                     device  float 	*d_Temppoints [[ buffer(10) ]],
                                         constant float * floatParams [[ buffer(11) ]],
@@ -721,7 +729,8 @@ def InitMetal(DeviceName="AMD"):
     prgcl = ctx.kernel(
         "#define _METAL\n"
         + headerPartMetal
-        + RayleighOpenCLMetalSource
+        + RayleighOpenCLMetalSource 
+        + RayleigForwardLayerlSource
         + OpenCLKernelBHTE
     )
 
@@ -766,7 +775,8 @@ def InitMLX(DeviceName="AMD"):
         False,
     ]
     ctx = mx
-    prgcl = ctx.fast.metal_kernel(
+    prgcl={}
+    prgcl['BHTE'] = ctx.fast.metal_kernel(
         name="BHTE",
         input_names=MLXInputNames,
         input_rw_status=MLXReadWriteStatus,
@@ -774,6 +784,40 @@ def InitMLX(DeviceName="AMD"):
         source=OpenCLKernelBHTE,
         header="#define _MLX\n" + headerPartMetal,
     )
+
+    MLXInputNames = [
+        "argsf",
+        "argsi",
+        "r2pr",
+        "r1pr",
+        "a1pr",
+        "u1_real",
+        "u1_imag",
+        "py_data_u2_real",
+        "py_data_u2_imag"
+    ]
+
+    MLXReadWriteStatus = [
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        True,
+        True
+    ]
+
+    prgcl['ForwardSimpleMetal2'] = ctx.fast.metal_kernel(
+        name="ForwardSimpleMetal2",
+        input_names=MLXInputNames,
+        input_rw_status=MLXReadWriteStatus,
+        output_names=["dummy"],
+        source=RayleighOpenCLMetalSource,
+        header="#define _MLX\n" + headerPartMetal,
+    )
+
 
 
 def ForwardSimpleCUDA(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0):
@@ -830,9 +874,7 @@ def ForwardSimpleCUDA(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0):
     return u2
 
 
-def ForwardSimpleOpenCL(
-    cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000
-):
+def ForwardSimpleOpenCL(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000):
     global queue
     global prg
     global ctx
@@ -859,8 +901,8 @@ def ForwardSimpleOpenCL(
     u2_real = np.zeros((rf.shape[0]), dtype=np.float32)
     u2_imag = np.zeros((rf.shape[0]), dtype=np.float32)
 
-    d_u2realpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, u2_real)
-    d_u2imagpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, u2_real)
+    d_u2realpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=u2_real)
+    d_u2imagpr = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=u2_imag)
 
     knl = prgcl.ForwardPropagationKernel  # Use this Kernel object for repeated calls
     if u2_real.shape[0] % 64 == 0:
@@ -868,24 +910,27 @@ def ForwardSimpleOpenCL(
     else:
         ks = [int(u2_real.shape[0] / 64) * 64 + 64]
 
-    knl(
-        queue,
-        ks,
-        [64],
-        np.int32(rf.shape[0]),
-        np.float32(np.real(cwvnb)),
-        np.float32(np.imag(cwvnb)),
-        np.float32(MaxDistance),
-        np.int32(mr1),
-        d_r2pr,
-        d_r1pr,
-        d_a1pr,
-        d_u1realpr,
-        d_u1imagpr,
-        d_u2realpr,
-        d_u2imagpr,
-        np.int32(u0step),
-    )
+    for nSource in range(0, mr1, sourceStep):
+        mr1step= np.min([sourceStep, mr1 - nSource])
+        knl(
+            queue,
+            ks,
+            [64],
+            np.int32(rf.shape[0]),
+            np.float32(np.real(cwvnb)),
+            np.float32(np.imag(cwvnb)),
+            np.float32(MaxDistance),
+            np.int32(mr1step),
+            d_r2pr,
+            d_r1pr,
+            d_a1pr,
+            d_u1realpr,
+            d_u1imagpr,
+            d_u2realpr,
+            d_u2imagpr,
+            np.int32(u0step),
+            np.int32(nSource),
+        )
 
     cl.enqueue_copy(queue, u2_real, d_u2realpr)
     cl.enqueue_copy(queue, u2_imag, d_u2imagpr)
@@ -894,8 +939,7 @@ def ForwardSimpleOpenCL(
     return u2
 
 
-def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000
-):
+def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000):
     global ctx
     global prgcl
 
@@ -934,8 +978,8 @@ def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, so
 
     knl = prgcl.function("ForwardSimpleMetal2")
 
-    for nSource in range(0, center.shape[0], sourceStep):
-        intParams[0] = np.min([sourceStep, center.shape[0] - nSource])
+    for nSource in range(0, mr1, sourceStep):
+        intParams[0] = np.min([sourceStep, mr1 - nSource])
         intParams[3] = nSource
         d_intParams = ctx.buffer(intParams)
 
@@ -958,6 +1002,84 @@ def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, so
         del handle
     u2_real = np.frombuffer(d_u2realpr, dtype=np.float32)
     u2_imag = np.frombuffer(d_u2imagpr, dtype=np.float32)
+    u2 = u2_real + 1j * u2_imag
+
+    return u2
+
+def ForwardSimpleMLX(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000):
+    global ctx
+    global prgcl
+
+    if u0step != 0:
+        mr1 = u0step
+        assert mr1 * rf.shape[0] == u0.shape[0]
+        assert mr1 == center.shape[0]
+        assert mr1 == ds.shape[0]
+    else:
+        mr1 = center.shape[0]
+
+    d_r2pr = ctx.array(rf)
+
+    d_u2realpr = ctx.zeros(rf.shape[0],ctx.float32)
+    d_u2imagpr = ctx.zeros(rf.shape[0],ctx.float32)
+
+    d_u1realpr = ctx.array(np.real(u0).copy())
+    d_u1imagpr = ctx.array(np.imag(u0).copy())
+    d_a1pr = ctx.array(ds)
+    d_r1pr = ctx.array(center)
+
+    d_intParams = ctx.zeros(4, ctx.int32)
+    d_intParams[0] = mr1
+    d_intParams[1] = rf.shape[0]
+    d_intParams[2] = u0step
+
+    d_fParams = ctx.zeros(3, ctx.float32)
+    d_fParams[0] = np.real(cwvnb)
+    d_fParams[1] = np.imag(cwvnb)
+    d_fParams[2] = MaxDistance
+
+
+    knl = prgcl["ForwardSimpleMetal2"]
+
+    AllHandles=[]
+
+    n=0
+    for nSource in range(0, mr1, sourceStep):
+        d_intParams[0] = np.min([sourceStep, mr1 - nSource])
+        d_intParams[3] = nSource
+
+        inputparams=[d_fParams,
+            d_intParams,
+            d_r2pr,
+            d_r1pr,
+            d_a1pr,
+            d_u1realpr,
+            d_u1imagpr,
+            d_u2realpr,
+            d_u2imagpr]
+        
+        handle=knl(
+                inputs=inputparams,
+                grid=[rf.shape[0], 1, 1],
+                threadgroup=[1024, 1, 1],
+                output_shapes=[
+                    [1, 1, 1]
+                ],  # dummy output is just 1 float, as we never write to it
+                output_dtypes=[ctx.float32],
+                use_optimal_threadgroups=True,
+            )[0]
+        
+        AllHandles.append(handle)
+        n+=1
+        if n % 10 == 0:
+            while len(AllHandles) > 0:
+                ctx.eval(AllHandles.pop(0))
+
+    while len(AllHandles) > 0:
+        ctx.eval(AllHandles.pop(0))
+
+    u2_real = np.array(d_u2realpr)
+    u2_imag = np.array(d_u2imagpr)
     u2 = u2_real + 1j * u2_imag
 
     return u2
@@ -1148,15 +1270,15 @@ def ForwardSimple(
                 sourceStep=sourceStep,
             )
         elif MacOsPlatform == "MLX":
-            return ForwardSimpleMetalLib(
+            return ForwardSimpleMLX(
                 cwvnb,
                 center,
                 ds,
                 u0,
                 rf,
-                deviceMetal,
                 MaxDistance=MaxDistance,
                 u0step=u0step,
+                sourceStep=sourceStep,
             )
         else:
             return ForwardSimpleOpenCL(
@@ -1674,7 +1796,7 @@ def BHTE(
         d_MonitoringPoints = ctx.array(MonitoringPoints)
         d_TemperaturePoints = ctx.zeros(TemperaturePoints.shape)
 
-        knl = prgcl
+        knl = prgcl["BHTE"]
 
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.array(floatparams)
