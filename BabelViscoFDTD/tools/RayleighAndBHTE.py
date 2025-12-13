@@ -1205,7 +1205,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
         print('Done BHTE')                               
         T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
-        MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
     elif Backend =='MLX':
         d_perfArr=ctx.array(perfArr)
@@ -1288,7 +1289,8 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     
         T1=np.array(ResTemp).reshape((N1,N2,N3))
         Dose1=np.array(ResDose).reshape((N1,N2,N3))
-        MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
 
     if LocationMonitoring<0: #we overwrite with empty array
@@ -1703,7 +1705,8 @@ def BHTEMultiplePressureFields(PressureFields,
         print('Done BHTE')                               
         T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
         Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
-        MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
     else:
         assert(Backend=='MLX')
@@ -1794,7 +1797,8 @@ def BHTEMultiplePressureFields(PressureFields,
         print('Done BHTE')                               
         T1=np.array(ResTemp).reshape((N1,N2,N3))
         Dose1=np.array(ResDose).reshape((N1,N2,N3))
-        MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
         TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
     if LocationMonitoring<0: #we overwrite with empty array
         MonitorSlice=np.zeros((0),np.float32)
