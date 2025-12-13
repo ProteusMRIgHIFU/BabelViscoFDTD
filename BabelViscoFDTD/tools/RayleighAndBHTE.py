@@ -15,12 +15,13 @@ import traceback
 from sysconfig import get_paths
 
 import numpy as np
+import gc
 
 KernelCoreSourceBHTE = """
     #define Tref 43.0
-     unsigned int DzDy=outerDimz*outerDimy;
-     unsigned int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
-
+     int DzDy=outerDimz*outerDimy;
+     int coord = gtidx*DzDy + gtidy*outerDimz + gtidz;
+    
     float R1,R2,dtp;
     if(gtidx > 0 && gtidx < outerDimx-1 && gtidy > 0 && gtidy < outerDimy-1 && gtidz > 0 && gtidz < outerDimz-1)
     {
@@ -316,19 +317,19 @@ OpenCLMetalHeaderBHTE = """
                                     __global const float 			*d_Qarr,
                                     __global const unsigned int		*d_pointsMonitoring,
                                         const float 			CoreTemp,
-                                        const  unsigned int				sonication,
-                                        const  unsigned int				outerDimx,
-                                        const  unsigned int              outerDimy,
-                                        const  unsigned int              outerDimz,
+                                        const  int				sonication,
+                                        const  int				outerDimx, 
+                                        const  int              outerDimy, 
+                                        const  int              outerDimz,
                                         const float 			dt,
                                         __global  float 	*d_MonitorSlice,
                                         __global float      *d_Temppoints,
-                                        const  unsigned int TotalStepsMonitoring,
-                                        const  unsigned int nFactorMonitoring,
-                                        const  unsigned int n_Step,
-                                        const unsigned int SelJ,
-                                        const unsigned int StartIndexQ,
-                                        const  unsigned TotalSteps)
+                                        const  int TotalStepsMonitoring,
+                                        const  int nFactorMonitoring,
+                                        const  int n_Step,
+                                        const int SelJ,
+                                        const int StartIndexQ,
+                                        const  int TotalSteps)	
     {
         const int gtidx =  get_global_id(0);
         const int gtidy =  get_global_id(1);
@@ -361,8 +362,8 @@ OpenCLMetalHeaderBHTE = """
                                     device  float 	*d_MonitorSlice [[ buffer(9) ]],
                                     device  float 	*d_Temppoints [[ buffer(10) ]],
                                         constant float * floatParams [[ buffer(11) ]],
-                                        constant unsigned int * intparams [[ buffer(12) ]],
-                                        uint gid[[thread_position_in_grid]])
+                                        constant int * intparams [[ buffer(12) ]],
+                                        uint gid[[thread_position_in_grid]])	
     {
         const int gtidx =  gid/(outerDimy*outerDimz);
         const int gtidy =  (gid - gtidx*outerDimy*outerDimz)/outerDimz;
@@ -1444,43 +1445,52 @@ def BHTE(
         MonitoringPoints = np.zeros(MaterialMap.shape, dtype=np.uint32)
         TemperaturePoints = np.zeros((10), np.float32)  # just dummy array
 
-    TotalStepsMonitoring = int(TotalDurationSteps / nFactorMonitoring)
-    if TotalStepsMonitoring % nFactorMonitoring != 0:
-        TotalStepsMonitoring += 1
-    MonitorSlice = np.zeros(
-        (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring), np.float32
-    )
+    TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
+    if TotalStepsMonitoring % nFactorMonitoring!=0:
+        TotalStepsMonitoring+=1
+
+    if LocationMonitoring>=0:
+        MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    else: #just dummy size
+        MonitorSlice=np.zeros((10),np.float32)
 
     T1 = np.zeros(initTemp.shape, dtype=np.float32)
 
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape, dtype=np.float32)
 
-    nFraction = int(TotalDurationSteps / 10)
-    if nFraction == 0:
-        nFraction = 1
+    nFraction=int(TotalDurationSteps/10)
+    if nFraction ==0:
+        nFraction=1
+
+    GPUArrays=[]
 
     if Backend == "OpenCL":
         mf = cl.mem_flags
 
-        d_perfArr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
-        d_bhArr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
-        d_Qarr = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
-        d_MaterialMap = cl.Buffer(
-            ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap
-        )
-        d_MonitoringPoints = cl.Buffer(
-            ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints
-        )
-
-        d_T0 = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=initTemp)
-        d_T1 = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=T1)
-
-        d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=Dose0)
-        d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=Dose1)
-
+        d_perfArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=perfArr)
+        d_bhArr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=bhArr)
+        d_Qarr=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Qarr)
+        d_MaterialMap=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MaterialMap)
+        d_MonitoringPoints=cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=MonitoringPoints)
+        d_T0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=initTemp)
+        d_T1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=T1)
+        d_Dose0 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose0)
+        d_Dose1 = cl.Buffer(ctx, mf.READ_WRITE| mf.COPY_HOST_PTR, hostbuf=Dose1)
         d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
         d_TemperaturePoints = cl.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
+
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_Qarr)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
 
         knl = prgcl.BHTEFDTDKernel
 
@@ -1601,6 +1611,18 @@ def BHTE(
         d_MonitorSlice = cp.zeros(MonitorSlice.shape, cp.float32)
         d_TemperaturePoints = cp.zeros(TemperaturePoints.shape, cp.float32)
 
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_Qarr)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
+
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
         for n in range(TotalDurationSteps):
@@ -1698,7 +1720,19 @@ def BHTE(
         d_MonitoringPoints = ctx.buffer(MonitoringPoints)
         d_TemperaturePoints = ctx.buffer(TemperaturePoints.nbytes)
 
-        knl = prgcl.function("BHTEFDTDKernel")
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_Qarr)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
+
+        knl = prgcl.function('BHTEFDTDKernel')
 
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.buffer(floatparams)
@@ -1769,25 +1803,22 @@ def BHTE(
             ResTemp = d_T1
             ResDose = d_Dose1
         else:
-            ResTemp = d_T0
-            ResDose = d_Dose0
-
-        if "arm64" not in platform.platform():
-            ctx.sync_buffers((ResTemp, ResDose, d_MonitorSlice, d_TemperaturePoints))
-        print("Done BHTE")
-        T1 = np.frombuffer(ResTemp, dtype=np.float32).reshape((N1, N2, N3))
-        Dose1 = np.frombuffer(ResDose, dtype=np.float32).reshape((N1, N2, N3))
-        MonitorSlice = np.frombuffer(d_MonitorSlice, dtype=np.float32).reshape(
-            (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring)
-        )
-        TemperaturePoints = np.frombuffer(
-            d_TemperaturePoints, dtype=np.float32
-        ).reshape(TemperaturePoints.shape)
-    elif Backend == "MLX":
-        d_perfArr = ctx.array(perfArr)
-        d_bhArr = ctx.array(bhArr)
-        d_Qarr = ctx.array(Qarr)
-        d_MaterialMap = ctx.array(MaterialMap)
+            ResTemp=d_T0
+            ResDose=d_Dose0
+    
+        if 'arm64' not in platform.platform():
+            ctx.sync_buffers((ResTemp,ResDose,d_MonitorSlice,d_TemperaturePoints))
+        print('Done BHTE')                               
+        T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
+        Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
+    elif Backend =='MLX':
+        d_perfArr=ctx.array(perfArr)
+        d_bhArr=ctx.array(bhArr)
+        d_Qarr=ctx.array(Qarr)
+        d_MaterialMap=ctx.array(MaterialMap)
         d_T0 = ctx.array(initTemp)
         d_T1 = ctx.array(T1)
         d_Dose0 = ctx.array(Dose0)
@@ -1795,6 +1826,18 @@ def BHTE(
         d_MonitorSlice = ctx.zeros(MonitorSlice.shape)
         d_MonitoringPoints = ctx.array(MonitoringPoints)
         d_TemperaturePoints = ctx.zeros(TemperaturePoints.shape)
+
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_Qarr)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
 
         knl = prgcl["BHTE"]
 
@@ -1879,17 +1922,22 @@ def BHTE(
             ResTemp = d_T1
             ResDose = d_Dose1
         else:
-            ResTemp = d_T0
-            ResDose = d_Dose0
+            ResTemp=d_T0
+            ResDose=d_Dose0
+    
+        T1=np.array(ResTemp).reshape((N1,N2,N3))
+        Dose1=np.array(ResDose).reshape((N1,N2,N3))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
 
-        T1 = np.array(ResTemp).reshape((N1, N2, N3))
-        Dose1 = np.array(ResDose).reshape((N1, N2, N3))
-        MonitorSlice = np.array(d_MonitorSlice).reshape(
-            (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring)
-        )
-        TemperaturePoints = np.array(d_TemperaturePoints).reshape(
-            TemperaturePoints.shape
-        )
+    if LocationMonitoring<0: #we overwrite with empty array
+        MonitorSlice=np.zeros((0),np.float32)
+
+    while len(GPUArrays)>0:
+        garray=GPUArrays.pop()
+        del garray
+    gc.collect()
 
     if MonitoringPointsMap is not None:
         return T1, Dose1, MonitorSlice, Qarr, TemperaturePoints
@@ -2019,17 +2067,20 @@ def BHTEMultiplePressureFields(
     Dose0 = initDose
     Dose1 = np.zeros(MaterialMap.shape, dtype=np.float32)
 
-    TotalStepsMonitoring = int(TotalDurationSteps / nFactorMonitoring)
-    if TotalStepsMonitoring % nFactorMonitoring != 0:
-        TotalStepsMonitoring += 1
+    TotalStepsMonitoring=int(TotalDurationSteps/nFactorMonitoring)
+    if TotalStepsMonitoring % nFactorMonitoring!=0:
+        TotalStepsMonitoring+=1
+        
+    if LocationMonitoring>=0:
+        MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
+    else: #just dummy size
+        MonitorSlice=np.zeros((10),np.float32)
+    nFraction=int(TotalDurationSteps/10)
+    
+    if nFraction ==0:
+        nFraction=1
 
-    MonitorSlice = np.zeros(
-        (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring), np.float32
-    )
-    nFraction = int(TotalDurationSteps / 10)
-
-    if nFraction == 0:
-        nFraction = 1
+    GPUArrays=[]
 
     if Backend == "OpenCL":
         mf = cl.mem_flags
@@ -2051,6 +2102,18 @@ def BHTEMultiplePressureFields(
 
         d_MonitorSlice = cl.Buffer(ctx, mf.WRITE_ONLY, MonitorSlice.nbytes)
         d_TemperaturePoints = cl.Buffer(ctx, mf.WRITE_ONLY, TemperaturePoints.nbytes)
+
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_QArrList)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
 
         knl = prgcl.BHTEFDTDKernel
 
@@ -2176,6 +2239,18 @@ def BHTEMultiplePressureFields(
         d_MonitorSlice = cp.zeros(MonitorSlice.shape, cp.float32)
         d_TemperaturePoints = cp.zeros(TemperaturePoints.shape, cp.float32)
 
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_QArrList)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
+
         BHTEKernel = prgcuda.get_function("BHTEFDTDKernel")
 
         for n in range(TotalDurationSteps):
@@ -2259,24 +2334,37 @@ def BHTEMultiplePressureFields(
             ResTemp = d_T1
             ResDose = d_Dose1
         else:
-            ResTemp = d_T0
-            ResDose = d_Dose0
-        T1 = ResTemp.get()
-        Dose1 = ResDose.get()
-        MonitorSlice = d_MonitorSlice.get()
-        TemperaturePoints = d_TemperaturePoints.get()
-    elif Backend == "Metal":
-        d_perfArr = ctx.buffer(perfArr)
-        d_bhArr = ctx.buffer(bhArr)
-        d_QArrList = ctx.buffer(QArrList)
-        d_MaterialMap = ctx.buffer(MaterialMap)
+            ResTemp=d_T0
+            ResDose=d_Dose0
+        T1=ResTemp.get()
+        Dose1=ResDose.get()
+        MonitorSlice=d_MonitorSlice.get() 
+        TemperaturePoints=d_TemperaturePoints.get()  
+    elif Backend=='Metal':
+        d_perfArr=ctx.buffer(perfArr)
+        d_bhArr=ctx.buffer(bhArr)
+        d_QArrList=ctx.buffer(QArrList)
+        d_MaterialMap=ctx.buffer(MaterialMap);
         d_T0 = ctx.buffer(initTemp)
         d_T1 = ctx.buffer(T1)
         d_Dose0 = ctx.buffer(Dose0)
         d_Dose1 = ctx.buffer(Dose1)
         d_MonitorSlice = ctx.buffer(MonitorSlice.nbytes)
-        d_MonitoringPoints = ctx.buffer(MonitoringPoints)
-        d_TemperaturePoints = ctx.buffer(TemperaturePoints.nbytes)
+        d_MonitoringPoints=ctx.buffer(MonitoringPoints)
+        d_TemperaturePoints=ctx.buffer(TemperaturePoints.nbytes)
+        
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_QArrList)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
+
 
         knl = prgcl.function("BHTEFDTDKernel")
 
@@ -2359,17 +2447,14 @@ def BHTEMultiplePressureFields(
             ResTemp = d_T0
             ResDose = d_Dose0
 
-        if "arm64" not in platform.platform():
-            ctx.sync_buffers((ResTemp, ResDose, d_MonitorSlice, d_TemperaturePoints))
-        print("Done BHTE")
-        T1 = np.frombuffer(ResTemp, dtype=np.float32).reshape((N1, N2, N3))
-        Dose1 = np.frombuffer(ResDose, dtype=np.float32).reshape((N1, N2, N3))
-        MonitorSlice = np.frombuffer(d_MonitorSlice, dtype=np.float32).reshape(
-            (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring)
-        )
-        TemperaturePoints = np.frombuffer(
-            d_TemperaturePoints, dtype=np.float32
-        ).reshape(TemperaturePoints.shape)
+        if 'arm64' not in platform.platform():
+            ctx.sync_buffers((ResTemp,ResDose,d_MonitorSlice,d_TemperaturePoints))
+        print('Done BHTE')                               
+        T1=np.frombuffer(ResTemp,dtype=np.float32).reshape((N1,N2,N3))
+        Dose1=np.frombuffer(ResDose,dtype=np.float32).reshape((N1,N2,N3))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.frombuffer(d_MonitorSlice,dtype=np.float32).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.frombuffer(d_TemperaturePoints,dtype=np.float32).reshape(TemperaturePoints.shape)
     else:
         assert Backend == "MLX"
         d_perfArr = ctx.array(perfArr)
@@ -2383,6 +2468,18 @@ def BHTEMultiplePressureFields(
         d_MonitorSlice = ctx.zeros(MonitorSlice.shape)
         d_MonitoringPoints = ctx.array(MonitoringPoints)
         d_TemperaturePoints = ctx.zeros(TemperaturePoints.shape)
+
+        GPUArrays.append(d_perfArr)
+        GPUArrays.append(d_bhArr)
+        GPUArrays.append(d_QArrList)
+        GPUArrays.append(d_MaterialMap)
+        GPUArrays.append(d_T0)
+        GPUArrays.append(d_T1)
+        GPUArrays.append(d_Dose0)
+        GPUArrays.append(d_Dose1)
+        GPUArrays.append(d_MonitorSlice)
+        GPUArrays.append(d_MonitoringPoints)
+        GPUArrays.append(d_TemperaturePoints)
 
         knl = prgcl
 
@@ -2477,15 +2574,21 @@ def BHTEMultiplePressureFields(
             ResTemp = d_T0
             ResDose = d_Dose0
 
-        print("Done BHTE")
-        T1 = np.array(ResTemp).reshape((N1, N2, N3))
-        Dose1 = np.array(ResDose).reshape((N1, N2, N3))
-        MonitorSlice = np.array(d_MonitorSlice).reshape(
-            (MaterialMap.shape[0], MaterialMap.shape[2], TotalStepsMonitoring)
-        )
-        TemperaturePoints = np.array(d_TemperaturePoints).reshape(
-            TemperaturePoints.shape
-        )
+        
+        print('Done BHTE')                               
+        T1=np.array(ResTemp).reshape((N1,N2,N3))
+        Dose1=np.array(ResDose).reshape((N1,N2,N3))
+        if LocationMonitoring>=0:
+            MonitorSlice=np.array(d_MonitorSlice).reshape((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring))
+        TemperaturePoints=np.array(d_TemperaturePoints).reshape(TemperaturePoints.shape)
+    if LocationMonitoring<0: #we overwrite with empty array
+        MonitorSlice=np.zeros((0),np.float32)
+
+    while len(GPUArrays)>0:
+        garray=GPUArrays.pop()
+        del garray
+    gc.collect()
+
     if MonitoringPointsMap is not None:
         return T1, Dose1, MonitorSlice, QArrList, TemperaturePoints
     else:
