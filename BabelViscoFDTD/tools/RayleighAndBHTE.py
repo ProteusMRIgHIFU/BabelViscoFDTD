@@ -956,7 +956,6 @@ def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, so
 
     u2_real = np.zeros((rf.shape[0]), dtype=np.float32)
     u2_imag = np.zeros((rf.shape[0]), dtype=np.float32)
-
     d_u2realpr = ctx.buffer(u2_real)
     d_u2imagpr = ctx.buffer(u2_imag)
 
