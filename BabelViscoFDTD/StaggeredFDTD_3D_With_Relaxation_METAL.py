@@ -15,6 +15,7 @@ from distutils.sysconfig import get_python_inc
 from math import ceil
 import ctypes
 from ctypes import c_byte, c_int, c_uint32, c_float, c_wchar_p, c_uint64
+import gc
 
 mc = None
 
@@ -163,8 +164,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self._outparams = outparams
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.buffer(nSizes*4))
-        self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
+            self.mex_buffer.append(self.ctx.buffer(int(nSizes*4)))
+        self.uint_buffer=self.ctx.buffer(int(self._c_uint_type*4))
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
 
         self._IndexManip()
@@ -382,6 +383,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         while len(self.mex_buffer)>0:
             handle = self.mex_buffer.pop()
             del handle
+        gc.collect()
 
 def StaggeredFDTD_3D_METAL(arguments):
     Instance = StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(arguments)
