@@ -912,6 +912,7 @@ def BHTE(Pressure,MaterialMap,MaterialList,dx,
     if LocationMonitoring>=0:
         MonitorSlice=np.zeros((MaterialMap.shape[0],MaterialMap.shape[2],TotalStepsMonitoring),np.float32)
     else: #just dummy size
+        print('Not collecting MonitorSlice')
         MonitorSlice=np.zeros((10),np.float32)
 
     T1 = np.zeros(initTemp.shape,dtype=np.float32)
