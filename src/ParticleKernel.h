@@ -207,6 +207,14 @@ _PT  CurZone;
 			{
 
 	#if defined(_PR_MAIN) 
+				if (EL(ReflectorMask,i,j,k)==1)
+				{
+				#if defined(CPU)
+				    continue;
+				#else
+					return;
+				#endif
+				}
 				index=Ind_MaterialMap(i,j,k);
 				AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
 				
@@ -279,7 +287,7 @@ _PT  CurZone;
 			}
 		}
 	#if defined(_PR_MAIN) 
-	if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 && nStep>=SensorStart*SensorSubSampling)
+	if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 )
 	{
 		if (ZoneCount>1)
 		{
@@ -290,7 +298,7 @@ _PT  CurZone;
 		CurZone=0;
 		index=IndN1N2N3(i,j,k,0);
 		index2=N1*N2*N3;
-		if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+		if ((SelRMSorPeak & SEL_RMS) && (nStep>=SensorStart*SensorSubSampling)) //RMS was selected, and it is always at the location 0 of dim 5
 		{
 			if (IS_Vx_SELECTED(SelMapsRMSPeak))
 				ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)+=accum_x*accum_x;

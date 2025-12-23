@@ -140,7 +140,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         ArraysGPUOp={}
         if extra_params["BACKEND"] in ["OPENCL","CUDA"]:
             for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
-                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
+                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
         for k in ['V_x_x','V_y_x','V_z_x']:
             self._ownGpuCalloc(k,td,outparams['SizePMLxp1']*outparams['ZoneCount'],ArraysGPUOp)
@@ -164,7 +164,7 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
             
         else: # ORDER DOES MATTER FOR METAL, AS IT INVOLVES MANIPULATING AND READING _c_uint_type OR _c_mex_type******
             for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
-                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap']:            
+                        'Ox','Oy','Oz','SourceFunctions','IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:            
                 self._CreateAndCopyFromMXVarOnGPU(k,ArraysGPUOp,arguments)
             
             for k in ['Vx','Vy','Vz','Sigma_xx','Sigma_yy','Sigma_zz','Sigma_xy','Sigma_xz','Sigma_yz','Pressure','Snapshots']:

@@ -175,9 +175,9 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self.mex_buffer=[]
         for nSizes in self._c_mex_type:
-            handle=self.ctx.buffer(nSizes*4)
+            handle=self.ctx.buffer(int(nSizes*4))
             self.mex_buffer.append(handle)
-        self.uint_buffer=self.ctx.buffer(self._c_uint_type*4)
+        self.uint_buffer=self.ctx.buffer(int(self._c_uint_type*4))
         self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
 
         self._IndexManip()
@@ -408,9 +408,8 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         del self.uint_buffer
         while len(self.mex_buffer)>0:
             handle = self.mex_buffer.pop(0)
-            # nref=sys.getrefcount(handle)
-            # print('mex nref',nref)
             del handle
+        gc.collect()
 
 def StaggeredFDTD_2D_METAL(arguments):
     Instance = StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(arguments)

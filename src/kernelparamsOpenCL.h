@@ -56,4 +56,6 @@ __predecorator unsigned int * SourceMap_pr,
 __predecorator mexType * Ox_pr,
 __predecorator mexType * Oy_pr,
 __predecorator mexType * Oz_pr,
-__predecorator mexType * Pressure_pr
+__predecorator mexType * Pressure_pr,
+__predecorator unsigned int * ReflectorMask_pr
+

@@ -282,7 +282,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	
   	}
   }
-  if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0  && nStep>=SensorStart*SensorSubSampling)
+  if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 )
   {
     accum_xx/=ZoneCount;
     accum_yy/=ZoneCount;
@@ -294,7 +294,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     index2=N1*N2;
 
 
-    if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+    if ((SelRMSorPeak & SEL_RMS) && (nStep>=SensorStart*SensorSubSampling)) //RMS was selected, and it is always at the location 0 of dim 5
     {
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)+=accum_xx*accum_xx;

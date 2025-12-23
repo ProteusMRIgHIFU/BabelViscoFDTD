@@ -391,6 +391,7 @@ int __InitBuffer =0;
 	mexType * Ox_pr,
 		* Oy_pr,
 		* Oz_pr;
+	unsigned int * ReflectorMask;
   };
 
 #endif
@@ -502,6 +503,7 @@ int __InitBuffer =0;
 			if (strcmp(NameVar,"Oy")==0) return 51;
 			if (strcmp(NameVar,"Oz")==0) return 52;
 			if (strcmp(NameVar,"Pressure")==0) return 53;
+			if (strcmp(NameVar,"ReflectorMask")==0) return 54;
 			ERROR_STRING("Unknown parameter");
 				return -1;
         };

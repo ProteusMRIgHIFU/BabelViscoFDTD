@@ -175,6 +175,7 @@ typedef _PT tIndex ;
 #define IndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (IndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
 
 #define Ind_MaterialMap(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
+#define Ind_ReflectorMask(_i,_j,_k) (IndN1N2N3(_i,_j,_k,(N1*N2*N3)))
 
 #define Ind_V_x(_i,_j,_k) (IndN1p1N2N3(_i,_j,_k,(N1+1)*N2*N3))
 #define Ind_V_y(_i,_j,_k) (IndN1N2p1N3(_i,_j,_k,N1*(N2+1)*N3))
@@ -373,9 +374,10 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_IndexRMSPeak_Pressure 51
 #define CInd_IndexSensor_Pressure 52
 #define CInd_SensorStart 53
+#define CInd_ReflectorMask 54
 
 //Make LENGTH_CONST_UINT one value larger than the last index
-#define LENGTH_CONST_UINT 54
+#define LENGTH_CONST_UINT 55
 
 //Indexes for float
 #define CInd_DT 0
@@ -461,8 +463,9 @@ if IS_ ## _VarName ## _SELECTED(INHOST(SelMapsRMSPeak)) \
 #define CInd_IndexSensorMap  0
 #define CInd_SourceMap	1
 #define CInd_MaterialMap 2
+#define CInd_ReflectorMask 3
 
-#define LENGTH_INDEX_UINT 3
+#define LENGTH_INDEX_UINT 4
 
 #endif
 

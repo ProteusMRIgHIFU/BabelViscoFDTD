@@ -163,6 +163,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_FIELD(SnapshotsPos);
 	GET_FIELD(DT);
 	GET_FIELD(MaterialMap);
+	GET_FIELD(ReflectorMask);
 	GET_FIELD(PMLThickness);
     GET_FIELD(TypeSource);
 	GET_FIELD_GENERIC(DefaultGPUDeviceName);
@@ -200,6 +201,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	VALIDATE_FIELD_UINT32(IndexSensorMap);
 	VALIDATE_FIELD_MEX_TYPE(DT);
 	VALIDATE_FIELD_UINT32(MaterialMap);
+	VALIDATE_FIELD_UINT32(ReflectorMask);
 	VALIDATE_FIELD_UINT32(PMLThickness);
 	VALIDATE_FIELD_UINT32(N1);
 	VALIDATE_FIELD_UINT32(N2);
@@ -255,6 +257,7 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	GET_DATA_UINT32(SourceMap);
 	GET_DATA_UINT32(SnapshotsPos);
 	GET_DATA_UINT32(MaterialMap);
+	GET_DATA_UINT32(ReflectorMask);
 	GET_DATA_INT32(ManualGroupSize);
 	GET_DATA_INT32(ManualLocalSize);
 

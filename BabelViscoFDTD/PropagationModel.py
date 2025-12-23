@@ -79,6 +79,7 @@ class PropagationModel:
                                          DefaultGPUDeviceNumber=0,
                                          SILENT=0,
                                          QCorrection=1.0,
+                                         ReflectorMask=None,
                                          ManualGroupSize=np.array([-1,-1,-1]).astype(np.int32),
                                          ManualLocalSize=np.array([-1,-1,-1]).astype(np.int32)):
         '''
@@ -172,7 +173,9 @@ class PropagationModel:
                 if not( np.all(SzMap[0:3]==Ox.shape) and Oy.size==1  and Oz.size==1 and Oy[0]==1 and Oz[0]==1):
                     raise ValueError('When specifying a source for stress, Oy and Oz must remain equal to [1], and Ox can be either [1] or same dimensions as SourceMap')
 
-
+        if ReflectorMask is not None:
+            if not(np.all(SzMap[0:3]==ReflectorMask.shape)):
+                raise ValueError('When specifying ReflectorMask, dimensions should be as MaterialMap')
 
         N1=SzMap[0]
         N2=SzMap[1]
@@ -375,6 +378,11 @@ class PropagationModel:
         InputParam['DefaultGPUDeviceNumber']=np.uint32(DefaultGPUDeviceNumber)
         InputParam['ManualGroupSize']=ManualGroupSize
         InputParam['ManualLocalSize']=ManualLocalSize
+        if ReflectorMask is not None:
+            print('Using ReflectorMask')
+            InputParam['ReflectorMask']=ReflectorMask.astype(np.uint32)
+        else:
+            InputParam['ReflectorMask']=np.zeros((N1,N2,N3),np.uint32)
 
         SolidFraction=None
         if SPP_ZONES>1:

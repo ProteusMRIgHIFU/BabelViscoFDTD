@@ -343,6 +343,14 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	else
 	{
 #if defined(_ST_MAIN)
+		if (EL(ReflectorMask,i,j,k)==1)
+		{
+		#if defined(CPU)
+			continue;
+		#else
+			return;
+		#endif
+		}
   		//We are in the center, no need to check any limits, the use of the PML simplify this
   		index=Ind_Sigma_xx(i,j,k);
 
@@ -559,7 +567,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	}
   }
   #if defined(_ST_MAIN) 
-  if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0 && nStep>=SensorStart*SensorSubSampling)
+  if (IsOnPML_I(i)==0 && IsOnPML_J(j)==0 && IsOnPML_K(k)==0)
   {
 	
     accum_xx/=ZoneCount;
@@ -574,7 +582,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     index2=N1*N2*N3;
 
 
-    if ((SelRMSorPeak & SEL_RMS) ) //RMS was selected, and it is always at the location 0 of dim 5
+    if ((SelRMSorPeak & SEL_RMS) && (nStep>=SensorStart*SensorSubSampling)) //RMS was selected, and it is always at the location 0 of dim 5
     {
 		if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
             ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)+=accum_xx*accum_xx;
