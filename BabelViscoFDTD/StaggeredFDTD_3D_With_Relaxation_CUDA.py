@@ -240,7 +240,7 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
                         ArraysGPUOp["Oy"],
                         ArraysGPUOp["Oz"],
                         ArraysGPUOp["Pressure"],
-                        ArraysGPUOp["ReflectorMask"]
+                        ArraysGPUOp["ReflectorMask"],
                         ArraysGPUOp['SensorOutput'],
                         ArraysGPUOp['IndexSensorMap'],
                         nStep))
