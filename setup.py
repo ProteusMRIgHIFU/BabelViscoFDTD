@@ -19,7 +19,7 @@ import sysconfig
 
 dir_path =path.dirname(os.path.realpath(__file__))+os.sep
 
-version = '1.2.0'
+version = '1.2.1'
 
 npinc=np.get_include()
 # Filename for the C extension module library
