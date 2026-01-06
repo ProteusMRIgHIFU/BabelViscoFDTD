@@ -1000,6 +1000,8 @@ def ForwardSimpleMetal(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, so
         ctx.commit_command_buffer()
         ctx.wait_command_buffer()
         del handle
+    if 'arm64' not in platform.platform():
+        ctx.sync_buffers((d_u2realpr,d_u2imagpr))
     u2_real = np.frombuffer(d_u2realpr, dtype=np.float32)
     u2_imag = np.frombuffer(d_u2imagpr, dtype=np.float32)
     u2 = u2_real + 1j * u2_imag
