@@ -428,14 +428,76 @@ else:
     prgcuda = None
 
     RayleighCUDASource = """
-   #include <cupy/complex.cuh>
 
-    #define pi 3.141592653589793
+#include <cupy/complex.cuh>
+#define pi 3.141592653589793
 
-    typedef float FloatingType;
+typedef float FloatingType;
 
-    #define MAX_ELEMS_IN_CONSTANT  2730 // the total constant memory can't be greater than 64k bytes
+extern "C" __global__ void ForwardPropagationKernelCompat(  const int mr2,
+                                            const FloatingType c_wvnb_real,
+                                            const FloatingType c_wvnb_imag,
+                                            const FloatingType MaxDistance,
+                                            const int mr1,
+                                            const FloatingType *r2pr,
+                                            const FloatingType *r1pr,
+                                            const FloatingType *a1pr,
+                                            const FloatingType *u1_real,
+                                            const FloatingType *u1_imag,
+                                            FloatingType  *py_data_u2_real,
+                                            FloatingType  *py_data_u2_imag,
+                                            const int mr1step,
+                                            const int mr1base
+                                            )
+    {
+     const int si2 = (blockIdx.y*gridDim.x + blockIdx.x)*blockDim.x + threadIdx.x ;		// Grid is a "flatten" 1D, thread blocks are 1D
 
+    FloatingType dx,dy,dz,R,r2x,r2y,r2z;
+    FloatingType temp_r,tr ;
+    FloatingType temp_i,ti,pCos,pSin ;
+
+    if ( si2 < mr2)
+    {
+        temp_r = 0;
+        temp_i = 0;
+        r2x=r2pr[si2*3];
+        r2y=r2pr[si2*3+1];
+        r2z=r2pr[si2*3+2];
+
+        for (int si1=0; si1<mr1; si1++)
+        {
+            // In matlab we have a Fortran convention, in Python-numpy, we have the C-convention for matrixes (hoorray!!!)
+            dx=r1pr[(mr1base+si1)*3]-r2x;
+            dy=r1pr[(mr1base+si1)*3+1]-r2y;
+            dz=r1pr[(mr1base+si1)*3+2]-r2z;
+
+
+            R=sqrt(dx*dx+dy*dy+dz*dz);
+            if (MaxDistance>0.0)
+                if (R>MaxDistance)
+                    continue;
+            ti=(exp(R*c_wvnb_imag)*a1pr[mr1base+si1]/R);
+
+            tr=ti;
+
+            sincosf(R*c_wvnb_real, &pSin, &pCos);
+
+            tr*=(u1_real[mr1base+si1+mr1step*si2]*pCos+u1_imag[mr1base+si1+mr1step*si2]*pSin);
+                        ti*=(u1_imag[mr1base+si1+mr1step*si2]*pCos-u1_real[mr1base+si1+mr1step*si2]*pSin);
+
+            temp_r +=tr;
+            temp_i +=ti;
+        }
+
+        R=temp_r;
+
+        temp_r = -temp_r*c_wvnb_imag-temp_i*c_wvnb_real;
+        temp_i = R*c_wvnb_real-temp_i*c_wvnb_imag;
+
+        py_data_u2_real[si2]+=temp_r/(2*pi);
+        py_data_u2_imag[si2]+=temp_i/(2*pi);
+    }
+}
 
     __device__ __forceinline__ complex<float> cuexpf (complex<float> z)
 
@@ -870,10 +932,68 @@ def ForwardSimpleCUDA(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0):
             u0step,
         ),
     )
-
+    cp.cuda.Stream.null.synchronize()
     u2 = d_u2complex.get()
     return u2
 
+def ForwardSimpleCUDACompat(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0):
+    if u0step != 0:
+        mr1 = u0step
+        assert mr1 * rf.shape[0] == u0.shape[0]
+        assert mr1 == center.shape[0]
+        assert mr1 == ds.shape[0]
+    else:
+        mr1 = center.shape[0]
+    mr2 = rf.shape[0]
+
+    d_r2pr = cp.asarray(rf)
+    d_centerpr = cp.asarray(center)
+    d_dspr = cp.asarray(ds)
+    d_u0_real = cp.asarray(np.real(u0))
+    d_u0_imag = cp.asarray(np.imag(u0))
+    d_u2_real = cp.zeros(rf.shape[0], cp.float32)
+    d_u2_imag = cp.zeros(rf.shape[0], cp.float32)
+
+    
+    CUDA_THREADBLOCKLENGTH = 512
+    MAX_ELEMS_IN_CONSTANT = 2730
+    dimThreadBlock = (CUDA_THREADBLOCKLENGTH, 1, 1)
+
+    nBlockSizeX = int((mr2 - 1) / dimThreadBlock[0]) + 1
+    nBlockSizeY = 1
+
+    if nBlockSizeX > 65534:
+        nBlockSizeY = int(nBlockSizeX / 65534)
+        if nBlockSizeX % 65534 != 0:
+            nBlockSizeY += 1
+        nBlockSizeX = int(nBlockSizeX / nBlockSizeY) + 1
+
+    dimBlockGrid = (nBlockSizeX, nBlockSizeY, 1)
+
+    ForwardPropagationKernel = prgcuda.get_function("ForwardPropagationKernelCompat")
+
+    ForwardPropagationKernel(
+        dimBlockGrid,
+        dimThreadBlock,
+        (
+            np.int32(mr2),
+            np.float32(np.real(cwvnb)),
+            np.float32(np.imag(cwvnb)),
+            np.float32(MaxDistance),
+            np.int32(mr1),
+            d_r2pr,
+            d_centerpr,
+            d_dspr,
+            d_u0_real,
+            d_u0_imag,
+            d_u2_real,
+            d_u2_imag,
+            np.int32(u0step),
+            np.int32(0)
+        ),
+    )
+    u2 = d_u2_real.get() + 1j*d_u2_imag.get()
+    return u2
 
 def ForwardSimpleOpenCL(cwvnb, center, ds, u0, rf, MaxDistance=-1.0, u0step=0, sourceStep=10000):
     global queue
@@ -1288,7 +1408,7 @@ def ForwardSimple(
             )
     else:
         if SelBackend == "CUDA":
-            return ForwardSimpleCUDA(
+            return ForwardSimpleCUDACompat(
                 cwvnb, center, ds, u0, rf, MaxDistance=MaxDistance, u0step=u0step
             )
         else:
