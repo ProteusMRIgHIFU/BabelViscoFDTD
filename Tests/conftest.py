@@ -435,7 +435,7 @@ def image_to_base64():
 
 @pytest.fixture()
 def get_mpl_plot():
-    def _get_mpl_plot(datas, axes_num=1, titles=None, color_map='viridis', colorbar=False, clim=None):
+    def _get_mpl_plot(datas, axes_num=1, titles=None, color_map='viridis', colorbar=False, clim=None,measurement_plane_index=None,extent=None,extent_units="mm"):
         """
         Create one or multiple Matplotlib plots for 2D or 3D data.
 
@@ -476,17 +476,40 @@ def get_mpl_plot():
                 elif data.ndim == 3:
                     # Compute midpoint along the relevant axis
                     midpoint = data.shape[i_axis % 3] // 2
+                    
                     if i_axis % 3 == 0:
                         img_data = data[midpoint, :, :].T
+                        if extent is not None:
+                            extent_2d = extent[2:]
                     elif i_axis % 3 == 1:
                         img_data = data[:, midpoint, :].T
+                        if extent is not None:
+                            extent_2d = extent[[0, 1, -2, -1]]
                     else:
-                        img_data = data[:, :, midpoint].T
+                        if measurement_plane_index is not None:
+                            img_data = data[:, :, measurement_plane_index].T
+                        else:
+                            img_data = data[:, :, midpoint].T
+                        if extent is not None:
+                            extent_2d = extent[:4]
                 else:
                     raise ValueError(f"Unsupported data dimension: {data.ndim}")
 
                 ax = axs[i_axis, i_data]
-                im = ax.imshow(img_data, cmap=color_map)
+                if extent is not None:
+                    im = ax.imshow(img_data, cmap=color_map,extent=extent_2d)
+                    
+                    if i_axis == 0:
+                        ax.set_xlabel(f"y ({extent_units})")
+                        ax.set_ylabel(f"z ({extent_units})")
+                    elif i_axis == 1:
+                        ax.set_xlabel(f"x ({extent_units})")
+                        ax.set_ylabel(f"z ({extent_units})")
+                    else:
+                        ax.set_xlabel(f"x ({extent_units})")
+                        ax.set_ylabel(f"y ({extent_units})")
+                else:
+                    im = ax.imshow(img_data, cmap=color_map)
 
                 # Titles only on first row
                 if titles is not None and i_axis == 0:
@@ -495,8 +518,16 @@ def get_mpl_plot():
                 if colorbar:
                     if clim is not None:
                         im.set_clim(clim)
-                    fig.colorbar(im, ax=ax, shrink=0.9)
-
+                    
+                    from mpl_toolkits.axes_grid1 import make_axes_locatable
+                    divider = make_axes_locatable(ax)
+                    cax = divider.append_axes("right", size="4%", pad=0.1)
+                    cbar = fig.colorbar(im, cax=cax)
+                    
+                    cbar.formatter.set_scientific(True)
+                    cbar.formatter.set_powerlimits((-2, 2))  # always scientific
+                    cbar.update_ticks()
+        
         # Save the plot to a BytesIO object
         buffer = BytesIO()
         plt.savefig(buffer, format='png', bbox_inches='tight')
@@ -822,32 +853,52 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
         # SIMULATION PARAMETERS
         # =============================================================================
 
-        dt = 5e-8                       # time step
+        dt = 4e-8                       # time step
         medium_SOS = 1500               # m/s - water
         medium_density = 1000           # kg/m3
         pml_thickness = 12              # grid points for perfect matching layer
         reflection_limit = 1.0000e-05   # reflection parameter for PML
-        tx_radius = 0.025               # m - circular or square piston
-        tx_plane_loc = 0.01             # m - in XY plane at Z = 0.01 m
         us_amplitude = 100e3            # Pa
+        sensor_ppp = 8                  # sensor points per period
 
-        # Domain Dimensions
-        if axes == 3:
-            x_dim = 0.05                # m
-            y_dim = 0.05                # m
-            z_dim = 0.10                # m
-        else:
-            x_dim = 0.20                # m
-            y_dim = 0.40                # m
-
+        # Properties
+        shortest_wavelength = medium_SOS/us_frequency
+        spatial_step = shortest_wavelength/ points_per_wavelength
+        
         # =============================================================================
         # SIMULATION DOMAIN SETUP
         # =============================================================================
+        
+        # Domain Dimensions
+        if axes == 3:
+            if map_type in ("mixed","water"):
+                x_dim = y_dim = 0.05
+                z_dim = 0.10
+            elif map_type == "bone":
+                bone_thickness = 0.002  # 2mm
+                x_dim = y_dim = shortest_wavelength*20
+                z_dim = 3*spatial_step + (3*bone_thickness) + (8*shortest_wavelength)
+            elif map_type == "brain":
+                brain_thickness = 0.008 # 8mm
+                x_dim = y_dim = shortest_wavelength*20
+                z_dim = 3*spatial_step + brain_thickness + (8*shortest_wavelength)
+            else:
+                raise ValueError("Invalid map_type provided to test")        
+        else:
+            x_dim = 0.20    # m
+            y_dim = 0.40    # m
 
-        # Domain Properties
-        shortest_wavelength = medium_SOS/us_frequency
-        spatial_step = shortest_wavelength/ points_per_wavelength
-
+        logging.info(f"Domain Dimensions: {x_dim*1e3} mm x {y_dim*1e3} mm * {z_dim*1e3} mm")
+        
+        # Transducer Dimensions
+        if map_type == "mixed":
+            tx_radius = 0.025   # m
+            tx_plane_loc = 0.01 # m
+            tx_loc = int(np.round(tx_plane_loc/spatial_step)) + pml_thickness
+        else:
+            tx_radius = x_dim/2
+            tx_loc = 1 + pml_thickness
+            
         # Create meshgrid
         if axes == 3:
             X, Y, Z = set_up_domain['grid'](grid_limits=[-x_dim/2, x_dim/2, -y_dim/2, y_dim/2, 0, z_dim],
@@ -866,7 +917,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
             sim_time = np.sqrt(x_dim**2+y_dim**2)/medium_SOS
 
         # Number of sensor steps i.e. how many timepoints we record babelvisco results
-        sensor_steps = int((1/us_frequency/8)/dt) # for the sensors, we do not need really high temporal resolution, so we are keeping 8 time points per period
+        sensor_steps = int((1/us_frequency/sensor_ppp)/dt) # for the sensors, we do not need really high temporal resolution, so we are keeping 8 time points per period
 
         # =============================================================================
         # MATERIAL MAP SETUP
@@ -886,7 +937,8 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
         index_brain = np.where(np.array(ml_keys) == "brain")[0][0]
 
         # Initialize material map as all water
-        material_map = index_water * np.ones_like(X,np.uint32)
+        water_map = index_water * np.ones_like(X,np.uint32)
+        material_map = water_map.copy()
 
         # Modify material map based on map type
         if map_type == "mixed":
@@ -916,25 +968,26 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
                 add_material_sphere(index_skin,mat_radius,[0, y_dim/2],center_offsets=[mat_radius,-2*mat_radius])
         elif map_type == "bone":
             # Add few layers of cortical, trabecular, and more cortical bone
-            bone_thickness = 0.004 # 4mm
+            bone_thickness = 0.002 # 2mm
             bone_layers = int(bone_thickness/spatial_step)
             bone_start = 3 + pml_thickness
 
             material_map[pml_thickness:-pml_thickness,pml_thickness:-pml_thickness,bone_start:bone_start+bone_layers] = index_cortical
             material_map[pml_thickness:-pml_thickness,pml_thickness:-pml_thickness,bone_start+bone_layers:bone_start+2*bone_layers] = index_trabecular
             material_map[pml_thickness:-pml_thickness,pml_thickness:-pml_thickness,bone_start+2*bone_layers:bone_start+3*bone_layers] = index_cortical
+        elif map_type == 'brain':
+            # Add layer of brain tissue
+            brain_thickness = 0.008 # 8mm
+            brain_layers = int(brain_thickness/spatial_step)
+            brain_start = 3 + pml_thickness
+
+            material_map[pml_thickness:-pml_thickness,pml_thickness:-pml_thickness,brain_start:brain_start+brain_layers] = index_brain
         elif map_type == "water":
             pass
 
         # =============================================================================
         # GENERATE SOURCE MAP + SIGNAL
         # =============================================================================
-
-        # Determine location of transducer in z
-        if map_type == "mixed":
-            tx_loc = int(np.round(tx_plane_loc/spatial_step)) + pml_thickness
-        elif map_type == "bone" or map_type == "water":
-            tx_loc = 1 + pml_thickness
 
         # Create source mask
         if axes == 3:
@@ -978,7 +1031,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
 
         # Note we need expressively to arrange the data in a 2D array
         pulse_source = np.reshape(pulse_source_tmp,(1,len(source_time_vector))) 
-        print("Number of time points in source signal:",len(source_time_vector))
+        logging.info(f"Number of time points in source signal: {len(source_time_vector)}")
 
         # =============================================================================
         # GENERATE SENSOR MAP
@@ -995,10 +1048,33 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
         # SAVE PLOTS
         # =============================================================================
         
+        # dimensions in mm
+        xmin = X[0,0,0]*1e3
+        xmax = X[-1,0,0]*1e3
+        ymin = Y[0,0,0]*1e3
+        ymax = Y[0,-1,0]*1e3
+        extent = np.array([xmin,xmax,ymin,ymax])
+        
+        if axes == 3:
+            zmin = Z[0,0,0]*1e3
+            zmax = Z[0,0,-1]*1e3
+            extent = np.append(extent,[zmin,zmax])
+    
         if not skip_plots:
-            screenshot = get_mpl_plot([material_map,sensor_map,source_map], axes_num=axes,titles=['Material Map','Sensor Map','Source Map'])
+            # Source Map Plot
+            screenshot = get_mpl_plot([source_map], axes_num=3,titles=['Source Map'],measurement_plane_index=tx_loc,extent=extent)
             request.node.screenshots.append(screenshot)
-            screenshot = get_line_plot(source_time_vector*1e6,[pulse_source_tmp],title="Source Signal")
+            
+            # Material Map Plot
+            screenshot = get_mpl_plot([material_map], axes_num=3,titles=['Material Map'],extent=extent)
+            request.node.screenshots.append(screenshot)
+            
+            # Sensor Map Plot
+            screenshot = get_mpl_plot([sensor_map], axes_num=3,titles=['Sensor Map'],extent=extent)
+            request.node.screenshots.append(screenshot)
+            
+            # Source Signal Plot
+            screenshot = get_line_plot(source_time_vector*1e6,[pulse_source_tmp],title="Source Signal",xlabel="time (us)")
             request.node.screenshots.append(screenshot)
 
         # =============================================================================
@@ -1007,6 +1083,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
 
         propagation_model_params = {}
         propagation_model_params['material_map'] = material_map
+        propagation_model_params['water_map'] = water_map
         propagation_model_params['material_list'] = material_list
         propagation_model_params['source_map'] = source_map
         propagation_model_params['pulse_source'] = pulse_source
@@ -1021,11 +1098,58 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
         propagation_model_params['reflection_limit'] = reflection_limit
         propagation_model_params['dt'] = dt
         propagation_model_params['sensor_steps'] = sensor_steps
+        propagation_model_params['sensor_ppp'] = sensor_ppp
+        propagation_model_params['extent'] = extent
 
         return propagation_model_params
 
     return _setup_propagation_model
 
+@pytest.fixture()
+def get_phase_data():
+    def _get_phase_data(time_vector,pressure_vector,sensor_steps,sensor_ppp,sensor_map,material_map,frequency,degrees=False):
+        time_step = np.diff(time_vector).mean()
+        
+        if int(time_vector.shape[0]%(sensor_ppp/sensor_steps)) !=0:
+            logging.info('Rounding of time vector was not exact multiple of PPP, truncating time vector a little')
+            nDiff = int(time_vector.shape[0]%(sensor_ppp/sensor_steps))
+            logging.info(' Cutting %i entries from sensor from length %i to %i' %(nDiff,time_vector.shape[0],time_vector.shape[0]-nDiff))
+            time_vector = time_vector[:-nDiff]
+            pressure_vector = pressure_vector[:-nDiff]
+            
+        assert(int(time_vector.shape[0]%(sensor_ppp/sensor_steps))==0)
+        
+        freqs = np.fft.fftfreq(time_vector.size, time_step)
+        IndSpectrum = np.argmin(np.abs(freqs-frequency)) # frequency entry closest to fundamental frequency
+        
+        pressure_vector = np.ascontiguousarray(pressure_vector)
+                
+        index = np.nonzero(np.transpose(sensor_map).flatten()>0)[0]
+        nStep = 100000
+        
+        phase_map = np.zeros_like(material_map,np.float32)
+        
+        for n in range(0,pressure_vector.shape[0],nStep):
+            top=np.min([n+nStep,pressure_vector.shape[0]])
+            FSignal=np.fft.fft(pressure_vector[n:top,:],axis=1)
+            
+            k=index[n:top]//(material_map.shape[0]*material_map.shape[1])
+            j=index[n:top]%(material_map.shape[0]*material_map.shape[1])
+            i=j%material_map.shape[0]
+            j=j//material_map.shape[0]
+            FSignal=FSignal[:,IndSpectrum]
+            pa= np.angle(FSignal)
+            
+            phase_map[i,j,k] = pa
+        
+        if degrees:
+            return np.degrees(phase_map)
+        else:
+            return phase_map
+    
+    return _get_phase_data
+        
+    
 # ================================================================================================================================
 # PYTEST HOOKS
 # ================================================================================================================================
