@@ -4,6 +4,7 @@
 *.o
 *.ini
 !pytest.ini
+!example_config.ini
 *.DS_Store
 
 # Compiled Dynamic libraries
