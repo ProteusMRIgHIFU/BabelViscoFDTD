@@ -3,6 +3,8 @@
 *.lo
 *.o
 *.ini
+!pytest.ini
+!example_config.ini
 *.DS_Store
 
 # Compiled Dynamic libraries
@@ -283,3 +285,6 @@ _indexing.h
 src/Metal/.build/
 Tutorial Notebooks/2D/.ipynb_checkpoints/1 - Basis of operation and flat source homogenous medium-checkpoint.ipynb
 BabelViscoFDTD/_gpu_kernel2D.c
+Pytest_Reports/
+Tests/Test_Data/
+Tests/Generate_Outputs/Generated_Outputs/
