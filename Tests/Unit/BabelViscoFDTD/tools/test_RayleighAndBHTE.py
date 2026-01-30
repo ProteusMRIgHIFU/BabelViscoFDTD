@@ -447,7 +447,7 @@ def test_ForwardSimple(frequency,ppw,set_up_domain,request,get_line_plot,computi
 @pytest.mark.parametrize(
     "frequency",
     [2e5,6e5,1e6],
-    ids = ["200kHz","600kHz","1000kHz"]
+    ids = ["200kHz","500kHz","1000kHz"]
 )
 def test_ForwardSimple_low_res_failure(frequency,set_up_domain,request,get_line_plot,computing_backend,get_gpu_device,calc_axial_pressure):
     

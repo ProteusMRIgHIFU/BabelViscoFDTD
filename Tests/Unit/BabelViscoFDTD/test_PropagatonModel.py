@@ -21,8 +21,8 @@ from BabelViscoFDTD.PropagationModel import PropagationModel
  
 @pytest.mark.parametrize(
     "frequency",
-    [2e5,6e5,1e6],
-    ids = ["200kHz","600kHz","1000kHz"]
+    [2e5,5e5,1e6],
+    ids = ["200kHz","500kHz","1000kHz"]
 )
 @pytest.mark.parametrize(
     "material_type",
@@ -97,6 +97,7 @@ def test_PropagationModel_normal_source_with_att(frequency,material_type,computi
                                                                      USE_SINGLE = True,
                                                                      DT = pmodel_params['dt'],
                                                                      QfactorCorrection = True,
+                                                                     QCorrection=pmodel_params['QCorrection'],
                                                                      SelRMSorPeak = results_type,
                                                                      SelMapsRMSPeakList = results_outputs,
                                                                      SelMapsSensorsList = sensor_outputs,
@@ -143,15 +144,15 @@ def test_PropagationModel_normal_source_with_att(frequency,material_type,computi
     impedance_water = density_water * sos_water
     
     # Calculate intensity at measurement plane (excluding pml layers)
-    intensity = rms_results_gpu_dict['Pressure'][pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],end_layer]**2 / impedance_water
-    intensity_water = rms_results_water_gpu_dict['Pressure'][pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],end_layer]**2 / impedance_water
+    intensity = peak_results_gpu_dict['Pressure'][pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],end_layer]**2 / impedance_water
+    intensity_water = peak_results_water_gpu_dict['Pressure'][pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],pmodel_params['pml_thickness']:-pmodel_params['pml_thickness'],end_layer]**2 / impedance_water
     
     # Calculate acoustic power
     acoustic_power = np.sum(intensity * (pmodel_params['spatial_step'] **2))
     acoustic_power_water = np.sum(intensity_water * (pmodel_params['spatial_step']**2))
     
     # Calculate Transmission Coefficient
-    transmission_coeff_babel = acoustic_power/acoustic_power_water
+    transmission_coeff_babel = np.sqrt(acoustic_power/acoustic_power_water)
     
     # Need to adjust end_layer for analytical calculation
     end_layer-=1
@@ -252,7 +253,7 @@ def test_PropagationModel_normal_source_with_att(frequency,material_type,computi
     Z1 = Znp1 = impedance_water
     
     transmission_coeff_truth = (2 * Z1) / ((M22+Z1*M23)*Znp1 + M32 + (Z1*M33))
-    transmission_coeff_truth = np.abs(np.array(transmission_coeff_truth,dtype=np.complex64))
+    transmission_coeff_truth = np.abs(np.array(transmission_coeff_truth,dtype=np.complex128))
     
     # =============================================================================
     # VISUALISATION
@@ -298,7 +299,7 @@ def test_PropagationModel_normal_source_with_att(frequency,material_type,computi
     # =============================================================================
     logging.info(f"BabelViscoFDTD Transmission Coefficient: {transmission_coeff_babel}")
     logging.info(f"Truth Transmission Coefficient: {transmission_coeff_truth}")
-    logging.info(f"Transmission Coefficient Difference: {np.abs(transmission_coeff_truth-transmission_coeff_babel)}")
+    logging.info(f"Relative Transmission Coefficient Difference (%): {(transmission_coeff_babel/transmission_coeff_truth)*100-100}")
     
     assert transmission_coeff_babel == pytest.approx(transmission_coeff_truth, rel=tolerance), "BabelViscoFDTD Transmission coefficient does not match analytical solution"
     

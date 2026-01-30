@@ -35,14 +35,14 @@ The tests will then automatically search for BabelViscoFDTD functions in the **e
 ### Parameterized Tests
 
 **Example**  
-test_ForwardSimple_low_res_failure is parameterized for gpu backend (OpenCL, CUDA, Metal, MLX) and frequency (e.g. 200000,600000,1000000) Runnning
+test_ForwardSimple_low_res_failure is parameterized for gpu backend (OpenCL, CUDA, Metal, MLX) and frequency (e.g. 200000,500000,1000000) Runnning
 
 ```bash
 pytest -k "test_ForwardSimple_low_res_failure"
 ```
 will collect/run for all combinations of gpu backend and frequency so tests ran would be:
 - test_ForwardSimple_low_res_failure[OpenCL-200kHz]
-- test_ForwardSimple_low_res_failure[OpenCL-600kHz]
+- test_ForwardSimple_low_res_failure[OpenCL-500kHz]
 - test_ForwardSimple_low_res_failure[OpenCL-1000kHz]
 - test_ForwardSimple_low_res_failure[CUDA-200kHz]
 - etc.
@@ -59,7 +59,7 @@ pytest -k "test_ForwardSimple_low_res_failure and CUDA and 200kHz"
 ### Running GPU unit tests
 Majority of GPU unit tests are parameterized either for spatial step or frequency/ppw pair
 - low_res (0.919 spatial step or 200kHz/6PPW)
-- medium_res (0.306 spatial step or 600kHz/6PPW)
+- medium_res (0.3672 spatial step or 500kHz/6PPW)
 - high_res (0.184 spatial step or 1000kHz/6PPW)
 - stress_res (0.092 spatial step or 1000kHz/12PPW)
 

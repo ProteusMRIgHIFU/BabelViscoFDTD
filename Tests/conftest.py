@@ -51,13 +51,13 @@ computing_backends = [
 ]
 spatial_step = {
     'Low_Res': 0.919,  # 200 kHz,   6 PPW
-    'Med_Res': 0.306,  # 600 kHz,   6 PPW
+    'Med_Res': 0.2040,  # 500 kHz,   6 PPW
     'High_Res': 0.184,  # 1000 kHz,  6 PPW
     'Stress_Res': 0.092,  # 1000 kHz, 12 PPW
 }
 freq_ppw = {
     'Low_Res': [200e3, 6],
-    'Med_Res': [600e3, 6],
+    'Med_Res': [500e3, 6],
     'High_Res': [1000e3, 6],
     'Stress_Res': [1000e3,12]
 }
@@ -530,7 +530,7 @@ def get_mpl_plot():
         
         # Save the plot to a BytesIO object
         buffer = BytesIO()
-        plt.savefig(buffer, format='png', bbox_inches='tight')
+        plt.savefig(buffer, format='webp', dpi=200, bbox_inches='tight', pil_kwargs={"quality": 90, "method": 6})
         buffer.seek(0)
         
         # Encode the image data as base64 string
@@ -584,7 +584,7 @@ def get_line_plot():
         
         # Save the plot to a BytesIO object
         buffer = BytesIO()
-        plt.savefig(buffer, format='png',bbox_inches='tight')
+        plt.savefig(buffer, format='webp', dpi=200, bbox_inches='tight', pil_kwargs={"quality": 90, "method": 6})
         buffer.seek(0)
         
         # Encode the image data as base64 string
@@ -759,13 +759,49 @@ def set_up_domain():
             # Phys Med Biol. 2011 Jan 7; 56(1): 219–250. doi :10.1088/0031-9155/56/1/014
             # IEEE transactions on ultrasonics, ferroelectrics, and frequency control 68, no. 5 (2020): 1532-1545. doi: 10.1109/TUFFC.2020.3039743
             return np.round(202.76362433*((frequency/1e6)**bcoeff)*reductionFactor) 
-        
-        material_list={}                        #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
-        material_list['water']       = np.array([1000.0,            1500.0,                         0,                              0.0,                                    0] )
-        material_list['cortical']    = np.array([1896.5,            FitSpeedCorticalLong(freq),     FitSpeedCorticalShear(freq),    FitAttCorticalLong_Multiple(freq),      FitAttBoneShear(freq)])
-        material_list['trabecular']  = np.array([1738.0,            FitSpeedTrabecularLong(freq),   FitSpeedTrabecularShear(freq),  FitAttTrabecularLong_Multiple(freq),    FitAttBoneShear(freq)])
-        material_list['skin']        = np.array([1116.0,            1537.0,                         0.0,                            2.3*freq/500e3 ,                        0.0])
-        material_list['brain']       = np.array([1041.0,            1562.0,                         0.0,                            3.45*freq/500e3 ,                       0.0])
+        material_list={} 
+        if 'FDTD_ACPROPERTIES_PAPER' in os.environ:
+            logging.info(f"using FDTD_ACPROPERTIES_PAPER = {os.environ['FDTD_ACPROPERTIES_PAPER']}")
+            logging.info(f"frequency {freq}")
+            if 'Baseline'==os.environ['FDTD_ACPROPERTIES_PAPER']:
+                #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
+                material_list['water']       = np.array([994.0,            1500.0,      0,          0.0,                   0.0] )
+                material_list['cortical']    = np.array([1850.0,            2800.0,     0.0,        76.55*freq/500e3,      0.0])
+                material_list['trabecular']  = np.array([1850.0,            2800.0,     0.0,        76.55*freq/500e3,      0.0])
+                material_list['skin']        = np.array([1046.0,            1546.0,     0.0,        2.7630670032*freq/500e3,  0.0])
+                material_list['brain']       = np.array([1046.0,            1546.0,     0.0,        2.7630670032*freq/500e3,  0.0])
+
+            elif 'High'==os.environ['FDTD_ACPROPERTIES_PAPER']:
+                #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
+                material_list['water']       = np.array([994.0,            1500.0,      0,          0.0,                   0.0] )
+                material_list['cortical']    = np.array([1908.0,            2822.0,     0.0,        140.45*freq/500e3,      0.0])
+                material_list['trabecular']  = np.array([1908.0,            2822.0,     0.0,        140.45*freq/500e3,      0.0])
+                material_list['skin']        = np.array([1045.0,            1568.0,     0.0,        5.4*freq/500e3,  0.0])
+                material_list['brain']       = np.array([1045.0,            1568.0,     0.0,        5.4*freq/500e3,  0.0])
+            elif 'Low'==os.environ['FDTD_ACPROPERTIES_PAPER']:
+                #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
+                material_list['water']       = np.array([994.0,            1500.0,      0,          0.0,                   0.0] )
+                material_list['cortical']    = np.array([1178.0,            2257.0,     0.0,        39.71*freq/500e3,      0.0])
+                material_list['trabecular']  = np.array([1178.0,            2257.0,     0.0,        39.71*freq/500e3,      0.0])
+                material_list['skin']        = np.array([1041.0,            1041.0,     0.0,        2.07*freq/500e3,  0.0])
+                material_list['brain']       = np.array([1041.0,            1041.0,     0.0,        2.07*freq/500e3,  0.0])
+            elif 'OnlyAtt'==os.environ['FDTD_ACPROPERTIES_PAPER']:
+                 #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
+                material_list['water']       = np.array([994.0,            1500.0,      0,          0.0,                   0.0] )
+                material_list['cortical']    = np.array([994.0,            1500.0,     0.0,        25.4*freq/500e3,      0.0])
+                material_list['trabecular']  = np.array([994.0,            1500.0,     0.0,        25.4*freq/500e3,      0.0])
+                material_list['skin']        = np.array([994.0,            1500.0,     0.0,        0.0,  0.0])
+                material_list['brain']       = np.array([994.0,            1500.0,     0.0,        0.0,  0.0])
+
+            logging.info(f'material_list\n{material_list}')
+
+        else:
+           #Density (kg/m3)    LongSoS (m/s),                  ShearSoS (m/s),                 Long Att (Np/m),                        Shear Att (Np/m)
+            material_list['water']       = np.array([1000.0,            1500.0,                         0,                              0.0,                                    0] )
+            material_list['cortical']    = np.array([1896.5,            FitSpeedCorticalLong(freq),     FitSpeedCorticalShear(freq),    FitAttCorticalLong_Multiple(freq),      FitAttBoneShear(freq)])
+            material_list['trabecular']  = np.array([1738.0,            FitSpeedTrabecularLong(freq),   FitSpeedTrabecularShear(freq),  FitAttTrabecularLong_Multiple(freq),    FitAttBoneShear(freq)])
+            material_list['skin']        = np.array([1116.0,            1537.0,                         0.0,                            2.3*freq/500e3 ,                        0.0])
+            material_list['brain']       = np.array([1041.0,            1562.0,                         0.0,                            3.45*freq/500e3 ,                       0.0])
     
         return material_list
 
@@ -875,7 +911,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
                 x_dim = y_dim = 0.05
                 z_dim = 0.10
             elif map_type == "bone":
-                bone_thickness = 0.002  # 2mm
+                bone_thickness = 0.0065/3  # 2mm
                 x_dim = y_dim = shortest_wavelength*20
                 z_dim = 3*spatial_step + (3*bone_thickness) + (8*shortest_wavelength)
             elif map_type == "brain":
@@ -968,7 +1004,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
                 add_material_sphere(index_skin,mat_radius,[0, y_dim/2],center_offsets=[mat_radius,-2*mat_radius])
         elif map_type == "bone":
             # Add few layers of cortical, trabecular, and more cortical bone
-            bone_thickness = 0.002 # 2mm
+            bone_thickness = 0.0065/3 # 2mm
             bone_layers = int(bone_thickness/spatial_step)
             bone_start = 3 + pml_thickness
 
@@ -1085,6 +1121,7 @@ def setup_propagation_model(set_up_domain,get_mpl_plot,get_line_plot,request):
         propagation_model_params['material_map'] = material_map
         propagation_model_params['water_map'] = water_map
         propagation_model_params['material_list'] = material_list
+        propagation_model_params['QCorrection']=1.0#np.array([1.0,0.5,0.5,1.0,1.0])
         propagation_model_params['source_map'] = source_map
         propagation_model_params['pulse_source'] = pulse_source
         propagation_model_params['spatial_step'] = spatial_step
