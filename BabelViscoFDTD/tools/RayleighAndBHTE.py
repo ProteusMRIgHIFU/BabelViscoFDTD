@@ -1876,7 +1876,7 @@ def BHTE(
                     0,
                     TotalDurationSteps,
                 ],
-                dtype=np.uint32,
+                dtype=np.int32,
             )
             d_intparams = ctx.buffer(intparams)
             ctx.init_command_buffer()
