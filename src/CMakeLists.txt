@@ -21,8 +21,14 @@ else()
 endif()
 
 if(STAGGERED_OPT AND NOT STAGGERED_DEBUG)
-    if(NOT MSVC AND NOT CMAKE_CROSSCOMPILING)
-        list(APPEND _COMMON_OPTS -march=native)
+    if(NOT MSVC)
+        # -march=native is incompatible with cross-compilation (e.g. building x86_64
+        # wheels on an arm64 host via CMAKE_OSX_ARCHITECTURES). Only use it when the
+        # target arch matches the host or when no explicit arch override is set.
+        if(NOT CMAKE_OSX_ARCHITECTURES
+           OR CMAKE_OSX_ARCHITECTURES STREQUAL CMAKE_HOST_SYSTEM_PROCESSOR)
+            list(APPEND _COMMON_OPTS -march=native)
+        endif()
     endif()
 endif()
 
