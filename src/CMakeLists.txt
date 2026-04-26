@@ -21,7 +21,7 @@ else()
 endif()
 
 if(STAGGERED_OPT AND NOT STAGGERED_DEBUG)
-    if(NOT MSVC)
+    if(NOT MSVC AND NOT CMAKE_CROSSCOMPILING)
         list(APPEND _COMMON_OPTS -march=native)
     endif()
 endif()
