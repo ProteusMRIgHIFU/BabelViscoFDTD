@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
           CIBW_SKIP: "pp*"          # skip PyPy — C extensions are CPython-only
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ARCHS_MACOS: "native"
+          CIBW_ARCHS_MACOS: "arm64 x86_64"
 
           # macOS: install libomp (Apple Clang does not bundle OpenMP)
           CIBW_BEFORE_ALL_MACOS: "brew install libomp || true"
