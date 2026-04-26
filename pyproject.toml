@@ -1,3 +1,39 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=0.8", "numpy>=1.21"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "BabelViscoFDTD"
+version = "1.2.5"
+description = "GPU/CPU 3D FDTD solution of viscoelastic equation"
+readme = "README.md"
+license = {text = "BSD License"}
+authors = [
+    {email = "samuel.pichardo@ucalgary.ca"}
+]
+keywords = ["FDTD", "CUDA", "OpenCL", "Metal", "viscoelastic"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "numpy>=1.21",
+    "scipy",
+    "h5py",
+    "hdf5plugin",
+    "pydicom",
+    "pyopencl",
+]
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+# Pure-Python package files (*.py, kernel .c/.h data files)
+wheel.packages = ["BabelViscoFDTD"]
+
+[tool.scikit-build.cmake.define]
+STAGGERED_PYTHON_SUPPORT = "ON"
+STAGGERED_OPT = "ON"
+STAGGERED_FAST_MATH = "ON"
