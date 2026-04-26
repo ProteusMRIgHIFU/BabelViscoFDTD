@@ -28,9 +28,12 @@ jobs:
 
           # macOS: install libomp (Apple Clang does not bundle OpenMP)
           CIBW_BEFORE_ALL_MACOS: "brew install libomp || true"
-          # Tell CMake where to find libomp headers and library.
-          # brew --prefix libomp returns the correct path on both arm64 and x86_64.
-          CIBW_ENVIRONMENT_MACOS: 'CMAKE_PREFIX_PATH="$(brew --prefix libomp)"'
+          # Set deployment target to 12.0 to match Package.swift and Metal 2.3
+          # requirements, and tell CMake where to find libomp.
+          # brew --prefix returns the correct prefix on both arm64 and x86_64.
+          CIBW_ENVIRONMENT_MACOS: >-
+            MACOSX_DEPLOYMENT_TARGET=12.0
+            CMAKE_PREFIX_PATH="$(brew --prefix libomp)"
 
       - uses: actions/upload-artifact@v4
         with:

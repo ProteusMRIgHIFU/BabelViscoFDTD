@@ -82,12 +82,17 @@ if(APPLE)
     )
 
     # Step 3: swift build (produces libBabelMetal.dylib)
+    # After building, normalise the install name to @loader_path/libBabelMetal.dylib
+    # so that delocate (used by cibuildwheel) does not mistake the temp-directory
+    # absolute path for an unresolvable external dependency.
     add_custom_command(
         OUTPUT "${DYLIB}"
         COMMAND swift build
                     -Xswiftc -import-objc-header
                     -Xswiftc Sources/BabelMetal/bridge.h
                     -c release
+        COMMAND install_name_tool -id @loader_path/libBabelMetal.dylib
+                    "${DYLIB}"
         WORKING_DIRECTORY "${METAL_BUILD_DIR}"
         DEPENDS
             "${METALLIB}"
