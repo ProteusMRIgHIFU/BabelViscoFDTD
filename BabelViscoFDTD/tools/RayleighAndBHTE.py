@@ -1506,16 +1506,13 @@ def BHTE(
 
         assert MonitoringPointsMap.dtype == np.uint32
 
-    perfArr = np.zeros(MaterialMap.max() + 1, np.float32)
-    bhArr = np.zeros(MaterialMap.max() + 1, np.float32)
-    if initT0 is None:
-        initTemp = np.zeros(MaterialMap.shape, dtype=np.float32)
-    else:
-        initTemp = initT0
+    n_materials = int(MaterialMap.max()) + 1
+    perfArr   = np.zeros(n_materials, np.float32)
+    bhArr     = np.zeros(n_materials, np.float32)
+    qCoeffs   = np.zeros(n_materials, np.float32)
+    initTemps = np.zeros(n_materials, np.float32)
 
-    Qarr = np.zeros(MaterialMap.shape, dtype=np.float32)
-
-    for n in range(MaterialMap.max() + 1):
+    for n in range(n_materials):
         bhArr[n] = getBHTECoefficient(
             MaterialList["Conductivity"][n],
             MaterialList["Density"][n],
@@ -1531,23 +1528,24 @@ def BHTE(
             blood_ct,
             dt=dt,
         )
-        if initT0 is None:
-            initTemp[MaterialMap == n] = MaterialList["InitTemperature"][n]
-        # print(n,(MaterialMap==n).sum(),Pressure[MaterialMap==n].mean())
-
-        Qarr[MaterialMap == n] = (
-            Pressure[MaterialMap == n] ** 2
-            * getQCoeff(
-                MaterialList["Density"][n],
-                MaterialList["SoS"][n],
-                MaterialList["Attenuation"][n],
-                MaterialList["SpecificHeat"][n],
-                MaterialList["Absorption"][n],
-                dx,
-                dt,
-            )
-            * DutyCycle
+        qCoeffs[n] = getQCoeff(
+            MaterialList["Density"][n],
+            MaterialList["SoS"][n],
+            MaterialList["Attenuation"][n],
+            MaterialList["SpecificHeat"][n],
+            MaterialList["Absorption"][n],
+            dx,
+            dt,
         )
+        initTemps[n] = MaterialList["InitTemperature"][n]
+
+    # Single vectorized pass over 3D arrays — avoids repeated boolean masking per material
+    if initT0 is None:
+        initTemp = initTemps[MaterialMap]
+    else:
+        initTemp = initT0
+
+    Qarr = (Pressure ** 2 * qCoeffs[MaterialMap] * np.float32(DutyCycle)).astype(np.float32)
 
     N1 = np.int32(Pressure.shape[0])
     N2 = np.int32(Pressure.shape[1])
@@ -1830,6 +1828,7 @@ def BHTE(
         TemperaturePoints = d_TemperaturePoints.get()
 
     elif Backend == "Metal":
+    
         d_perfArr = ctx.buffer(perfArr)
         d_bhArr = ctx.buffer(bhArr)
         d_Qarr = ctx.buffer(Qarr)
@@ -1858,26 +1857,29 @@ def BHTE(
 
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.buffer(floatparams)
-        for n in range(TotalDurationSteps):
-            if n < nStepsOn:
-                dUS = 1
-            else:
-                dUS = 0
-            intparams = np.array(
+        intparams = np.array(
                 [
-                    dUS,
+                    0,
                     N1,
                     N2,
                     N3,
                     TotalStepsMonitoring,
                     nFactorMonitoring,
-                    n,
+                    0,
                     LocationMonitoring,
                     0,
                     TotalDurationSteps,
                 ],
                 dtype=np.int32,
             )
+
+        for n in range(TotalDurationSteps):
+            if n < nStepsOn:
+                dUS = 1
+            else:
+                dUS = 0
+            intparams[0]=dUS
+            intparams[6]=n
             d_intparams = ctx.buffer(intparams)
             ctx.init_command_buffer()
             if n % 2 == 0:
@@ -1966,26 +1968,30 @@ def BHTE(
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.array(floatparams)
         AllHandles = []
-        for n in range(TotalDurationSteps):
-            if n < nStepsOn:
-                dUS = 1
-            else:
-                dUS = 0
-            intparams = np.array(
+        intparams = np.array(
                 [
-                    dUS,
+                    0,
                     N1,
                     N2,
                     N3,
                     TotalStepsMonitoring,
                     nFactorMonitoring,
-                    n,
+                    0,
                     LocationMonitoring,
                     0,
                     TotalDurationSteps,
                 ],
-                dtype=np.uint32,
+                dtype=np.int32,
             )
+        for n in range(TotalDurationSteps):
+            if n < nStepsOn:
+                dUS = 1
+            else:
+                dUS = 0
+
+            intparams[0]=dUS
+            intparams[6]=n
+           
             d_intparams = ctx.array(intparams)
 
             if n % 2 == 0:
@@ -2056,10 +2062,11 @@ def BHTE(
     if LocationMonitoring<0: #we overwrite with empty array
         MonitorSlice=np.zeros((0),np.float32)
 
+
     while len(GPUArrays)>0:
         garray=GPUArrays.pop()
         del garray
-    gc.collect()
+    gc.collect(1)
 
     if MonitoringPointsMap is not None:
         return T1, Dose1, MonitorSlice, Qarr, TemperaturePoints
@@ -2115,17 +2122,13 @@ def BHTEMultiplePressureFields(
 
     assert nStepsOnOffList.shape[0] == PressureFields.shape[0]
 
-    perfArr = np.zeros(MaterialMap.max() + 1, np.float32)
-    bhArr = np.zeros(MaterialMap.max() + 1, np.float32)
+    n_materials = int(MaterialMap.max()) + 1
+    perfArr   = np.zeros(n_materials, np.float32)
+    bhArr     = np.zeros(n_materials, np.float32)
+    qCoeffs   = np.zeros(n_materials, np.float32)
+    initTemps = np.zeros(n_materials, np.float32)
 
-    if initT0 is None:
-        initTemp = np.zeros(MaterialMap.shape, dtype=np.float32)
-    else:
-        initTemp = initT0
-
-    QArrList = np.zeros(PressureFields.shape, dtype=np.float32)
-
-    for n in range(MaterialMap.max() + 1):
+    for n in range(n_materials):
         bhArr[n] = getBHTECoefficient(
             MaterialList["Conductivity"][n],
             MaterialList["Density"][n],
@@ -2141,20 +2144,27 @@ def BHTEMultiplePressureFields(
             blood_ct,
             dt=dt,
         )
-        if initT0 is None:
-            initTemp[MaterialMap == n] = MaterialList["InitTemperature"][n]
-        for m in range(PressureFields.shape[0]):
-            QArrList[m, :, :, :][MaterialMap == n] = PressureFields[m, :, :, :][
-                MaterialMap == n
-            ] ** 2 * getQCoeff(
-                MaterialList["Density"][n],
-                MaterialList["SoS"][n],
-                MaterialList["Attenuation"][n],
-                MaterialList["SpecificHeat"][n],
-                MaterialList["Absorption"][n],
-                dx,
-                dt,
-            )
+        qCoeffs[n] = getQCoeff(
+            MaterialList["Density"][n],
+            MaterialList["SoS"][n],
+            MaterialList["Attenuation"][n],
+            MaterialList["SpecificHeat"][n],
+            MaterialList["Absorption"][n],
+            dx,
+            dt,
+        )
+        initTemps[n] = MaterialList["InitTemperature"][n]
+
+    # Single vectorized pass over 3D arrays — avoids repeated boolean masking per material
+    if initT0 is None:
+        initTemp = initTemps[MaterialMap]
+    else:
+        initTemp = initT0
+
+    QArrList = np.zeros(PressureFields.shape, dtype=np.float32)
+    qCoeffs_3d = qCoeffs[MaterialMap]  # (N1,N2,N3) float32 — computed once, reused per field
+    for m in range(PressureFields.shape[0]):
+        QArrList[m] = (PressureFields[m] ** 2 * qCoeffs_3d).astype(np.float32)
     TimingFields = np.zeros((nStepsOnOffList.shape[0], 3), np.int32)
     # we prepare the index location when each field is on and off
     TimingFields[0, 1] = nStepsOnOffList[0, 0]
@@ -2492,6 +2502,23 @@ def BHTEMultiplePressureFields(
 
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.buffer(floatparams)
+
+        intparams = np.array(
+                [
+                    0,
+                    N1,
+                    N2,
+                    N3,
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    0,
+                    LocationMonitoring,
+                    0,
+                    TotalDurationSteps,
+                ],
+                dtype=np.int32,
+            )
+        
         for n in range(TotalDurationSteps):
             mStep = n % NstepsPerCycle
             QSegment = np.where(
@@ -2504,21 +2531,9 @@ def BHTEMultiplePressureFields(
                 dUS = 0
             StartIndexQ = np.prod(np.array(QArrList.shape[1:])) * QSegment
 
-            intparams = np.array(
-                [
-                    dUS,
-                    N1,
-                    N2,
-                    N3,
-                    TotalStepsMonitoring,
-                    nFactorMonitoring,
-                    n,
-                    LocationMonitoring,
-                    StartIndexQ,
-                    TotalDurationSteps,
-                ],
-                dtype=np.uint32,
-            )
+            intparams[0] = dUS
+            intparams[6] = n
+            intparams[8] = StartIndexQ
             d_intparams = ctx.buffer(intparams)
             ctx.init_command_buffer()
             if n % 2 == 0:
@@ -2608,6 +2623,21 @@ def BHTEMultiplePressureFields(
         floatparams = np.array([stableTemp, dt], dtype=np.float32)
         d_floatparams = ctx.array(floatparams)
         AllHandles = []
+        intparams = np.array(
+                [
+                    0,
+                    N1,
+                    N2,
+                    N3,
+                    TotalStepsMonitoring,
+                    nFactorMonitoring,
+                    0,
+                    LocationMonitoring,
+                    0,
+                    TotalDurationSteps,
+                ],
+                dtype=np.int32,
+            )
         for n in range(TotalDurationSteps):
             mStep = n % NstepsPerCycle
             QSegment = np.where(
@@ -2620,21 +2650,10 @@ def BHTEMultiplePressureFields(
                 dUS = 0
             StartIndexQ = np.prod(np.array(QArrList.shape[1:])) * QSegment
 
-            intparams = np.array(
-                [
-                    dUS,
-                    N1,
-                    N2,
-                    N3,
-                    TotalStepsMonitoring,
-                    nFactorMonitoring,
-                    n,
-                    LocationMonitoring,
-                    StartIndexQ,
-                    TotalDurationSteps,
-                ],
-                dtype=np.uint32,
-            )
+            intparams[0] = dUS
+            intparams[6] = n
+            intparams[8] = StartIndexQ
+            
             d_intparams = ctx.array(intparams)
 
             if n % 2 == 0:
@@ -2709,7 +2728,7 @@ def BHTEMultiplePressureFields(
     while len(GPUArrays)>0:
         garray=GPUArrays.pop()
         del garray
-    gc.collect()
+    gc.collect(1)
 
     if MonitoringPointsMap is not None:
         return T1, Dose1, MonitorSlice, QArrList, TemperaturePoints
