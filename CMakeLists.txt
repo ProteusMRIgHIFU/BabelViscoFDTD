@@ -50,9 +50,37 @@ if(APPLE)
     # write its .build/ directory there without touching the source tree.
     file(COPY "${METAL_SRC_DIR}/" DESTINATION "${METAL_BUILD_DIR}")
 
+    # `swift build` does NOT honour CMAKE_OSX_ARCHITECTURES — it defaults to
+    # the host arch unless told otherwise. Translate the CMake list into
+    # explicit --arch flags so cross-arch wheel builds (e.g. cibuildwheel
+    # producing an x86_64 wheel on an arm64 runner) get the right dylib.
+    set(SWIFT_BUILD_ARCH_ARGS "")
+    foreach(_arch IN LISTS CMAKE_OSX_ARCHITECTURES)
+        list(APPEND SWIFT_BUILD_ARCH_ARGS --arch ${_arch})
+    endforeach()
+
+    # The dylib output path depends on the --arch combination:
+    #   no --arch:           .build/release/
+    #   single --arch X:     .build/X-apple-macosx/release/
+    #   multiple --arch:     .build/apple/Products/Release/  (universal)
+    # Ask swift build itself rather than guessing.
+    execute_process(
+        COMMAND swift build ${SWIFT_BUILD_ARCH_ARGS} -c release --show-bin-path
+        WORKING_DIRECTORY "${METAL_BUILD_DIR}"
+        OUTPUT_VARIABLE SWIFT_BIN_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _swift_path_result
+    )
+    if(NOT _swift_path_result EQUAL 0)
+        message(FATAL_ERROR
+            "swift build --show-bin-path failed (exit code ${_swift_path_result}). "
+            "Args: ${SWIFT_BUILD_ARCH_ARGS}")
+    endif()
+    message(STATUS "Swift build bin path: ${SWIFT_BIN_PATH}")
+
     set(METAL_AIR  "${METAL_BUILD_DIR}/Sources/BabelMetal/Rayleig.air")
     set(METALLIB   "${METAL_BUILD_DIR}/Sources/BabelMetal/Babel.metallib")
-    set(DYLIB      "${METAL_BUILD_DIR}/.build/release/libBabelMetal.dylib")
+    set(DYLIB      "${SWIFT_BIN_PATH}/libBabelMetal.dylib")
 
     # Step 1: .metal → .air
     add_custom_command(
@@ -88,6 +116,7 @@ if(APPLE)
     add_custom_command(
         OUTPUT "${DYLIB}"
         COMMAND swift build
+                    ${SWIFT_BUILD_ARCH_ARGS}
                     -Xswiftc -import-objc-header
                     -Xswiftc Sources/BabelMetal/bridge.h
                     -c release
@@ -98,7 +127,7 @@ if(APPLE)
             "${METALLIB}"
             "${METAL_BUILD_DIR}/Sources/BabelMetal/BabelMetal.swift"
             "${METAL_BUILD_DIR}/Sources/BabelMetal/bridge.h"
-        COMMENT "Building Swift Metal library → libBabelMetal.dylib"
+        COMMENT "Building Swift Metal library → libBabelMetal.dylib (${CMAKE_OSX_ARCHITECTURES})"
         VERBATIM
     )
 
