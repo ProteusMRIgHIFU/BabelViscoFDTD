@@ -12,7 +12,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS split into two native runners to avoid arm64 -> x86_64
+        # cross-compilation (swift build does not honour CMAKE_OSX_ARCHITECTURES,
+        # so a cross-built x86_64 wheel ends up containing an arm64 dylib).
+        #   macos-13 = Intel  -> x86_64 wheel
+        #   macos-14 = Apple Silicon -> arm64 wheel
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +29,9 @@ jobs:
           CIBW_SKIP: "pp*"          # skip PyPy — C extensions are CPython-only
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ARCHS_MACOS: "arm64 x86_64"
+          # "auto" = native arch of the runner. Each macOS runner builds for
+          # its own architecture; no cross-compilation involved.
+          CIBW_ARCHS_MACOS: "auto"
 
           # macOS: install libomp (Apple Clang does not bundle OpenMP)
           CIBW_BEFORE_ALL_MACOS: "brew install libomp || true"
