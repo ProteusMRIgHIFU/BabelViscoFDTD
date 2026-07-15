@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "BabelViscoFDTD"
-version = "1.2.6"
+version = "1.2.7"
 description = "GPU/CPU 3D FDTD solution of viscoelastic equation"
 readme = "README.md"
 license = {text = "BSD License"}

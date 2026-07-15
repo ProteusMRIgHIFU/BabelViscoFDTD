@@ -13,7 +13,7 @@ def ListDevices():
     devicesIDs=[]
     for deviceID in range(0, devCount):
         d=cp.cuda.runtime.getDeviceProperties(deviceID)
-        devicesIDs.append(d['name'].decode('UTF-8'))
+        devicesIDs.append(f'{deviceID}:'+d['name'].decode('UTF-8'))
     return devicesIDs
 
 class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BASE):
@@ -31,23 +31,33 @@ class StaggeredFDTD_3D_With_Relaxation_CUDA(StaggeredFDTD_3D_With_Relaxation_BAS
             raise SystemError("There are no CUDA devices.")
         
         devicelist = {}
+        exactGPU=None
 
         for deviceID in range(0, devCount):
             d=cp.cuda.runtime.getDeviceProperties(deviceID)
             print("Found device", str(deviceID + 1) + "/" + str(devCount),d['name'].decode('UTF-8'))
             device = cp.cuda.Device(deviceID)
-            if arguments['DefaultGPUDeviceName'] in d['name'].decode('UTF-8'):
+            devname=f'{deviceID}:'+d['name'].decode('UTF-8')
+            if arguments['DefaultGPUDeviceName'] in devname:
                 devicelist[deviceID] = device
+            if arguments['DefaultGPUDeviceName'] == devname:
+                print('Selecting the exact GPU name',devname)
+                exactGPU=deviceID
+                break
     
         if len(devicelist) == 0:
             raise SystemError("There are no devices supporting CUDA or that matches selected device.")
-        elif len(devicelist) < arguments['DefaultGPUDeviceNumber']:
+        elif (len(devicelist) < arguments['DefaultGPUDeviceNumber']) and exactGPU is None:
             print("The requested device,", arguments['DefaultGPUDeviceNumber'], "(0-base index) is more than the number of devices available", len(devicelist))
             raise IndexError("Unable to select requested device.")
+        
+        if exactGPU is not None:
+            self.device = exactGPU
+        else:
+            self.device = devicelist[int(arguments['DefaultGPUDeviceNumber'])]
+            print("Selecting device", arguments['DefaultGPUDeviceName'], "with number: ", arguments['DefaultGPUDeviceNumber'])
 
-        print("Selecting device", arguments['DefaultGPUDeviceName'], "with number: ", arguments['DefaultGPUDeviceNumber'])
-
-        self.device = devicelist[int(arguments['DefaultGPUDeviceNumber'])]
+        
         self.context = cp.cuda.Device(self.device)
         print("Context Created!")
         self.context.use()
