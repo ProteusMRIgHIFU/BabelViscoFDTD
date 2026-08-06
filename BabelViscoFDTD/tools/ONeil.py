@@ -1,7 +1,10 @@
 import numpy as np
-
 def calc_axial_pressure(x,p_medium,omega,c,u0,a,A):
         '''
+        Theory of Focusing Radiators
+        H. T. O'Neil
+        J. Acoust. Soc. Am. 21, 516-526 (1949)
+        https://doi.org/10.1121/1.1906542
         p_medium:   medium density
         omega:      angular frequency
         c:          propagation velocity
