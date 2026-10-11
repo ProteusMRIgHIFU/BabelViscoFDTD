@@ -118,7 +118,7 @@ if(APPLE)
         COMMAND swift build
                     ${SWIFT_BUILD_ARCH_ARGS}
                     -Xswiftc -import-objc-header
-                    -Xswiftc Sources/BabelMetal/bridge.h
+                    -Xswiftc "${METAL_BUILD_DIR}/Sources/BabelMetal/bridge.h"
                     -c release
         COMMAND install_name_tool -id @loader_path/libBabelMetal.dylib
                     "${DYLIB}"
