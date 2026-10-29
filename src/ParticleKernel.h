@@ -148,7 +148,7 @@ _PT  CurZone;
 												ELD(V_y_y,index)*DXDThp_J+
 												AvgInvRhoI*
 												Diff);
-					index=Ind_V_y_z(i,j,k);
+					index=Ind_V_z_y(i,j,k);
 
 					Diff= k>1  && k <N3-1 ? CA*(EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1) )-
 					                        CB*(EL(Sigma_yz,i,j,k+1)-EL(Sigma_yz,i,j,k-2) )

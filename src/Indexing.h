@@ -181,7 +181,8 @@ typedef _PT tIndex ;
 #define IndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (IndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
 
 #define Ind_MaterialMap(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
-#define Ind_ReflectorMask(_i,_j,_k) (IndN1N2N3(_i,_j,_k,(N1*N2*N3)))
+// ReflectorMask is shared by all SPP zones (zone size 0 so no zone offset is added)
+#define Ind_ReflectorMask(_i,_j,_k) (IndN1N2N3(_i,_j,_k,0))
 
 #define Ind_V_x(_i,_j,_k) (IndN1p1N2N3(_i,_j,_k,(N1+1)*N2*N3))
 #define Ind_V_y(_i,_j,_k) (IndN1N2p1N3(_i,_j,_k,N1*(N2+1)*N3))
@@ -250,28 +251,28 @@ typedef _PT tIndex ;
 #define InvDXDT_J 	(IsOnLowPML_J(j) ? gpuInvDXDTpluspr[jPML(j)] : gpuInvDXDTplushppr[jPML(j)] )
 #define DXDT_J 		(IsOnLowPML_J(j) ? gpuDXDTminuspr[jPML(j)] : gpuDXDTminushppr[jPML(j)] )
 #define InvDXDT_K 	(IsOnLowPML_K(k) ? gpuInvDXDTpluspr[kPML(k)] : gpuInvDXDTplushppr[kPML(k)] )
-#define DXDT_K 		(IsOnLowPML_I(k) ? gpuDXDTminuspr[kPML(k)] : gpuDXDTminushppr[kPML(k)] )
+#define DXDT_K 		(IsOnLowPML_K(k) ? gpuDXDTminuspr[kPML(k)] : gpuDXDTminushppr[kPML(k)] )
 
 #define InvDXDThp_I 	(IsOnLowPML_I(i) ? gpuInvDXDTplushppr[iPML(i)] : gpuInvDXDTpluspr[iPML(i)] )
 #define DXDThp_I 		(IsOnLowPML_I(i) ? gpuDXDTminushppr[iPML(i)] : gpuDXDTminuspr[iPML(i)] )
 #define InvDXDThp_J 	(IsOnLowPML_J(j) ? gpuInvDXDTplushppr[jPML(j)] : gpuInvDXDTpluspr[jPML(j)] )
 #define DXDThp_J 		(IsOnLowPML_J(j) ? gpuDXDTminushppr[jPML(j)] : gpuDXDTminuspr[jPML(j)] )
 #define InvDXDThp_K 	(IsOnLowPML_K(k) ? gpuInvDXDTplushppr[kPML(k)] : gpuInvDXDTpluspr[kPML(k)] )
-#define DXDThp_K 		(IsOnLowPML_I(k) ? gpuDXDTminushppr[kPML(k)] : gpuDXDTminuspr[kPML(k)])
+#define DXDThp_K 		(IsOnLowPML_K(k) ? gpuDXDTminushppr[kPML(k)] : gpuDXDTminuspr[kPML(k)])
 #else
 #define InvDXDT_I 	(IsOnLowPML_I(i) ? InvDXDTplus_pr[iPML(i)] : InvDXDTplushp_pr[iPML(i)] )
 #define DXDT_I 		(IsOnLowPML_I(i) ? DXDTminus_pr[iPML(i)] : DXDTminushp_pr[iPML(i)] )
 #define InvDXDT_J 	(IsOnLowPML_J(j) ? InvDXDTplus_pr[jPML(j)] : InvDXDTplushp_pr[jPML(j)] )
 #define DXDT_J 		(IsOnLowPML_J(j) ? DXDTminus_pr[jPML(j)] : DXDTminushp_pr[jPML(j)] )
 #define InvDXDT_K 	(IsOnLowPML_K(k) ? InvDXDTplus_pr[kPML(k)] : InvDXDTplushp_pr[kPML(k)] )
-#define DXDT_K 		(IsOnLowPML_I(k) ? DXDTminus_pr[kPML(k)] : DXDTminushp_pr[kPML(k)] )
+#define DXDT_K 		(IsOnLowPML_K(k) ? DXDTminus_pr[kPML(k)] : DXDTminushp_pr[kPML(k)] )
 
 #define InvDXDThp_I 	(IsOnLowPML_I(i) ? InvDXDTplushp_pr[iPML(i)] : InvDXDTplus_pr[iPML(i)] )
 #define DXDThp_I 		(IsOnLowPML_I(i) ? DXDTminushp_pr[iPML(i)] : DXDTminus_pr[iPML(i)] )
 #define InvDXDThp_J 	(IsOnLowPML_J(j) ? InvDXDTplushp_pr[jPML(j)] : InvDXDTplus_pr[jPML(j)] )
 #define DXDThp_J 		(IsOnLowPML_J(j) ? DXDTminushp_pr[jPML(j)] : DXDTminus_pr[jPML(j)] )
 #define InvDXDThp_K 	(IsOnLowPML_K(k) ? InvDXDTplushp_pr[kPML(k)] : InvDXDTplus_pr[kPML(k)] )
-#define DXDThp_K 		(IsOnLowPML_I(k) ? DXDTminushp_pr[kPML(k)] : DXDTminus_pr[kPML(k)])
+#define DXDThp_K 		(IsOnLowPML_K(k) ? DXDTminushp_pr[kPML(k)] : DXDTminus_pr[kPML(k)])
 #endif
 
 #define MASK_Vx   		0x0000000001
