@@ -362,7 +362,11 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 	else
 	{
 #if defined(_ST_MAIN)
+	#if defined(METAL_REFLECTOR_IN_MATERIALS)
+		if (MaterialID>=REFLECTOR_MATERIAL_START) // reflector cells are marked in the material map
+	#else
 		if (EL(ReflectorMask,i,j,k)==1)
+	#endif
 		{
 		#if defined(CPU)
 			continue;

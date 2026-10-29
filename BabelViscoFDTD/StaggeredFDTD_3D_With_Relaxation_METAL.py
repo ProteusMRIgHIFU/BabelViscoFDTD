@@ -73,6 +73,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         extra_params = {"BACKEND":"METAL"}
         
         self.bUseSingleKernel = False
+        # threads per threadgroup for each kernel (0 = largest size supported by the kernel)
+        self.ThreadsPerGroup = {}
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
@@ -98,6 +100,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             SCode.append("#define METAL_INDEX64\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
+        self._FoldReflectorMask(arguments)
         self.ctx = mc.Device(n)
         self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
         print(self.ctx)
@@ -121,6 +124,36 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                          int(arguments['IndexSensorMap'].size)*NumberSteps*10, # SensorOutput
                          int(arguments['SourceFunctions'].size))
         return LargestArray >= 2**32
+
+    def _FoldReflectorMask(self, arguments):
+        '''
+        Reflector cells are marked in the material map instead of being read from ReflectorMask in every step:
+        the material property tables are duplicated and reflector cells use the copy (MaterialID + NumberMaterials).
+        Material properties (including those used when averaging with neighbour cells) are unchanged, and the
+        kernels detect a reflector with MaterialID >= REFLECTOR_MATERIAL_START, saving one memory read per cell.
+        The arrays of the caller are not modified; folded copies are used when uploading to the GPU.
+        '''
+        Tables = ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH']
+        NumberMaterials = int(arguments['MiuMatOverH'].size)
+        assert all(arguments[k].size == NumberMaterials for k in Tables)
+        self.ReflectorMaterialStart = NumberMaterials
+        self._HostOverride = {}
+        Reflector = np.asarray(arguments['ReflectorMask']) == 1
+        if not np.any(Reflector):
+            return
+        MaterialMap = np.array(arguments['MaterialMap'], order='F')
+        assert int(MaterialMap.max()) < NumberMaterials
+        for k in Tables:
+            Values = arguments[k].flatten(order='F')
+            self._HostOverride[k] = np.concatenate([Values, Values])
+        N1, N2, N3 = Reflector.shape
+        # last dimension of the material map is the SPP zone (if present); all zones share the reflector mask
+        Zones = MaterialMap.reshape(MaterialMap.shape[0], MaterialMap.shape[1], MaterialMap.shape[2], -1, order='F')
+        Zones[:N1, :N2, :N3, :][Reflector] += NumberMaterials
+        self._HostOverride['MaterialMap'] = MaterialMap
+
+    def _HostArray(self, Name, Arrays):
+        return self._HostOverride.get(Name, Arrays[Name])
 
     def _InitSymbol(self, IP,_NameVar,td,SCode):
         if td in ['float','double']:
@@ -167,7 +200,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU,flags=[]):
         print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
-        SizeCopy = ArrayResCPU[Name].size
+        SizeCopy = self._HostArray(Name, ArrayResCPU).size
         if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
             self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
             self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
@@ -192,10 +225,10 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
         for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
                     'Ox','Oy','Oz','SourceFunctions']:
-            self._CompleteCopyToGPU(k, arguments, arguments[k].size, "float")
+            self._CompleteCopyToGPU(k, arguments, self._HostArray(k, arguments).size, "float")
 
         for k in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
-            self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
+            self._CompleteCopyToGPU(k, arguments, self._HostArray(k, arguments).size, "unsigned int")
 
         self.localSensor = [1, 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
@@ -219,9 +252,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
-            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
+            self.mex_buffer[self._IndexDataMetal[Name]].modify(self._HostArray(Name, args).flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
         elif td == "unsigned int":
-            self.uint_buffer.modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
+            self.uint_buffer.modify(self._HostArray(Name, args).flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
@@ -237,7 +270,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         This avoids reading them from p_INDEX_MEX/p_INDEX_UINT on every array access, which also
         forced the compiler to reload them after every store (as those buffers may alias the arrays)
         '''
-        Defs = ["#define METAL_CONST_OFFSETS\n"]
+        Defs = ["#define METAL_CONST_OFFSETS\n",
+                "#define METAL_REFLECTOR_IN_MATERIALS\n",
+                "#define REFLECTOR_MATERIAL_START %iU\n" % self.ReflectorMaterialStart]
         for Name in self._IndexDataMetal:
             Defs.append("#define BUFOFF_%s %iUL\n" % (Name, int(self.HOST_INDEX_MEX[self.C_IND[Name]][0])))
         for Name in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
@@ -351,6 +386,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         Time loop encoding many steps per command buffer, so the CPU does not wait for the GPU after every step.
         nStep and TypeSource of every step are stored once in a buffer bound as buffer 0, with each dispatch
         selecting its step by the buffer offset. The CPU encodes the next batch while the GPU runs the current one.
+        With metalcomputebabel >= 0.2.5 the batches use a concurrent encoder: the PML and main kernels of each phase
+        update disjoint regions and can run simultaneously, with a memory barrier between dependent phases.
         '''
         TimeSteps = int(arguments['TimeSteps'])
         SensorSubSampling = int(arguments['SensorSubSampling'])
@@ -364,22 +401,35 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         SizeKernel = {k:int(np.prod(DimsKernel[k])) for k in kernels}
         NumberSensors = int(np.prod(self.globalSensor))
         StepsPerBatch = 64
+        ctx = self.ctx
+        TPG = self.ThreadsPerGroup
+        if hasattr(ctx,'batch_barrier'): # metalcomputebabel >= 0.2.5
+            Begin = lambda : ctx.batch_begin(AllBuffers,True)
+            Dispatch = lambda fn,count,offset,kernel : ctx.batch_dispatch(fn,count,offset,TPG.get(kernel,0))
+            Barrier = ctx.batch_barrier
+        else: # metalcomputebabel 0.2.4, serial encoder: each dispatch completes before the next one
+            Begin = lambda : ctx.batch_begin(AllBuffers)
+            Dispatch = lambda fn,count,offset,kernel : ctx.batch_dispatch(fn,count,offset)
+            Barrier = lambda : None
 
-        self.ctx.batch_begin(AllBuffers)
+        Begin()
         try:
             for nStep in range(TimeSteps):
                 Offset = nStep*StepStride*4
                 for i in kernels:
-                    self.ctx.batch_dispatch(self.AllStressKernels[i],SizeKernel[i],Offset)
+                    Dispatch(self.AllStressKernels[i],SizeKernel[i],Offset,i)
+                Barrier()
                 for i in kernels:
-                    self.ctx.batch_dispatch(self.AllParticleKernels[i],SizeKernel[i],Offset)
+                    Dispatch(self.AllParticleKernels[i],SizeKernel[i],Offset,i)
+                Barrier()
                 if (nStep % SensorSubSampling)==0  and (int(nStep/SensorSubSampling)>=SensorStart):
-                    self.ctx.batch_dispatch(self.SensorsKernel,NumberSensors,Offset)
+                    Dispatch(self.SensorsKernel,NumberSensors,Offset,'Sensors')
+                    Barrier()
                 if (nStep+1) % StepsPerBatch == 0 or nStep == TimeSteps-1:
                     self.ctx.batch_commit()
                     self.ctx.batch_wait(1) # at most one batch running while the next one is encoded
                     if nStep < TimeSteps-1:
-                        self.ctx.batch_begin(AllBuffers)
+                        Begin()
             self.ctx.batch_wait(0)
         except BaseException:
             # leave the device without open or running batches before reporting the error

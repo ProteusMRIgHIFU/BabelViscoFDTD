@@ -207,7 +207,11 @@ _PT  CurZone;
 			{
 
 	#if defined(_PR_MAIN) 
+			#if defined(METAL_REFLECTOR_IN_MATERIALS)
+				if (ELD(MaterialMap,Ind_MaterialMap(i,j,k))>=REFLECTOR_MATERIAL_START) // reflector cells are marked in the material map
+			#else
 				if (EL(ReflectorMask,i,j,k)==1)
+			#endif
 				{
 				#if defined(CPU)
 				    continue;

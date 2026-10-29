@@ -62,7 +62,7 @@ Install `llvm-openmp` for required OpenMP support. In Anaconda, install with `co
 
 As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library (which is published in PyPI by its original developer), the modified version is not listed as a dependency of BabelViscoFDTD and needs to be installed manually. From BabelViscoFDTD v1.3.0, the Metal backend requires version 0.2.4 or later of the modified library:
 
-`pip install "metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git@08a6b3ad19d0787c9f69b678f0f8521156bbae23"`
+`pip install "metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git@0dba71073abc742fb5bdc91dcaaaf6ae8e57d360"`
 
 This modified version will be installed with a different library name (metalcomputebabel) that is different from the original (metalcompute) to avoid conflicts. Version 0.2.4 adds a batch API that lets BabelViscoFDTD submit many time steps to the GPU at once, avoiding a CPU-GPU synchronization after every time step. With an older version of `metalcomputebabel`, the Metal backend still runs, but falls back to the slower step-by-step execution.
 
