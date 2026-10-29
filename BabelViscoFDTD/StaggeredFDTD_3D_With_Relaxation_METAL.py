@@ -268,40 +268,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         
         self.SensorsKernel=prg.function('SensorsKernel')
 
-    def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
+    def _TimeLoopLegacy(self, arguments, kernels, DimsKernel, InitDict):
         TimeSteps = arguments['TimeSteps']
-        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
-        outparams=self._outparams
-        DimsKernel={}
-        DimsKernel['PML_12']=[outparams['PML_Thickness']*2,
-                             outparams['N2'],
-                             outparams['N3']]
-        DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness'],
-                            outparams['N3']]
-        DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness'],
-                            outparams['N3']]
-        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
-        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
-        if self.bUseSingleKernel:
-            DimsKernel['MAIN_1']=[outparams['N1'],
-                            outparams['N2'],
-                            outparams['N3']]
-            kernels=["MAIN_1"]
-            
-        
-        else:
-            DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['N3']-outparams['PML_Thickness']*2]
-            kernels =["PML_12", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
-            
-
         for nStep in range(TimeSteps):
             InitDict["nStep"] = nStep
             for i in ['nStep', 'TypeSource']:
@@ -377,6 +345,94 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
                 self.ctx.commit_command_buffer()   
                 self.ctx.wait_command_buffer()
                 del handle
+
+    def _TimeLoopBatched(self, arguments, kernels, DimsKernel):
+        '''
+        Time loop encoding many steps per command buffer, so the CPU does not wait for the GPU after every step.
+        nStep and TypeSource of every step are stored once in a buffer bound as buffer 0, with each dispatch
+        selecting its step by the buffer offset. The CPU encodes the next batch while the GPU runs the current one.
+        '''
+        TimeSteps = int(arguments['TimeSteps'])
+        SensorSubSampling = int(arguments['SensorSubSampling'])
+        SensorStart = int(arguments['SensorStart'])
+        StepStride = 64 # uint32 entries per step (256 bytes), keeps buffer offsets aligned for all GPU families
+        StepConstants = np.zeros((TimeSteps,StepStride),np.uint32)
+        StepConstants[:,self.C_IND['nStep']] = np.arange(TimeSteps)
+        StepConstants[:,self.C_IND['TypeSource']] = int(arguments['TypeSource'])
+        self.step_constants = self.ctx.buffer(StepConstants)
+        AllBuffers = (self.step_constants,self.index_mex,self.index_uint,self.uint_buffer) + tuple(self.mex_buffer)
+        SizeKernel = {k:int(np.prod(DimsKernel[k])) for k in kernels}
+        NumberSensors = int(np.prod(self.globalSensor))
+        StepsPerBatch = 64
+
+        self.ctx.batch_begin(AllBuffers)
+        try:
+            for nStep in range(TimeSteps):
+                Offset = nStep*StepStride*4
+                for i in kernels:
+                    self.ctx.batch_dispatch(self.AllStressKernels[i],SizeKernel[i],Offset)
+                for i in kernels:
+                    self.ctx.batch_dispatch(self.AllParticleKernels[i],SizeKernel[i],Offset)
+                if (nStep % SensorSubSampling)==0  and (int(nStep/SensorSubSampling)>=SensorStart):
+                    self.ctx.batch_dispatch(self.SensorsKernel,NumberSensors,Offset)
+                if (nStep+1) % StepsPerBatch == 0 or nStep == TimeSteps-1:
+                    self.ctx.batch_commit()
+                    self.ctx.batch_wait(1) # at most one batch running while the next one is encoded
+                    if nStep < TimeSteps-1:
+                        self.ctx.batch_begin(AllBuffers)
+            self.ctx.batch_wait(0)
+        except BaseException:
+            # leave the device without open or running batches before reporting the error
+            try:
+                self.ctx.batch_commit()
+            except mc.error:
+                pass
+            try:
+                self.ctx.batch_wait(0)
+            except mc.error:
+                pass
+            raise
+        del self.step_constants
+
+    def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
+        TimeSteps = arguments['TimeSteps']
+        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
+        outparams=self._outparams
+        DimsKernel={}
+        DimsKernel['PML_12']=[outparams['PML_Thickness']*2,
+                             outparams['N2'],
+                             outparams['N3']]
+        DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness'],
+                            outparams['N3']]
+        DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness'],
+                            outparams['N3']]
+        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['N2']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness']]
+        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['N2']-outparams['PML_Thickness']*2,
+                            outparams['PML_Thickness']]
+        if self.bUseSingleKernel:
+            DimsKernel['MAIN_1']=[outparams['N1'],
+                            outparams['N2'],
+                            outparams['N3']]
+            kernels=["MAIN_1"]
+            
+        
+        else:
+            DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
+                            outparams['N2']-outparams['PML_Thickness']*2,
+                            outparams['N3']-outparams['PML_Thickness']*2]
+            kernels =["PML_12", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
+            
+
+        if hasattr(self.ctx,'batch_begin'):
+            self._TimeLoopBatched(arguments,kernels,DimsKernel)
+        else:
+            # metalcomputebabel versions without the batch API
+            self._TimeLoopLegacy(arguments,kernels,DimsKernel,InitDict)
         if 'arm64' not in platform.platform():
             self.ctx.sync_buffers((self.mex_buffer[0],
                                     self.mex_buffer[1],
