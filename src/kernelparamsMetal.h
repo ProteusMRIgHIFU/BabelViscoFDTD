@@ -67,6 +67,22 @@
 #define TypeSource p_CONSTANT_BUFFER_UINT[CInd_TypeSource]
 #endif
 
+#if defined(METAL_CONST_OFFSETS)
+// Offsets inside the Metal buffers are compile-time constants provided by the host
+#define __def_MEX_VAR_0(__NameVar)  (p_MEX_BUFFER_0 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_1(__NameVar)  (p_MEX_BUFFER_1 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_2(__NameVar)  (p_MEX_BUFFER_2 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_3(__NameVar)  (p_MEX_BUFFER_3 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_4(__NameVar)  (p_MEX_BUFFER_4 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_5(__NameVar)  (p_MEX_BUFFER_5 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_6(__NameVar)  (p_MEX_BUFFER_6 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_7(__NameVar)  (p_MEX_BUFFER_7 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_8(__NameVar)  (p_MEX_BUFFER_8 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_9(__NameVar)  (p_MEX_BUFFER_9 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_10(__NameVar)  (p_MEX_BUFFER_10 + BUFOFF_ ##__NameVar)
+#define __def_MEX_VAR_11(__NameVar)  (p_MEX_BUFFER_11 + BUFOFF_ ##__NameVar)
+#define __def_UINT_VAR(__NameVar)  (p_UINT_BUFFER + BUFOFF_ ##__NameVar)
+#else
 #define __def_MEX_VAR_0(__NameVar)  (&p_MEX_BUFFER_0[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
 #define __def_MEX_VAR_1(__NameVar)  (&p_MEX_BUFFER_1[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
 #define __def_MEX_VAR_2(__NameVar)  (&p_MEX_BUFFER_2[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
@@ -81,6 +97,7 @@
 #define __def_MEX_VAR_11(__NameVar)  (&p_MEX_BUFFER_11[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
 
 #define __def_UINT_VAR(__NameVar)  (&p_UINT_BUFFER[ ((unsigned long) (p_INDEX_UINT[CInd_ ##__NameVar*2])) | (((unsigned long) (p_INDEX_UINT[CInd_ ##__NameVar*2+1]))<<32) ])
+#endif
 
 #define k_V_x_x_pr  __def_MEX_VAR_0(V_x_x)
 #define k_V_y_x_pr  __def_MEX_VAR_0(V_y_x)

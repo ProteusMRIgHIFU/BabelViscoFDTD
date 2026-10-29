@@ -2,7 +2,13 @@
 #define INDEXING_DEF
 
 
+#if defined(METALCOMPUTE) && !defined(METAL_INDEX64)
+// Apple GPUs emulate 64-bit integer arithmetic, so 32-bit indexing reduces the cost of index calculations.
+// The host defines METAL_INDEX64 when any array has 2^32 or more entries.
+typedef unsigned int  _PT;
+#else
 typedef unsigned long  _PT;
+#endif
 
 
 typedef unsigned char interface_t;

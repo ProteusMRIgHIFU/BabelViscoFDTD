@@ -93,6 +93,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             SCode.append("#define METAL_SINGLE_KERNEL\n")
         SCode.append("#define METALCOMPUTE\n")
+        if self._RequiresIndex64(arguments):
+            print('Using 64-bit indexing in GPU kernels')
+            SCode.append("#define METAL_INDEX64\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
         self.ctx = mc.Device(n)
@@ -102,6 +105,23 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             print('Setting Metal for External or AMD processor')
             self.ctx.set_external_gpu(1) 
     
+    def _RequiresIndex64(self, arguments):
+        '''
+        Kernels use 32-bit indexing unless an array has 2^32 or more entries (the indices inside
+        each array are 32-bit; the offsets of arrays inside the shared Metal buffers remain 64-bit).
+        The bounds below are conservative upper limits of the largest arrays.
+        '''
+        N1=int(arguments['N1'])
+        N2=int(arguments['N2'])
+        N3=int(arguments['N3'])
+        ZoneCount=int(arguments['SPP_ZONES'])
+        NumberSteps=int(arguments['TimeSteps'])//int(arguments['SensorSubSampling'])+1
+        LargestArray=max((N1+1)*(N2+1)*(N3+1)*ZoneCount, # stresses, velocities, memory variables
+                         N1*N2*N3*10*2, # SqrAcc, up to 10 maps for both RMS and peak
+                         int(arguments['IndexSensorMap'].size)*NumberSteps*10, # SensorOutput
+                         int(arguments['SourceFunctions'].size))
+        return LargestArray >= 2**32
+
     def _InitSymbol(self, IP,_NameVar,td,SCode):
         if td in ['float','double']:
             res = 'constant ' + td  + ' ' + _NameVar + ' = %0.9g;\n' %(IP[_NameVar])
@@ -180,6 +200,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self.localSensor = [1, 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
 
+        self._CompileKernels()
+
     def _IndexManip(self):
         index=np.zeros((self.LENGTH_INDEX_MEX,2),np.uint32)
         for i in range(self.LENGTH_INDEX_MEX):
@@ -205,12 +227,31 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
     
 
     def _InitiateCommands(self, SCode):
-        AllC=''.join(SCode)
+        # Compilation is deferred to _CompileKernels (called at the end of _PreExecuteScript),
+        # once the location of every array inside the Metal buffers is known
+        self._KernelSource = SCode
+
+    def _OffsetDefinitions(self):
+        '''
+        Offsets of each array inside the shared Metal buffers, baked as compile-time constants.
+        This avoids reading them from p_INDEX_MEX/p_INDEX_UINT on every array access, which also
+        forced the compiler to reload them after every store (as those buffers may alias the arrays)
+        '''
+        Defs = ["#define METAL_CONST_OFFSETS\n"]
+        for Name in self._IndexDataMetal:
+            Defs.append("#define BUFOFF_%s %iUL\n" % (Name, int(self.HOST_INDEX_MEX[self.C_IND[Name]][0])))
+        for Name in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
+            Defs.append("#define BUFOFF_%s %iUL\n" % (Name, int(self.HOST_INDEX_UINT[self.C_IND[Name]][0])))
+        return Defs
+
+    def _CompileKernels(self):
+        AllC=''.join(self._OffsetDefinitions() + self._KernelSource)
         prg = self.ctx.kernel(AllC)
         if self.bUseSingleKernel:
             PartsStress=['MAIN_1']
         else:
-            PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            # PML_12 replaces PML_1 and PML_2 (both i-slabs in a single kernel, see GPU_KERNELS.h)
+            PartsStress=['PML_12','PML_3','PML_4','PML_5','PML_6','MAIN_1']
         
         self.AllStressKernels={}
         for k in PartsStress:
@@ -219,7 +260,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             PartsParticle =['MAIN_1']
         else:
-            PartsParticle=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            PartsParticle=['PML_12','PML_3','PML_4','PML_5','PML_6','MAIN_1']
         
         self.AllParticleKernels={}
         for k in PartsParticle:
@@ -232,10 +273,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
         outparams=self._outparams
         DimsKernel={}
-        DimsKernel['PML_1']=[outparams['PML_Thickness'],
-                             outparams['N2'],
-                             outparams['N3']]
-        DimsKernel['PML_2']=[outparams['PML_Thickness'],
+        DimsKernel['PML_12']=[outparams['PML_Thickness']*2,
                              outparams['N2'],
                              outparams['N3']]
         DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
@@ -261,7 +299,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
                             outparams['N3']-outparams['PML_Thickness']*2]
-            kernels =["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
+            kernels =["PML_12", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
             
 
         for nStep in range(TimeSteps):

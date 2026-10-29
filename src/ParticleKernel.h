@@ -216,7 +216,11 @@ _PT  CurZone;
 				#endif
 				}
 				index=Ind_MaterialMap(i,j,k);
-				AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
+				// Values are read once and kept in registers (device pointers may alias,
+				// so the compiler cannot remove re-reads of values just written)
+				mexType InvRhoCenter=ELD(InvRhoMatH,ELD(MaterialMap,index));
+				mexType VNew;
+				AvgInvRhoI=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i+1,j,k))+InvRhoCenter);
 				
 				Dx=CA*(EL(Sigma_xx,i+1,j,k)-EL(Sigma_xx,i,j,k))-
 						CB*(EL(Sigma_xx,i+2,j,k)-EL(Sigma_xx,i-1,j,k));
@@ -227,11 +231,12 @@ _PT  CurZone;
 				Dx+=CA*(EL(Sigma_xz,i,j,k)-EL(Sigma_xz,i,j,k-1))-
 						CB*(EL(Sigma_xz,i,j,k+1)-EL(Sigma_xz,i,j,k-2));
 
-				EL(Vx,i,j,k)+=DT*AvgInvRhoI*Dx;
-				accum_x+=EL(Vx,i,j,k);
+				VNew=EL(Vx,i,j,k)+DT*AvgInvRhoI*Dx;
+				EL(Vx,i,j,k)=VNew;
+				accum_x+=VNew;
 
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				AvgInvRhoJ=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j+1,k))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
+				AvgInvRhoJ=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j+1,k))+InvRhoCenter);
 				
 				Dy=CA*(EL(Sigma_yy,i,j+1,k)-EL(Sigma_yy,i,j,k) )-
 						CB*(EL(Sigma_yy,i,j+2,k)-EL(Sigma_yy,i,j-1,k));
@@ -242,11 +247,12 @@ _PT  CurZone;
 				Dy+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j,k-1))-
 					CB*(EL(Sigma_yz,i,j,k+1)-EL(Sigma_yz,i,j,k-2));
 				
-				EL(Vy,i,j,k)+=DT*AvgInvRhoJ*Dy;
-				accum_y+=EL(Vy,i,j,k);
+				VNew=EL(Vy,i,j,k)+DT*AvgInvRhoJ*Dy;
+				EL(Vy,i,j,k)=VNew;
+				accum_y+=VNew;
 
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				AvgInvRhoK=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j,k+1))+ELD(InvRhoMatH,ELD(MaterialMap,index)));
+				AvgInvRhoK=0.5*(ELD(InvRhoMatH,EL(MaterialMap,i,j,k+1))+InvRhoCenter);
 				Dz=CA*(EL(Sigma_zz,i,j,k+1)-EL(Sigma_zz,i,j,k))-
 						CB*( EL(Sigma_zz,i,j,k+2)-EL(Sigma_zz,i,j,k-1));
 
@@ -256,8 +262,9 @@ _PT  CurZone;
 				Dz+=CA*( EL(Sigma_yz,i,j,k)-EL(Sigma_yz,i,j-1,k))-
 					CB*(EL(Sigma_yz,i,j+1,k)-EL(Sigma_yz,i,j-2,k));
 
-				EL(Vz,i,j,k)+=DT*AvgInvRhoK*Dz;
-				accum_z+=EL(Vz,i,j,k);
+				VNew=EL(Vz,i,j,k)+DT*AvgInvRhoK*Dz;
+				EL(Vz,i,j,k)=VNew;
+				accum_z+=VNew;
 			
 				if ((nStep < LengthSource) && TypeSource<2) //Source is particle displacement
 				{
@@ -313,11 +320,11 @@ _PT  CurZone;
 		if (SelRMSorPeak & SEL_PEAK)
 		{
 			if (IS_Vx_SELECTED(SelMapsRMSPeak))
-					ELD(SqrAcc,index+index2*IndexRMSPeak_Vx)=accum_x > ELD(SqrAcc,index+index2*IndexRMSPeak_Vx) ? accum_x : ELD(SqrAcc,index+index2*IndexRMSPeak_Vx);
+					{ _PT _iPeak=index+index2*IndexRMSPeak_Vx; if (accum_x>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_x; }
 			if (IS_Vy_SELECTED(SelMapsRMSPeak))
-					ELD(SqrAcc,index+index2*IndexRMSPeak_Vy)=accum_y > ELD(SqrAcc,index+index2*IndexRMSPeak_Vy) ? accum_y : ELD(SqrAcc,index+index2*IndexRMSPeak_Vy);
+					{ _PT _iPeak=index+index2*IndexRMSPeak_Vy; if (accum_y>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_y; }
 			if (IS_Vz_SELECTED(SelMapsRMSPeak))
-					ELD(SqrAcc,index+index2*IndexRMSPeak_Vz)=accum_z > ELD(SqrAcc,index+index2*IndexRMSPeak_Vz) ? accum_z : ELD(SqrAcc,index+index2*IndexRMSPeak_Vz);
+					{ _PT _iPeak=index+index2*IndexRMSPeak_Vz; if (accum_z>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_z; }
 			
 		}
 

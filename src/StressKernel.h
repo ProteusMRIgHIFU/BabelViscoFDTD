@@ -120,53 +120,72 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   {
 	  index=Ind_MaterialMap(i,j,k);
       MaterialID=ELD(MaterialMap,index);
+	  {
+		// Each neighbour material (and its properties) is loaded once and kept in registers
+		_PT MatXp=EL(MaterialMap,i+1,j,k);
+		_PT MatYp=EL(MaterialMap,i,j+1,k);
+		_PT MatZp=EL(MaterialMap,i,j,k+1);
+		_PT MatXYp=EL(MaterialMap,i+1,j+1,k);
+		_PT MatXZp=EL(MaterialMap,i+1,j,k+1);
+		_PT MatYZp=EL(MaterialMap,i,j+1,k+1);
+		mexType MiuC=ELD(MiuMatOverH,MaterialID);
+		mexType MiuXp=ELD(MiuMatOverH,MatXp);
+		mexType MiuYp=ELD(MiuMatOverH,MatYp);
+		mexType MiuZp=ELD(MiuMatOverH,MatZp);
+		#if  defined(_ST_MAIN)
+		mexType TauC=ELD(TauShear,MaterialID);
+		mexType TauXp=ELD(TauShear,MatXp);
+		mexType TauYp=ELD(TauShear,MatYp);
+		mexType TauZp=ELD(TauShear,MatZp);
+		#endif
 
-	  	m1=ELD(MiuMatOverH,MaterialID);
-  		m2=ELD(MiuMatOverH,EL(MaterialMap,i+1,j,k));
-  		m3=ELD(MiuMatOverH,EL(MaterialMap,i,j+1,k));
-  		m4=ELD(MiuMatOverH,EL(MaterialMap,i+1,j+1,k));
+	  	m1=MiuC;
+  		m2=MiuXp;
+  		m3=MiuYp;
+  		m4=ELD(MiuMatOverH,MatXYp);
    		value=m1*m2*m3*m4;
   		RigidityXY =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
-      
-	    #if  defined(_ST_MAIN) 
-  		TauShearXY = value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j,k)) +
-  							 ELD(TauShear,EL(MaterialMap,i,j+1,k)) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j+1,k)))
-  							 : ELD(TauShear,MaterialID);
+
+	    #if  defined(_ST_MAIN)
+  		TauShearXY = value!=0.0 ? 0.25*(TauC +
+  							 TauXp +
+  							 TauYp +
+  							 ELD(TauShear,MatXYp))
+  							 : TauC;
 
 	   #endif
-	    m1=ELD(MiuMatOverH,MaterialID);
-  		m2=ELD(MiuMatOverH,EL(MaterialMap,i+1,j,k));
-  		m3=ELD(MiuMatOverH,EL(MaterialMap,i,j,k+1));
-  		m4=ELD(MiuMatOverH,EL(MaterialMap,i+1,j,k+1));
+	    m1=MiuC;
+  		m2=MiuXp;
+  		m3=MiuZp;
+  		m4=ELD(MiuMatOverH,MatXZp);
 
   		value=m1*m2*m3*m4;
   		RigidityXZ =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
 	   #if defined(_ST_MAIN)
-  		TauShearXZ= value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j,k)) +
-  							 ELD(TauShear,EL(MaterialMap,i,j,k+1)) +
-  							 ELD(TauShear,EL(MaterialMap,i+1,j,k+1)))
-  							 : ELD(TauShear,MaterialID);
+  		TauShearXZ= value!=0.0 ? 0.25*(TauC +
+  							 TauXp +
+  							 TauZp +
+  							 ELD(TauShear,MatXZp))
+  							 : TauC;
 
 		#endif
-		m1=ELD(MiuMatOverH,MaterialID);
-  		m2=ELD(MiuMatOverH,EL(MaterialMap,i,j+1,k));
-		m3=ELD(MiuMatOverH,EL(MaterialMap,i,j,k+1));
-  		m4=ELD(MiuMatOverH,EL(MaterialMap,i,j+1,k+1));
+		m1=MiuC;
+  		m2=MiuYp;
+		m3=MiuZp;
+  		m4=ELD(MiuMatOverH,MatYZp);
 
         value=m1*m2*m3*m4;
 
   		RigidityYZ =value !=0.0 ? 4.0/(1.0/m1+1.0/m2+1.0/m3+1.0/m4):0.0;
-		
+
 		#if  defined(_ST_MAIN)
-  		TauShearYZ= value!=0.0 ? 0.25*(ELD(TauShear,MaterialID) +
-  							 ELD(TauShear,EL(MaterialMap,i,j+1,k)) +
-  							 ELD(TauShear,EL(MaterialMap,i,j,k+1)) +
-  							 ELD(TauShear,EL(MaterialMap,i,j+1,k+1)))
-  							 : ELD(TauShear,MaterialID);
+  		TauShearYZ= value!=0.0 ? 0.25*(TauC +
+  							 TauYp +
+  							 TauZp +
+  							 ELD(TauShear,MatYZp))
+  							 : TauC;
 		#endif
+	  }
 
   	
   	if (IsOnPML_I(i)==1 || IsOnPML_J(j)==1 ||  IsOnPML_K(k)==1)//We are in the PML borders
@@ -379,66 +398,80 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
         // partial(p)/partial(t) = \rho c^2 div(V)
         //it is important to mention that the Python function will need still to multiply the result for the maps of (speed of sound)^2 and density, 
 		// and divide by the spatial step.
-		EL(Pressure,i,j,k)+=DT*(Dx+Dy+Dz);
-        accum_p+=EL(Pressure,i,j,k);
+		// Values are read once, updated in registers and written once (device pointers may alias,
+		// so the compiler cannot remove re-reads of values just written)
+		{
+		mexType PressureNew=ELD(Pressure,index)+DT*(Dx+Dy+Dz);
+		ELD(Pressure,index)=PressureNew;
+        accum_p+=PressureNew;
+		}
 
+		{
+		mexType LambdaMiuMat=ELD(LambdaMiuMatOverH,MaterialID);
+		mexType MiuMat=ELD(MiuMatOverH,MaterialID);
+		mexType TauLongMat=ELD(TauLong,MaterialID);
+		mexType TauShearMat=ELD(TauShear,MaterialID);
+		mexType SigmaNew;
+		mexType ROld;
 
-  		LambdaMiu=ELD(LambdaMiuMatOverH,MaterialID)*(1.0+ELD(TauLong,MaterialID));
-  		Miu=2.0*ELD(MiuMatOverH,MaterialID)*(1.0+ELD(TauShear,MaterialID));
+  		LambdaMiu=LambdaMiuMat*(1.0+TauLongMat);
+  		Miu=2.0*MiuMat*(1.0+TauShearMat);
   		OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
 		dFirstPart=LambdaMiu*(Dx+Dy+Dz);
 		
-		if (ELD(TauLong,MaterialID)!=0.0 || ELD(TauShear,MaterialID)!=0.0) // We avoid unnecessary calculations if there is no attenuation
+		if (TauLongMat!=0.0 || TauShearMat!=0.0) // We avoid unnecessary calculations if there is no attenuation
 		{
 			
-			LambdaMiuComp=DT*ELD(LambdaMiuMatOverH,MaterialID)*(ELD(TauLong,MaterialID)*OneOverTauSigma);
+			LambdaMiuComp=DT*LambdaMiuMat*(TauLongMat*OneOverTauSigma);
 			dFirstPartForR=LambdaMiuComp*(Dx+Dy+Dz);
-			MiuComp=DT*2.0*ELD(MiuMatOverH,MaterialID)*(ELD(TauShear,MaterialID)*OneOverTauSigma);
-			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxx,index) - dFirstPartForR + MiuComp*(Dy+Dz))
+			MiuComp=DT*2.0*MiuMat*(TauShearMat*OneOverTauSigma);
+			ROld=ELD(Rxx,index);
+			NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - dFirstPartForR + MiuComp*(Dy+Dz))
   		    	  /(1+DT*0.5*OneOverTauSigma);
 
-			ELD(Sigma_xx,index)+=	DT*(dFirstPart - Miu*(Dy+Dz) + 0.5*(ELD(Rxx,index) + NextR));
+			SigmaNew=ELD(Sigma_xx,index)+DT*(dFirstPart - Miu*(Dy+Dz) + 0.5*(ROld + NextR));
 			ELD(Rxx,index)=NextR;
 		}
 		else
 		{
 			bAttenuating=0;
-			ELD(Sigma_xx,index)+=	DT*(dFirstPart - Miu*(Dy+Dz));
+			SigmaNew=ELD(Sigma_xx,index)+DT*(dFirstPart - Miu*(Dy+Dz));
 		}
-  		
-	    accum_xx+=ELD(Sigma_xx,index);
+		ELD(Sigma_xx,index)=SigmaNew;
+	    accum_xx+=SigmaNew;
 
 		if (bAttenuating==1)
 		{
-  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryy,index) - dFirstPartForR + MiuComp*(Dx+Dz))
+			ROld=ELD(Ryy,index);
+  			NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - dFirstPartForR + MiuComp*(Dx+Dz))
   		    	  /(1+DT*0.5*OneOverTauSigma);
 				
-  			ELD(Sigma_yy,index)+=	DT*(dFirstPart - Miu*(Dx+Dz) + 0.5*(ELD(Ryy,index) + NextR));
+  			SigmaNew=ELD(Sigma_yy,index)+DT*(dFirstPart - Miu*(Dx+Dz) + 0.5*(ROld + NextR));
 			ELD(Ryy,index)=NextR;
 		}
 		else
-			ELD(Sigma_yy,index)+=	DT*(dFirstPart - Miu*(Dx+Dz));
-      	
-		accum_yy+=ELD(Sigma_yy,index);
+			SigmaNew=ELD(Sigma_yy,index)+DT*(dFirstPart - Miu*(Dx+Dz));
+		ELD(Sigma_yy,index)=SigmaNew;
+		accum_yy+=SigmaNew;
 
   		if (bAttenuating==1)
 		{
-			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rzz,index) - dFirstPartForR +MiuComp*(Dx+Dy))
+			ROld=ELD(Rzz,index);
+			NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - dFirstPartForR +MiuComp*(Dx+Dy))
 				/(1+DT*0.5*OneOverTauSigma);
-  			ELD(Sigma_zz,index)+=	DT*(dFirstPart - Miu*(Dx+Dy) + 0.5*(ELD(Rzz,index) + NextR));
+  			SigmaNew=ELD(Sigma_zz,index)+DT*(dFirstPart - Miu*(Dx+Dy) + 0.5*(ROld + NextR));
 			ELD(Rzz,index)=NextR;
 		}
 		else
-			ELD(Sigma_zz,index)+=	DT*(dFirstPart - Miu*(Dx+Dy));
-
-      	accum_zz+=ELD(Sigma_zz,index);
+			SigmaNew=ELD(Sigma_zz,index)+DT*(dFirstPart - Miu*(Dx+Dy));
+		ELD(Sigma_zz,index)=SigmaNew;
+      	accum_zz+=SigmaNew;
 
 
   		index=Ind_Sigma_xy(i,j,k);
 
 		if (RigidityXY!=0.0)
   		{
-			  OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
               if (REQUIRES_2ND_ORDER_P(X))
                   Dx=EL(Vy,i+1,j,k)-EL(Vy,i,j,k);
               else
@@ -457,15 +490,16 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 			if (TauShearXY!=0.0)
 			{
 				MiuComp=RigidityXY*(TauShearXY*OneOverTauSigma);
-				NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxy,index) - DT*MiuComp*Dx)
+				ROld=ELD(Rxy,index);
+				NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - DT*MiuComp*Dx)
   		          /(1+DT*0.5*OneOverTauSigma);
-				ELD(Sigma_xy,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxy,index) +NextR));
+				SigmaNew=ELD(Sigma_xy,index)+DT*(Miu*Dx + 0.5*(ROld +NextR));
 				ELD(Rxy,index)=NextR;
 			}
 			else
-				ELD(Sigma_xy,index)+= DT*(Miu*Dx );
-        	
-			accum_xy+=ELD(Sigma_xy,index);
+				SigmaNew=ELD(Sigma_xy,index)+DT*(Miu*Dx );
+			ELD(Sigma_xy,index)=SigmaNew;
+			accum_xy+=SigmaNew;
 
   		}
         // else
@@ -473,7 +507,6 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 
 		if (RigidityXZ!=0.0)
   		{
-			OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
 			if (REQUIRES_2ND_ORDER_P(X))
 				Dx=EL(Vz,i+1,j,k)-EL(Vz,i,j,k);
 			else
@@ -491,14 +524,16 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 			if (TauShearXZ!=0.0)
 			{
   				MiuComp=RigidityXZ*(TauShearXZ*OneOverTauSigma);
-	  			NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Rxz,index) - DT*MiuComp*Dx)
+				ROld=ELD(Rxz,index);
+	  			NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - DT*MiuComp*Dx)
   			          /(1+DT*0.5*OneOverTauSigma);
-				ELD(Sigma_xz,index)+= DT*(Miu*Dx + 0.5*(ELD(Rxz,index) +NextR));
+				SigmaNew=ELD(Sigma_xz,index)+DT*(Miu*Dx + 0.5*(ROld +NextR));
 				ELD(Rxz,index)=NextR;
 			}
 			else
-				ELD(Sigma_xz,index)+= DT*(Miu*Dx );
-        	accum_xz+=ELD(Sigma_xz,index);
+				SigmaNew=ELD(Sigma_xz,index)+DT*(Miu*Dx );
+			ELD(Sigma_xz,index)=SigmaNew;
+        	accum_xz+=SigmaNew;
   			
   		}
         // else
@@ -506,7 +541,6 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
  
   		if (RigidityYZ!=0.0 )
   		{
-			OneOverTauSigma=ELD(OneOverTauSigma,MaterialID);
 			if (REQUIRES_2ND_ORDER_P(Y))
 				Dy=EL(Vz,i,j+1,k)-EL(Vz,i,j,k);
 			else
@@ -524,18 +558,21 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
 			if (TauShearYZ!=0)
 			{
 				MiuComp=RigidityYZ*(TauShearYZ*OneOverTauSigma);
+				ROld=ELD(Ryz,index);
 
-				NextR=( (1-DT*0.5*OneOverTauSigma)*ELD(Ryz,index) - DT*MiuComp*Dy)
+				NextR=( (1-DT*0.5*OneOverTauSigma)*ROld - DT*MiuComp*Dy)
 					/(1+DT*0.5*OneOverTauSigma);
 
-				ELD(Sigma_yz,index)+= DT*(Miu*Dy + 0.5*(ELD(Ryz,index) +NextR));
+				SigmaNew=ELD(Sigma_yz,index)+DT*(Miu*Dy + 0.5*(ROld +NextR));
 				ELD(Ryz,index)=NextR;
 			}
 			else 
-				ELD(Sigma_yz,index)+= DT*(Miu*Dy );
-        	accum_yz+=ELD(Sigma_yz,index);
+				SigmaNew=ELD(Sigma_yz,index)+DT*(Miu*Dy );
+			ELD(Sigma_yz,index)=SigmaNew;
+        	accum_yz+=SigmaNew;
 
   		}
+		}
         //   else
         //       ELD(Ryz,index)=0.0;
 
@@ -607,19 +644,19 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
     {
 		
         if (IS_Sigmaxx_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx)=accum_xx>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx) ? accum_xx: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxx);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmaxx; if (accum_xx>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_xx; }
         if (IS_Sigmayy_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy)=accum_yy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy) ? accum_yy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayy);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmayy; if (accum_yy>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_yy; }
         if (IS_Sigmazz_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz)=accum_zz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz) ? accum_zz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmazz);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmazz; if (accum_zz>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_zz; }
         if (IS_Pressure_SELECTED(SelMapsRMSPeak))
-			ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure)=accum_p > ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure) ? accum_p :ELD(SqrAcc,index+index2*IndexRMSPeak_Pressure);
+			{ _PT _iPeak=index+index2*IndexRMSPeak_Pressure; if (accum_p>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_p; }
 	    if (IS_Sigmaxy_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy)=accum_xy>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy) ? accum_xy: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxy);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmaxy; if (accum_xy>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_xy; }
         if (IS_Sigmaxz_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz)=accum_xz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz) ? accum_xz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmaxz);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmaxz; if (accum_xz>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_xz; }
         if (IS_Sigmayz_SELECTED(SelMapsRMSPeak))
-            ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz)=accum_yz>ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz) ? accum_yz: ELD(SqrAcc,index+index2*IndexRMSPeak_Sigmayz);
+            { _PT _iPeak=index+index2*IndexRMSPeak_Sigmayz; if (accum_yz>ELD(SqrAcc,_iPeak)) ELD(SqrAcc,_iPeak)=accum_yz; }
 		
 		
     }

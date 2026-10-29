@@ -180,6 +180,37 @@ kernel void PML_2_StressKernel(
 #endif
 #undef _ST_PML
 //MLX_BLOCK_PML_2_STRESS_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_1 and PML_2 merged in a single kernel (used instead of them by the metalcompute backend).
+// Threads follow the memory order of the cells in both i-slabs, so the end of each row (i>=N1-PML)
+// is processed together with the start of the next row (i<PML), which are contiguous in memory.
+// Separately, each slab only has PML_Thickness contiguous cells per row, giving poorly coalesced accesses.
+#define _ST_PML
+#define _PML_KERNEL_I_BOTH
+kernel void PML_12_StressKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	_PT k = (_PT) (gid/(nN1*nN2));
+	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	if (i>=PML_Thickness)
+		i+=N1-PML_Thickness*2;
+    #include "StressKernel.h" 
+}
+#undef _PML_KERNEL_I_BOTH
+#undef _ST_PML
+#endif
 //MLX_BLOCK_PML_3_STRESS_START
 #define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_STRESS)) || !defined(MLX)
@@ -705,6 +736,37 @@ kernel void PML_2_ParticleKernel(
 #endif
 #undef _PR_PML
 //MLX_BLOCK_PML_2_PARTICLE_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_1 and PML_2 merged in a single kernel (used instead of them by the metalcompute backend).
+// Threads follow the memory order of the cells in both i-slabs, so the end of each row (i>=N1-PML)
+// is processed together with the start of the next row (i<PML), which are contiguous in memory.
+// Separately, each slab only has PML_Thickness contiguous cells per row, giving poorly coalesced accesses.
+#define _PR_PML
+#define _PML_KERNEL_I_BOTH
+kernel void PML_12_ParticleKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	_PT k = (_PT) (gid/(nN1*nN2));
+	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
+	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	if (i>=PML_Thickness)
+		i+=N1-PML_Thickness*2;
+    #include "ParticleKernel.h" 
+}
+#undef _PML_KERNEL_I_BOTH
+#undef _PR_PML
+#endif
 //MLX_BLOCK_PML_3_PARTICLE_START
 #define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_PARTICLE)) || !defined(MLX)
