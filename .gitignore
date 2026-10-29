@@ -288,3 +288,7 @@ BabelViscoFDTD/_gpu_kernel2D.c
 Pytest_Reports/
 Tests/Test_Data/
 Tests/Generate_Outputs/Generated_Outputs/
+ref_main/skull_Metal.npz
+ref_main/stress_Metal.npz
+ref_main/water_Metal.npz
+ref_main/environment_Metal.json
