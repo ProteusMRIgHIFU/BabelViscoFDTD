@@ -118,7 +118,7 @@ _PT  CurZone;
   			if (source>0)
   			{
 				source--; //need to use C index
-  			  	value=ELD(SourceFunctions,nStep*NumberSources+source);
+  			  	value=ELD(SourceFunctions,source*LengthSource+nStep);
 				if (TypeSource==0)
 				{
 					EL(Vx,i,j)+=value*ELD(Ox,index);

@@ -57,26 +57,26 @@ extern "C" __global__ void MAIN_1_StressKernel(
 	#include "kernelparamsOpenCL2D.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+	_PT j = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    _PT i = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
 #endif
 #ifdef OPENCL
 __kernel void MAIN_1_StressKernel(
 	#include "kernelparamsOpenCL2D.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
-  _PT j = (_PT) get_global_id(1);
+  _PT j = (_PT) get_global_id(0);
+  _PT i = (_PT) get_global_id(1);
 #endif
 #ifdef METAL
 kernel void MAIN_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
+  	_PT j = (_PT) gid.x;
+  	_PT i = (_PT) gid.y;
 	#else	
-	_PT j = (_PT) ((gid )/N1);
-  	_PT i = (_PT) (gid -j*N1);
+	_PT i = (_PT) ((gid )/N2);
+  	_PT j = (_PT) (gid -i*N2);
 	#endif
 #endif
     #include "StressKernel2D.h" 
@@ -87,8 +87,8 @@ extern "C" __global__ void MAIN_1_ParticleKernel(
 			#include "kernelparamsOpenCL2D.h"
 			,unsigned int nStep,unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
-    _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
+	_PT j = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+    _PT i = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
 
 #endif
 #ifdef OPENCL
@@ -97,19 +97,19 @@ __kernel void MAIN_1_ParticleKernel(
 	, unsigned int nStep,
 	unsigned int TypeSource)
 {
-	_PT i = (_PT) get_global_id(0);
-	_PT j = (_PT) get_global_id(1);
+	_PT j = (_PT) get_global_id(0);
+	_PT i = (_PT) get_global_id(1);
 	
 #endif
 #ifdef METAL
 kernel void MAIN_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
-  	_PT j = (_PT) gid.y;
+  	_PT j = (_PT) gid.x;
+  	_PT i = (_PT) gid.y;
 	#else
-  	_PT j = (_PT) ((gid )/N1);
-  	_PT i = (_PT) (gid -j*N1);
+  	_PT i = (_PT) ((gid )/N2);
+  	_PT j = (_PT) (gid -i*N2);
 	#endif
 #endif
 	#include "ParticleKernel2D.h"

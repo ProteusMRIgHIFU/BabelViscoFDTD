@@ -264,7 +264,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   			if (source>0)
   			{
   			  source--; //need to use C index
-  			  value=ELD(SourceFunctions,nStep*NumberSources+source); 
+  			  value=ELD(SourceFunctions,source*LengthSource+nStep); 
 				index=Ind_Sigma_xx(i,j);
                 if ((TypeSource-2)==0)
                 {

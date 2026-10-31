@@ -127,11 +127,14 @@ class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_B
         bFirstCopy=True
         events=[]
         for k in ['Vx','Vy','Sigma_xx','Sigma_yy','Sigma_xy','Pressure']:
-            sz=ArrayResCPU[k].shape
-            tempArray=np.zeros((sz[0],sz[1],arguments['SPP_ZONES']),dtype=ArrayResCPU[k].dtype,order='F')
+            if arguments['SPP_ZONES']==1:
+                events.append(cl.enqueue_copy(self.queue, ArrayResCPU[k], ArraysGPUOp[k]))
+                continue
+            # the SPP zone is the slowest dimension of the GPU arrays
+            tempArray=np.zeros((arguments['SPP_ZONES'],)+ArrayResCPU[k].shape,dtype=ArrayResCPU[k].dtype)
             events.append(cl.enqueue_copy(self.queue, tempArray, ArraysGPUOp[k]))
             cl.wait_for_events(events)
-            ArrayResCPU[k][:,:]=tempArray.sum(axis=2)/arguments['SPP_ZONES']
+            ArrayResCPU[k][:,:]=tempArray.sum(axis=0)/arguments['SPP_ZONES']
             
         for k in ['SqrAcc','Snapshots','SensorOutput']:
             events.append(cl.enqueue_copy(self.queue, ArrayResCPU[k], ArraysGPUOp[k]))
@@ -192,17 +195,18 @@ class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_B
         self.SensorsKernel.set_arg(32,ArraysGPUOp['SensorOutput'])
         self.SensorsKernel.set_arg(33,ArraysGPUOp['IndexSensorMap'])
 
+        # the first work dimension runs along j, the contiguous axis in C order; manual sizes are given as (i,j)
         if arguments['ManualGroupSize'][0]!=-1:
-            GroupSize=(arguments['ManualGroupSize'][0],arguments['ManualGroupSize'][1],arguments['ManualGroupSize'][2])
+            GroupSize=(arguments['ManualGroupSize'][1],arguments['ManualGroupSize'][0],arguments['ManualGroupSize'][2])
         else:
-            GroupSize=(N1,N2)
+            GroupSize=(N2,N1)
 
         self.AllGroupSizes={}
         self.AllGroupSizes['MAIN_1']=GroupSize
         
 
         if arguments['ManualLocalSize'][0]!=-1:
-            self.LocalSize=(arguments['ManualLocalSize'][0],arguments['ManualLocalSize'][1],arguments['ManualLocalSize'][2])
+            self.LocalSize=(arguments['ManualLocalSize'][1],arguments['ManualLocalSize'][0],arguments['ManualLocalSize'][2])
         else:
             self.LocalSize=None
 
@@ -220,17 +224,6 @@ class StaggeredFDTD_2D_With_Relaxation_OPENCL(StaggeredFDTD_2D_With_Relaxation_B
             self.AllParticleKernels[k]=getattr(prg,k+"_ParticleKernel")
         
         self.SensorsKernel=prg.SensorsKernel
-        
-    def CreateResults(self, ArrayResCPU):
-        self.Results = ArrayResCPU['SensorOutput'],\
-                {'Vx':ArrayResCPU['Vx'],\
-                'Vy':ArrayResCPU['Vy'],\
-                'Sigma_xx':ArrayResCPU['Sigma_xx'],\
-                'Sigma_yy':ArrayResCPU['Sigma_yy'],\
-                'Sigma_xy':ArrayResCPU['Sigma_xy'],\
-                'Pressure':ArrayResCPU['Pressure']},\
-                ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots']  
-
 
 
 def StaggeredFDTD_2D_OPENCL(arguments):
