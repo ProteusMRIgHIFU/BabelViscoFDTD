@@ -60,11 +60,11 @@ latest version of `pip`
 ### macOS systems: Manual installation of modified `metalcompute` and 'MLX'
 Install `llvm-openmp` for required OpenMP support. In Anaconda, install with `conda install llvm-openmp`
 
-As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library (which is published in PyPI by its original developer), the modified version is not listed as a dependency of BabelViscoFDTD and needs to be installed manually. From BabelViscoFDTD v1.3.0, the Metal backend requires version 0.2.4 or later of the modified library:
+As noted in the release notes below for v0.9.9.20, we use a modified version of `py-metal-compute`. To avoid confusing with the original library (which is published in PyPI by its original developer), the modified version is not listed as a dependency of BabelViscoFDTD and needs to be installed manually. From BabelViscoFDTD v1.3.0, the Metal backend requires version 0.2.6 or later of the modified library:
 
 `pip install "metalcomputebabel @ git+https://github.com/ProteusMRIgHIFU/py-metal-compute.git@0dba71073abc742fb5bdc91dcaaaf6ae8e57d360"`
 
-This modified version will be installed with a different library name (metalcomputebabel) that is different from the original (metalcompute) to avoid conflicts. Version 0.2.4 adds a batch API that lets BabelViscoFDTD submit many time steps to the GPU at once, avoiding a CPU-GPU synchronization after every time step. With an older version of `metalcomputebabel`, the Metal backend still runs, but falls back to the slower step-by-step execution.
+This modified version will be installed with a different library name (metalcomputebabel) that is different from the original (metalcompute) to avoid conflicts. Version 0.2.4 adds a batch API that lets BabelViscoFDTD submit many time steps to the GPU at once, avoiding a CPU-GPU synchronization after every time step, and version 0.2.6 adds argument buffers, which let each array be a separate Metal buffer instead of being packed in a few shared buffers (Metal limits a kernel to 31 buffer parameters). The Metal backend reports an error with older versions of `metalcomputebabel`.
 
 For ARM64 systems (M1, M2, etc.), a modified version of MLX needs also to be installed with 
 

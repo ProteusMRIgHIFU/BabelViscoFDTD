@@ -6,7 +6,16 @@
 #else
 #define CGID uint3
 #endif
-#if !defined(METALCOMPUTE) && !defined(MLX)
+#if defined(METALCOMPUTE)
+// Arrays are passed through argument buffers (see kernelparamsMetal.h)
+#define METAL_PARAMS\
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
+	constant FDTD_ArgsIn & ArgsIn [[ buffer(1) ]],\
+	constant FDTD_ArgsInOut & ArgsInOut [[ buffer(2) ]],\
+	constant FDTD_ArgsOut & ArgsOut [[ buffer(3) ]],\
+	CGID gid[[thread_position_in_grid]])\
+{
+#elif !defined(MLX)
 #define METAL_PARAMS\
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],\
@@ -25,26 +34,6 @@
 	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],\
 	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],\
 	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],\
-	CGID gid[[thread_position_in_grid]])\
-{
-#else
-#define METAL_PARAMS\
-	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
-	const device unsigned int *p_INDEX_MEX [[ buffer(1) ]],\
-	const device unsigned int *p_INDEX_UINT [[ buffer(2) ]],\
-	const device unsigned int *p_UINT_BUFFER [[ buffer(3) ]],\
-	device mexType * p_MEX_BUFFER_0 [[ buffer(4) ]],\
-	device mexType * p_MEX_BUFFER_1 [[ buffer(5) ]],\
-	device mexType * p_MEX_BUFFER_2 [[ buffer(6) ]],\
-	device mexType * p_MEX_BUFFER_3 [[ buffer(7) ]],\
-	device mexType * p_MEX_BUFFER_4 [[ buffer(8) ]],\
-	device mexType * p_MEX_BUFFER_5 [[ buffer(9) ]],\
-	device mexType * p_MEX_BUFFER_6 [[ buffer(10) ]],\
-	device mexType * p_MEX_BUFFER_7 [[ buffer(11) ]],\
-	device mexType * p_MEX_BUFFER_8 [[ buffer(12) ]],\
-	device mexType * p_MEX_BUFFER_9 [[ buffer(13) ]],\
-	device mexType * p_MEX_BUFFER_10 [[ buffer(14) ]],\
-	device mexType * p_MEX_BUFFER_11 [[ buffer(15) ]],\
 	CGID gid[[thread_position_in_grid]])\
 {
 #endif
@@ -1228,7 +1217,14 @@ __kernel void SensorsKernel(
 #endif
 #if defined(METAL) && !defined(MLX)
 #define IndexSensorMap_pr k_IndexSensorMap_pr
-#ifndef METALCOMPUTE
+#if defined(METALCOMPUTE)
+kernel void SensorsKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	constant FDTD_ArgsIn & ArgsIn [[ buffer(1) ]],
+	constant FDTD_ArgsInOut & ArgsInOut [[ buffer(2) ]],
+	constant FDTD_ArgsOut & ArgsOut [[ buffer(3) ]],
+	uint gid[[thread_position_in_grid]])
+#else
 kernel void SensorsKernel(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
@@ -1247,25 +1243,6 @@ kernel void SensorsKernel(
 	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
 	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
 	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
-	uint gid[[thread_position_in_grid]])
-#else
-kernel void SensorsKernel(
-	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
-	const device unsigned int *p_INDEX_MEX [[ buffer(1) ]],
-	const device unsigned int *p_INDEX_UINT [[ buffer(2) ]],
-	const device unsigned int *p_UINT_BUFFER [[ buffer(3) ]],
-	device mexType * p_MEX_BUFFER_0 [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER_1 [[ buffer(5) ]],
-	device mexType * p_MEX_BUFFER_2 [[ buffer(6) ]],
-	device mexType * p_MEX_BUFFER_3 [[ buffer(7) ]],
-	device mexType * p_MEX_BUFFER_4 [[ buffer(8) ]],
-	device mexType * p_MEX_BUFFER_5 [[ buffer(9) ]],
-	device mexType * p_MEX_BUFFER_6 [[ buffer(10) ]],
-	device mexType * p_MEX_BUFFER_7 [[ buffer(11) ]],
-	device mexType * p_MEX_BUFFER_8 [[ buffer(12) ]],
-	device mexType * p_MEX_BUFFER_9 [[ buffer(13) ]],
-	device mexType * p_MEX_BUFFER_10 [[ buffer(14) ]],
-	device mexType * p_MEX_BUFFER_11 [[ buffer(15) ]],
 	uint gid[[thread_position_in_grid]])
 #endif
 {
