@@ -122,15 +122,15 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         Reflector = np.asarray(arguments['ReflectorMask']) == 1
         if not np.any(Reflector):
             return
-        MaterialMap = np.array(arguments['MaterialMap'], order='F')
+        MaterialMap = np.array(arguments['MaterialMap'])
         assert int(MaterialMap.max()) < NumberMaterials
         for k in Tables:
-            Values = arguments[k].flatten(order='F')
+            Values = arguments[k].ravel()
             self._HostOverride[k] = np.concatenate([Values, Values])
         N1, N2, N3 = Reflector.shape
-        # last dimension of the material map is the SPP zone (if present); all zones share the reflector mask
-        Zones = MaterialMap.reshape(MaterialMap.shape[0], MaterialMap.shape[1], MaterialMap.shape[2], -1, order='F')
-        Zones[:N1, :N2, :N3, :][Reflector] += NumberMaterials
+        # first dimension of the material map is the SPP zone (if present); all zones share the reflector mask
+        Zones = MaterialMap.reshape((-1,) + MaterialMap.shape[-3:])
+        Zones[:, :N1, :N2, :N3][:, Reflector] += NumberMaterials
         self._HostOverride['MaterialMap'] = MaterialMap
 
     def _HostArray(self, Name, Arrays):
@@ -206,9 +206,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self._CompileKernels()
 
     def _HostBuffer(self, Host, dtype):
-        '''Buffer with the data of a host array in Fortran order. On Apple Silicon, page-aligned arrays (every
+        '''Buffer with the data of a host array in C order. On Apple Silicon, page-aligned arrays (every
         NumPy array of more than a few pages) are shared with the GPU without a copy; others are copied.'''
-        Flat = Host.reshape(-1, order='F') # a view for Fortran-ordered arrays
+        Flat = Host.reshape(-1) # a view for C-contiguous arrays
         if Flat.dtype != dtype:
             Flat = Flat.astype(dtype)
         return self.ctx.buffer(Flat, copy=None)
@@ -239,8 +239,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             PartsStress=['MAIN_1']
         else:
-            # PML_12 replaces PML_1 and PML_2 (both i-slabs in a single kernel, see GPU_KERNELS.h)
-            PartsStress=['PML_12','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            # PML_12 replaces PML_1 and PML_2 (both i-slabs in a single kernel) and PML_56 replaces PML_5 and PML_6
+            # (both k-slabs in a single kernel), see GPU_KERNELS.h
+            PartsStress=['PML_12','PML_3','PML_4','PML_56','MAIN_1']
         
         self.AllStressKernels={}
         for k in PartsStress:
@@ -249,7 +250,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             PartsParticle =['MAIN_1']
         else:
-            PartsParticle=['PML_12','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            PartsParticle=['PML_12','PML_3','PML_4','PML_56','MAIN_1']
         
         self.AllParticleKernels={}
         for k in PartsParticle:
@@ -327,12 +328,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['PML_Thickness'],
                             outparams['N3']]
-        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
+        DimsKernel['PML_56']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
-        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
+                            outparams['PML_Thickness']*2]
         if self.bUseSingleKernel:
             DimsKernel['MAIN_1']=[outparams['N1'],
                             outparams['N2'],
@@ -344,7 +342,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
                             outparams['N3']-outparams['PML_Thickness']*2]
-            kernels =["PML_12", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
+            kernels =["PML_12", "PML_3", "PML_4", "PML_56", "MAIN_1"]
             
 
         self._TimeLoopBatched(arguments,kernels,DimsKernel)
@@ -354,15 +352,15 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             if i in self._Aliased:
                 continue
             Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size]
-            ArrayResCPU[i][:] = np.reshape(Buffer, ArrayResCPU[i].shape,order='F')
+            ArrayResCPU[i][:] = Buffer.reshape(ArrayResCPU[i].shape)
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             if i in self._Aliased:
                 continue
             sz=ArrayResCPU[i].shape
             Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size * self.ZoneCount]
-            Buffer=Buffer.reshape((sz[0],sz[1],sz[2],self.ZoneCount),order='F')
-            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
+            Buffer=Buffer.reshape((self.ZoneCount,)+sz)
+            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=0)/self.ZoneCount
 
         del self.arg_buffers
         del self.gpu_arrays

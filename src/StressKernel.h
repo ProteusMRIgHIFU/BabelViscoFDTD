@@ -587,7 +587,7 @@ for ( CurZone=0;CurZone<ZoneCount;CurZone++)
   			if (source>0)
   			{
   			  source--; //need to use C index
-  			  value=ELD(SourceFunctions,nStep*NumberSources+source)*ELD(Ox,index); // We use Ox as mechanism to provide weighted arrays
+  			  value=ELD(SourceFunctions,source*LengthSource+nStep)*ELD(Ox,index); // We use Ox as mechanism to provide weighted arrays
 				index=Ind_Sigma_xx(i,j,k);
                 if ((TypeSource-2)==0)
                 {

@@ -40,9 +40,8 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         for key in arguments.keys():
             if type(arguments[key])==np.ndarray:
-                if np.isfortran(arguments[key])==False:
-                    #print "StaggeredFDTD_3D: Converting ndarray " + key + " to Fortran convention";
-                    arguments[key] = np.asfortranarray(arguments[key])
+                # the kernels use C order (k is the fastest index); C-contiguous arrays are used without a copy
+                arguments[key] = np.ascontiguousarray(arguments[key])
             elif type(arguments[key])!=str:
                 arguments[key]=np.array((arguments[key]))
 
@@ -107,14 +106,17 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         N2=arguments['N2']
         N3=arguments['N3']
                     
+        # All the arrays are C-contiguous, with the layout used by the kernels. The maps of SqrAcc, the
+        # snapshots and the sensor maps and time steps are their slowest dimensions; CreateResults returns
+        # them as views with the dimension order of the results
         ArrayResCPU={}
         for k in ['Sigma_xx','Sigma_yy','Sigma_zz','Pressure']:
-            ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype,order='F')
+            ArrayResCPU[k]=np.zeros((N1,N2,N3),dtype)
         for k in ['Sigma_xy','Sigma_xz','Sigma_yz']:
-            ArrayResCPU[k]=np.zeros((N1+1,N2+1,N3+1),dtype,order='F')
-        ArrayResCPU['Vx']=np.zeros((N1+1,N2,N3),dtype,order='F')
-        ArrayResCPU['Vy']=np.zeros((N1,N2+1,N3),dtype,order='F')
-        ArrayResCPU['Vz']=np.zeros((N1,N2,N3+1),dtype,order='F')
+            ArrayResCPU[k]=np.zeros((N1+1,N2+1,N3+1),dtype)
+        ArrayResCPU['Vx']=np.zeros((N1+1,N2,N3),dtype)
+        ArrayResCPU['Vy']=np.zeros((N1,N2+1,N3),dtype)
+        ArrayResCPU['Vz']=np.zeros((N1,N2,N3+1),dtype)
 
         if 	(arguments['SelRMSorPeak'] &  MASKID['SEL_PEAK']) and (arguments['SelRMSorPeak'] &  MASKID['SEL_RMS']):
             #both peak and RMS
@@ -122,18 +124,18 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         else:
             updims=1
 
-        ArrayResCPU['SqrAcc']=np.zeros((N1,N2,N3,outparams['NumberSelRMSPeakMaps'],updims),dtype,order='F')
+        ArrayResCPU['SqrAcc']=np.zeros((updims,outparams['NumberSelRMSPeakMaps'],N1,N2,N3),dtype)
         Ns=1
         NumberSnapshots=arguments['SnapshotsPos'].size
         NumberSensors=arguments['IndexSensorMap'].size
         if NumberSnapshots>0:
             Ns=NumberSnapshots
-        ArrayResCPU['Snapshots']=np.zeros((N1,N2,Ns),dtype,order='F')
+        ArrayResCPU['Snapshots']=np.zeros((Ns,N1,N2),dtype)
         TimeSteps=arguments['TimeSteps']
         SensorSubSampling=arguments['SensorSubSampling']
         SensorStart=arguments['SensorStart']
         print("Number Selected Sensor Maps:", outparams['NumberSelRMSPeakMaps'])
-        ArrayResCPU['SensorOutput']=np.zeros((NumberSensors,int(TimeSteps/SensorSubSampling)+1-SensorStart,outparams['NumberSelSensorMaps']),dtype,order='F')
+        ArrayResCPU['SensorOutput']=np.zeros((outparams['NumberSelSensorMaps'],int(TimeSteps/SensorSubSampling)+1-SensorStart,NumberSensors),dtype)
         
         self._InitiateCommands(SCode)
 
@@ -254,7 +256,9 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
         raise NotImplementedError("This block must be implemented in a child class")
     
     def CreateResults(self, ArrayResCPU):
-        self.Results = ArrayResCPU['SensorOutput'],\
+        # views (no copies) with the dimension order of the results:
+        # SensorOutput (sensor, time, map), SqrAcc (N1, N2, N3, map, RMS/peak) and Snapshots (N1, N2, snapshot)
+        self.Results = ArrayResCPU['SensorOutput'].transpose(2,1,0),\
                 {'Vx':ArrayResCPU['Vx'],\
                 'Vy':ArrayResCPU['Vy'],\
                 'Vz':ArrayResCPU['Vz'],\
@@ -264,4 +268,4 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
                 'Sigma_xy':ArrayResCPU['Sigma_xy'],\
                 'Sigma_yz':ArrayResCPU['Sigma_yz'],\
                 'Pressure':ArrayResCPU['Pressure']},\
-                ArrayResCPU['SqrAcc'],ArrayResCPU['Snapshots'] 
+                ArrayResCPU['SqrAcc'].transpose(2,3,4,1,0),ArrayResCPU['Snapshots'].transpose(1,2,0) 

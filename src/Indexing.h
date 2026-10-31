@@ -74,23 +74,27 @@ typedef _PT tIndex ;
 //////////////////////////////////////////////
 #define hInd_Source(a,b)((b)*INHOST(N2)+a)
 
-#define hIndN1N2Snap(a,b) ((b)*INHOST(N1)+a)
-#define hIndN1N2N3(a,b,c,_ZoneSize)   ((c)*(INHOST(N1)*INHOST(N2))      +(b)*INHOST(N1)    +a+(CurZone*(_ZoneSize)))
-#define hIndN1p1N2N3(a,b,c,_ZoneSize) ((c)*((INHOST(N1)+1)*INHOST(N2))  +(b)*(INHOST(N1)+1)+a+(CurZone*(_ZoneSize)))
-#define hIndN1N2p1N3(a,b,c,_ZoneSize) ((c)*((INHOST(N1))*(INHOST(N2)+1))+(b)*(INHOST(N1))  +a+(CurZone*(_ZoneSize)))
-#define hIndN1N2N3p1(a,b,c,_ZoneSize) ((c)*(INHOST(N1)*INHOST(N2))      +(b)*INHOST(N1)    +a+(CurZone*(_ZoneSize)))
-#define hIndN1p1N2p1N3p1(a,b,c,_ZoneSize) ((c)*((INHOST(N1)+1)*(INHOST(N2)+1))+(b)*(INHOST(N1)+1)+a +(CurZone*(_ZoneSize)))
+#define hIndN1N2Snap(a,b) ((a)*INHOST(N2)+b)
+// Arrays are in C order (k is the fastest index); the SPP zone is the slowest dimension
+#define hIndN1N2N3(a,b,c,_ZoneSize)   ((a)*(INHOST(N2)*INHOST(N3))      +(b)*INHOST(N3)    +c+(CurZone*(_ZoneSize)))
+#define hIndN1p1N2N3(a,b,c,_ZoneSize) ((a)*(INHOST(N2)*INHOST(N3))      +(b)*INHOST(N3)    +c+(CurZone*(_ZoneSize)))
+#define hIndN1N2p1N3(a,b,c,_ZoneSize) ((a)*((INHOST(N2)+1)*INHOST(N3))  +(b)*INHOST(N3)    +c+(CurZone*(_ZoneSize)))
+#define hIndN1N2N3p1(a,b,c,_ZoneSize) ((a)*(INHOST(N2)*(INHOST(N3)+1))  +(b)*(INHOST(N3)+1)+c+(CurZone*(_ZoneSize)))
+#define hIndN1p1N2p1N3p1(a,b,c,_ZoneSize) ((a)*((INHOST(N2)+1)*(INHOST(N3)+1))+(b)*(INHOST(N3)+1)+c +(CurZone*(_ZoneSize)))
 
-#define hCorrecI(_i,_j,_k) ((_j)>hLimit_J_low_PML && (_k)>hLimit_K_low_PML && (_j)<hLimit_J_up_PML && (_k)<hLimit_K_up_PML && (_i)> hLimit_I_low_PML ?hSizeCorrI :0)
-#define hCorrecJ(_j,_k) ((_k)>hLimit_K_low_PML && (_k)<hLimit_K_up_PML && (_j)>hLimit_J_low_PML+1 ?((_j)<hLimit_J_up_PML?((_j)-hLimit_J_low_PML-1)*(hSizeCorrI):hSizeCorrI*hSizeCorrJ):0)
-#define hCorrecK(_k) ( (_k) <= hLimit_K_low_PML+1  ? 0 : ((_k)<hLimit_K_up_PML ? ((_k)-hLimit_K_low_PML-1)*(hSizeCorrI*hSizeCorrJ): (hSizeCorrI*hSizeCorrJ*hSizeCorrK)))
+// PML arrays only store the PML cells: the index of a cell is its index in the full array minus the number of
+// interior (non-PML) cells that precede it in memory order: whole interior i-planes, interior j-rows of its
+// i-plane and interior cells of its row
+#define hCorrecK(_i,_j,_k) ((_j)>hLimit_J_low_PML && (_i)>hLimit_I_low_PML && (_j)<hLimit_J_up_PML && (_i)<hLimit_I_up_PML && (_k)> hLimit_K_low_PML ?hSizeCorrK :0)
+#define hCorrecJ(_i,_j) ((_i)>hLimit_I_low_PML && (_i)<hLimit_I_up_PML && (_j)>hLimit_J_low_PML+1 ?((_j)<hLimit_J_up_PML?((_j)-hLimit_J_low_PML-1)*(hSizeCorrK):hSizeCorrK*hSizeCorrJ):0)
+#define hCorrecI(_i) ( (_i) <= hLimit_I_low_PML+1  ? 0 : ((_i)<hLimit_I_up_PML ? ((_i)-hLimit_I_low_PML-1)*(hSizeCorrK*hSizeCorrJ): (hSizeCorrI*hSizeCorrJ*hSizeCorrK)))
 
-#define hIndexPML(_i,_j,_k,_ZoneSize)  (hIndN1N2N3(_i,_j,_k,_ZoneSize) - hCorrecI(_i,_j,_k) - hCorrecJ(_j,_k) -hCorrecK(_k))
+#define hIndexPML(_i,_j,_k,_ZoneSize)  (hIndN1N2N3(_i,_j,_k,_ZoneSize) - hCorrecK(_i,_j,_k) - hCorrecJ(_i,_j) -hCorrecI(_i))
 
-#define hIndexPMLxp1(_i,_j,_k,_ZoneSize) (hIndN1p1N2N3(_i,_j,_k,_ZoneSize) - hCorrecI(_i,_j,_k) - hCorrecJ(_j,_k) -hCorrecK(_k))
-#define hIndexPMLyp1(_i,_j,_k,_ZoneSize) (hIndN1N2p1N3(_i,_j,_k,_ZoneSize) - hCorrecI(_i,_j,_k) - hCorrecJ(_j,_k) -hCorrecK(_k))
-#define hIndexPMLzp1(_i,_j,_k,_ZoneSize) hIndexPML(_i,_j,_k,_ZoneSize)
-#define hIndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (hIndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - hCorrecI(_i,_j,_k) - hCorrecJ(_j,_k) -hCorrecK(_k))
+#define hIndexPMLxp1(_i,_j,_k,_ZoneSize) (hIndN1p1N2N3(_i,_j,_k,_ZoneSize) - hCorrecK(_i,_j,_k) - hCorrecJ(_i,_j) -hCorrecI(_i))
+#define hIndexPMLyp1(_i,_j,_k,_ZoneSize) (hIndN1N2p1N3(_i,_j,_k,_ZoneSize) - hCorrecK(_i,_j,_k) - hCorrecJ(_i,_j) -hCorrecI(_i))
+#define hIndexPMLzp1(_i,_j,_k,_ZoneSize) (hIndN1N2N3p1(_i,_j,_k,_ZoneSize) - hCorrecK(_i,_j,_k) - hCorrecJ(_i,_j) -hCorrecI(_i))
+#define hIndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (hIndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - hCorrecK(_i,_j,_k) - hCorrecJ(_i,_j) -hCorrecI(_i))
 
 #define hInd_MaterialMap(_i,_j,_k) (hIndN1p1N2p1N3p1(_i,_j,_k,(INHOST(N1)+1)*(INHOST(N2)+1)*(INHOST(N3)+1)))
 
@@ -161,24 +165,28 @@ typedef _PT tIndex ;
 ////////////////////////////////////////
 #define Ind_Source(a,b)((b)*N2+a)
 
-#define IndN1N2Snap(a,b) ((b)*N1+a)
+#define IndN1N2Snap(a,b) ((a)*N2+b)
 
-#define IndN1N2N3(a,b,c,_ZoneSize)   ((c)*(N1*N2)      +(b)*N1    +a+(CurZone*(_ZoneSize)))
-#define IndN1p1N2N3(a,b,c,_ZoneSize) ((c)*((N1+1)*N2)  +(b)*(N1+1)+a+(CurZone*(_ZoneSize)))
-#define IndN1N2p1N3(a,b,c,_ZoneSize) ((c)*((N1)*(N2+1))+(b)*(N1)  +a+(CurZone*(_ZoneSize)))
-#define IndN1N2N3p1(a,b,c,_ZoneSize) ((c)*(N1*N2)      +(b)*N1    +a+(CurZone*(_ZoneSize)))
-#define IndN1p1N2p1N3p1(a,b,c,_ZoneSize) ((c)*((N1+1)*(N2+1))+(b)*(N1+1)+a +(CurZone*(_ZoneSize)))
+// Arrays are in C order (k is the fastest index); the SPP zone is the slowest dimension
+#define IndN1N2N3(a,b,c,_ZoneSize)   ((a)*(N2*N3)      +(b)*N3    +c+(CurZone*(_ZoneSize)))
+#define IndN1p1N2N3(a,b,c,_ZoneSize) ((a)*(N2*N3)      +(b)*N3    +c+(CurZone*(_ZoneSize)))
+#define IndN1N2p1N3(a,b,c,_ZoneSize) ((a)*((N2+1)*N3)  +(b)*N3    +c+(CurZone*(_ZoneSize)))
+#define IndN1N2N3p1(a,b,c,_ZoneSize) ((a)*(N2*(N3+1))  +(b)*(N3+1)+c+(CurZone*(_ZoneSize)))
+#define IndN1p1N2p1N3p1(a,b,c,_ZoneSize) ((a)*((N2+1)*(N3+1))+(b)*(N3+1)+c +(CurZone*(_ZoneSize)))
 
-#define CorrecI(_i,_j,_k) ((_j)>Limit_J_low_PML && (_k)>Limit_K_low_PML && (_j)<Limit_J_up_PML && (_k)<Limit_K_up_PML && (_i)> Limit_I_low_PML ?SizeCorrI :0)
-#define CorrecJ(_j,_k) ((_k)>Limit_K_low_PML && (_k)<Limit_K_up_PML && (_j)>Limit_J_low_PML+1 ?((_j)<Limit_J_up_PML?((_j)-Limit_J_low_PML-1)*(SizeCorrI):SizeCorrI*SizeCorrJ):0)
-#define CorrecK(_k) ( (_k) <= Limit_K_low_PML+1  ? 0 : ((_k)<Limit_K_up_PML ? ((_k)-Limit_K_low_PML-1)*(SizeCorrI*SizeCorrJ): (SizeCorrI*SizeCorrJ*SizeCorrK)))
+// PML arrays only store the PML cells: the index of a cell is its index in the full array minus the number of
+// interior (non-PML) cells that precede it in memory order: whole interior i-planes, interior j-rows of its
+// i-plane and interior cells of its row
+#define CorrecK(_i,_j,_k) ((_j)>Limit_J_low_PML && (_i)>Limit_I_low_PML && (_j)<Limit_J_up_PML && (_i)<Limit_I_up_PML && (_k)> Limit_K_low_PML ?SizeCorrK :0)
+#define CorrecJ(_i,_j) ((_i)>Limit_I_low_PML && (_i)<Limit_I_up_PML && (_j)>Limit_J_low_PML+1 ?((_j)<Limit_J_up_PML?((_j)-Limit_J_low_PML-1)*(SizeCorrK):SizeCorrK*SizeCorrJ):0)
+#define CorrecI(_i) ( (_i) <= Limit_I_low_PML+1  ? 0 : ((_i)<Limit_I_up_PML ? ((_i)-Limit_I_low_PML-1)*(SizeCorrK*SizeCorrJ): (SizeCorrI*SizeCorrJ*SizeCorrK)))
 
-#define IndexPML(_i,_j,_k,_ZoneSize)  (IndN1N2N3(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
+#define IndexPML(_i,_j,_k,_ZoneSize)  (IndN1N2N3(_i,_j,_k,_ZoneSize) - CorrecK(_i,_j,_k) - CorrecJ(_i,_j) -CorrecI(_i))
 
-#define IndexPMLxp1(_i,_j,_k,_ZoneSize) (IndN1p1N2N3(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
-#define IndexPMLyp1(_i,_j,_k,_ZoneSize) (IndN1N2p1N3(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
-#define IndexPMLzp1(_i,_j,_k,_ZoneSize) IndexPML(_i,_j,_k,_ZoneSize)
-#define IndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (IndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - CorrecI(_i,_j,_k) - CorrecJ(_j,_k) -CorrecK(_k))
+#define IndexPMLxp1(_i,_j,_k,_ZoneSize) (IndN1p1N2N3(_i,_j,_k,_ZoneSize) - CorrecK(_i,_j,_k) - CorrecJ(_i,_j) -CorrecI(_i))
+#define IndexPMLyp1(_i,_j,_k,_ZoneSize) (IndN1N2p1N3(_i,_j,_k,_ZoneSize) - CorrecK(_i,_j,_k) - CorrecJ(_i,_j) -CorrecI(_i))
+#define IndexPMLzp1(_i,_j,_k,_ZoneSize) (IndN1N2N3p1(_i,_j,_k,_ZoneSize) - CorrecK(_i,_j,_k) - CorrecJ(_i,_j) -CorrecI(_i))
+#define IndexPMLxp1yp1zp1(_i,_j,_k,_ZoneSize) (IndN1p1N2p1N3p1(_i,_j,_k,_ZoneSize) - CorrecK(_i,_j,_k) - CorrecJ(_i,_j) -CorrecI(_i))
 
 #define Ind_MaterialMap(_i,_j,_k) (IndN1p1N2p1N3p1(_i,_j,_k,(N1+1)*(N2+1)*(N3+1)))
 // ReflectorMask is shared by all SPP zones (zone size 0 so no zone offset is added)

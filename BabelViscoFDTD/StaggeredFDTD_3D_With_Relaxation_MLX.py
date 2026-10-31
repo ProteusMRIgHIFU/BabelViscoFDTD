@@ -196,10 +196,10 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
             l=int(self.HOST_INDEX_MEX[self.C_IND[Name]][0])
-            self.mex_buffer[self._IndexDataMetal[Name]][l:l+SizeCopy] = args[Name].flatten(order='F')
+            self.mex_buffer[self._IndexDataMetal[Name]][l:l+SizeCopy] = args[Name].reshape(-1)
         elif td == "unsigned int":
             l=int(self.HOST_INDEX_UINT[self.C_IND[Name]][0])
-            self.uint_buffer[l:l+SizeCopy] = args[Name].flatten(order='F')
+            self.uint_buffer[l:l+SizeCopy] = args[Name].reshape(-1)
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
@@ -415,7 +415,7 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
             SizeCopy = ArrayResCPU[i].size
             Shape = ArrayResCPU[i].shape
             Buffer=np.array(self.mex_buffer[self._IndexDataMetal[i]][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)])
-            ArrayResCPU[i][:,:,:] = np.reshape(Buffer, Shape,order='F')
+            ArrayResCPU[i][:] = Buffer.reshape(Shape)
      
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
@@ -430,10 +430,11 @@ class StaggeredFDTD_3D_With_Relaxation_MLX(StaggeredFDTD_3D_With_Relaxation_BASE
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
-            Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
-            Buffer=np.array(self.mex_buffer[self._IndexDataMetal[i]])[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            Buffer=Buffer.reshape(Shape,order='F')
-            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
+            Shape = (self.ZoneCount,)+sz # the SPP zone is the slowest dimension
+            # slice before converting, so only this array (not the whole packed buffer) is copied to the host
+            Buffer=np.array(self.mex_buffer[self._IndexDataMetal[i]][int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)])
+            Buffer=Buffer.reshape(Shape)
+            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=0)/self.ZoneCount
           
         del self.constant_buffer_uint
         del self.index_mex
