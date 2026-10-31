@@ -4,6 +4,7 @@ from unicodedata import name
 import numpy as np
 import os
 import re
+from importlib.metadata import version
 from pathlib import Path
 import platform
 import time
@@ -36,8 +37,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         global mc
         import metalcomputebabel
         mc = metalcomputebabel
-        if not hasattr(mc.Device,'arg_buffer'):
-            raise ImportError('BabelViscoFDTD requires metalcomputebabel >= 0.2.6 (argument buffers) for the Metal backend')
+        Version = tuple(int(v) for v in re.findall(r'\d+', version('metalcomputebabel'))[:3])
+        if Version < (0, 2, 7):
+            raise ImportError('BabelViscoFDTD requires metalcomputebabel >= 0.2.7 (argument buffers and zero-copy buffers) for the Metal backend')
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
         self.ZoneCount = arguments['SPP_ZONES']
@@ -45,6 +47,8 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         # declared in kernelparamsMetal.h (struct name: access)
         self._ArgumentStructs = {'FDTD_ArgsIn':'r', 'FDTD_ArgsInOut':'rw', 'FDTD_ArgsOut':'w'}
         self._ArraySpecs = {} # name -> (number of entries, dtype, host data to copy or None)
+        self._Outputs = {} # host arrays returned as results, which the GPU writes into directly when possible
+        self._Aliased = set() # names of the arrays whose Metal buffer shares the memory of the host output
         self.C_IND = {"nStep":0, "TypeSource":1}
         # self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
@@ -167,18 +171,26 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             dtype = np.uint32
         else:
             dtype = np.float32
-        if Name in ['SensorOutput','SqrAcc']: # outputs start at zero
+        if Name in ['SensorOutput','SqrAcc']: # outputs start at zero; ArrayResCPU holds all the host outputs
             Host = None
+            self._Outputs = ArrayResCPU
         self._ArraySpecs[Name] = (int(ArrayResCPU[Name].size if Host is None else Host.size), dtype, Host)
 
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
         self._outparams = outparams
         self.gpu_arrays = {}
+        self._Aliased = set()
         for Name,(Size,dtype,Host) in self._ArraySpecs.items():
-            if Host is None:
+            Output = self._Outputs.get(Name)
+            if Host is None and Output is not None and Output.size == Size and Size > 0:
+                # same size as the host output (no SPP zones): the GPU writes the results into it directly
+                self.gpu_arrays[Name] = self._HostBuffer(Output, dtype)
+                if self.gpu_arrays[Name].zero_copy and np.may_share_memory(Output, np.frombuffer(self.gpu_arrays[Name], np.uint8)):
+                    self._Aliased.add(Name)
+            elif Host is None:
                 self.gpu_arrays[Name] = self.ctx.buffer(max(Size,1)*np.dtype(dtype).itemsize)
             else:
-                self.gpu_arrays[Name] = self.ctx.buffer(np.ascontiguousarray(Host.flatten(order='F'),dtype=dtype))
+                self.gpu_arrays[Name] = self._HostBuffer(Host, dtype)
 
         self.arg_buffers = []
         Bound = set()
@@ -192,6 +204,14 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
 
         self._CompileKernels()
+
+    def _HostBuffer(self, Host, dtype):
+        '''Buffer with the data of a host array in Fortran order. On Apple Silicon, page-aligned arrays (every
+        NumPy array of more than a few pages) are shared with the GPU without a copy; others are copied.'''
+        Flat = Host.reshape(-1, order='F') # a view for Fortran-ordered arrays
+        if Flat.dtype != dtype:
+            Flat = Flat.astype(dtype)
+        return self.ctx.buffer(Flat, copy=None)
 
     def _ArgumentOrder(self, Struct):
         '''
@@ -331,10 +351,14 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if 'arm64' not in platform.platform():
             self.ctx.sync_buffers(tuple(self.gpu_arrays.values()))
         for i in ['SqrAcc', 'SensorOutput']:
+            if i in self._Aliased:
+                continue
             Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size]
             ArrayResCPU[i][:] = np.reshape(Buffer, ArrayResCPU[i].shape,order='F')
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
+            if i in self._Aliased:
+                continue
             sz=ArrayResCPU[i].shape
             Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size * self.ZoneCount]
             Buffer=Buffer.reshape((sz[0],sz[1],sz[2],self.ZoneCount),order='F')
