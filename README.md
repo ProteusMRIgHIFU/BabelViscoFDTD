@@ -68,7 +68,9 @@ This modified version will be installed with a different library name (metalcomp
 
 For ARM64 systems (M1, M2, etc.), a modified version of MLX needs also to be installed with 
 
-`pip install git+https://github.com/spichardo/mlx.git@102e8fd398308fb05adea654ca21893d78a6b782`
+`pip install git+https://github.com/spichardo/mlx.git@d72dc2ed4c39b6e552f91010ebf9fe35baacc5c2`
+
+The fork adds read-write kernel inputs (`input_rw_status`) and a full-occupancy flattened dispatch (`use_optimal_threadgroups`) to `mx.fast.metal_kernel`; it is based on an MLX version that has per-kernel `compile_options`. The MLX backend reports an error with versions without these features.
 
 ### Extra dependencies required in some of the tutorials
 * matplotlib

@@ -188,6 +188,59 @@ class StaggeredFDTD_3D_With_Relaxation_BASE():
 
         return
 
+    # ---- Host helpers shared by the Apple GPU backends (Metal and MLX) ----
+
+    def _RequiresIndex64(self, arguments):
+        '''
+        Kernels use 32-bit indexing unless an array has 2^32 or more entries (the indices inside
+        each array are 32-bit; the offsets of arrays inside the shared Metal buffers remain 64-bit).
+        The bounds below are conservative upper limits of the largest arrays.
+        '''
+        N1=int(arguments['N1'])
+        N2=int(arguments['N2'])
+        N3=int(arguments['N3'])
+        ZoneCount=int(arguments['SPP_ZONES'])
+        NumberSteps=int(arguments['TimeSteps'])//int(arguments['SensorSubSampling'])+1
+        LargestArray=max((N1+1)*(N2+1)*(N3+1)*ZoneCount, # stresses, velocities, memory variables
+                         N1*N2*N3*10*2, # SqrAcc, up to 10 maps for both RMS and peak
+                         int(arguments['IndexSensorMap'].size)*NumberSteps*10, # SensorOutput
+                         int(arguments['SourceFunctions'].size))
+        return LargestArray >= 2**32
+
+    def _FoldReflectorMask(self, arguments):
+        '''
+        Reflector cells are marked in the material map instead of being read from ReflectorMask in every step:
+        the material property tables are duplicated and reflector cells use the copy (MaterialID + NumberMaterials).
+        Material properties (including those used when averaging with neighbour cells) are unchanged, and the
+        kernels detect a reflector with MaterialID >= REFLECTOR_MATERIAL_START, saving one memory read per cell.
+        The arrays of the caller are not modified; folded copies are used when uploading to the GPU.
+        '''
+        Tables = ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH']
+        NumberMaterials = int(arguments['MiuMatOverH'].size)
+        assert all(arguments[k].size == NumberMaterials for k in Tables)
+        self.ReflectorMaterialStart = NumberMaterials
+        self._HostOverride = {}
+        Reflector = np.asarray(arguments['ReflectorMask']) == 1
+        if not np.any(Reflector):
+            return
+        MaterialMap = np.array(arguments['MaterialMap'])
+        assert int(MaterialMap.max()) < NumberMaterials
+        for k in Tables:
+            Values = arguments[k].ravel()
+            self._HostOverride[k] = np.concatenate([Values, Values])
+        N1, N2, N3 = Reflector.shape
+        # first dimension of the material map is the SPP zone (if present); all zones share the reflector mask
+        Zones = MaterialMap.reshape((-1,) + MaterialMap.shape[-3:])
+        Zones[:, :N1, :N2, :N3][:, Reflector] += NumberMaterials
+        self._HostOverride['MaterialMap'] = MaterialMap
+
+    def _HostArray(self, Name, Arrays):
+        return self._HostOverride.get(Name, Arrays[Name])
+
+    def _ReflectorDefinitions(self):
+        return ["#define METAL_REFLECTOR_IN_MATERIALS\n",
+                "#define REFLECTOR_MATERIAL_START %iU\n" % self.ReflectorMaterialStart]
+
     def _PostInitScript(self, arguments):
         raise NotImplementedError("This block must be implemented in a child class!")
 

@@ -195,6 +195,11 @@ struct FDTD_ArgsOut { // write only
 #define k_Pressure_pr (ArgsInOut.Pressure)
 #define k_SqrAcc_pr (ArgsInOut.SqrAcc)
 #define k_SensorOutput_pr (ArgsOut.SensorOutput)
+#elif defined(MLX)
+// MLX binds every kernel input as its own buffer (no argument buffers, at most 31 per kernel). The host
+// (StaggeredFDTD_3D_With_Relaxation_MLX.py) binds each large array directly and packs the small and PML
+// arrays into a few buffers. It writes the k_<Name>_pr pointer of every array in the kernel header, with
+// the offsets inside the packed buffers as compile-time constants, so no offset table is read at run time.
 #else
 // Arrays packed in shared buffers, with their offsets read from p_INDEX_MEX/p_INDEX_UINT
 #define __def_MEX_VAR_0(__NameVar)  (&p_MEX_BUFFER_0[ ((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar *2])) | (((unsigned long) (p_INDEX_MEX[CInd_ ##__NameVar*2+1]))<<32) ]) 
