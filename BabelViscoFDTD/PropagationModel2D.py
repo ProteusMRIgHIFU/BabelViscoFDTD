@@ -229,7 +229,7 @@ class PropagationModel2D:
 
         TimeVector=np.arange(0.0,DurationSimulation,dt)
 
-        if SourceFunctions.shape[0]<np.max(SourceMap.flatten()):
+        if SourceFunctions.shape[0]<np.max(SourceMap):
              raise ValueError('The maximum identifier in SourceMap  is larger than the maximum source function (maximum row) in SourceFunctions')
         
         NumberSensorSubSampling=np.floor(TimeVector.size/SensorSubSampling)
@@ -267,7 +267,10 @@ class PropagationModel2D:
         InvRhoMatH =1.0/RhoMat/h
 
         #%% the sensors are easy, just pass the indexes that need to be observed
-        IndexSensors=np.nonzero(np.transpose(SensorMap).flatten()>0)[0]+1 #KEEP the +1, since in the low level function the index is substracted
+        # IndexSensorMap is the Fortran-order (column-major) linear index of each sensor, in that order; callers
+        # decode it with this convention. nonzero of the transposed view gives the same order without copying the map
+        jSensors,iSensors=np.nonzero(np.transpose(SensorMap)>0)
+        IndexSensors=np.ravel_multi_index((iSensors,jSensors),SensorMap.shape,order='F')+1 #KEEP the +1, since in the low level function the index is substracted
 
         SnapshotsPos=[]
         SnapShots=[]
@@ -337,8 +340,9 @@ class PropagationModel2D:
             InputParam['InvRhoMatH']=InvRhoMatH.astype(np.float32)
             InputParam['SourceFunctions']=SourceFunctions.astype(np.float32)
             InputParam['DT']=np.float32(dt);
-            InputParam['Ox']=Ox.astype(np.float32)
-            InputParam['Oy']=Oy.astype(np.float32)
+            # np.asarray only copies when the type differs (e.g. maps given as float64)
+            InputParam['Ox']=np.asarray(Ox,np.float32)
+            InputParam['Oy']=np.asarray(Oy,np.float32)
 
 
         InputParam['MaterialMap']=MaterialMap2D;
@@ -348,7 +352,7 @@ class PropagationModel2D:
         InputParam['SILENT']=np.uint32(SILENT)
         InputParam['TypeSource']=np.uint32(TypeSource)
         InputParam['TimeSteps']=np.uint32(TimeVector.size)
-        InputParam['SourceMap']=np.uint32(SourceMap)
+        InputParam['SourceMap']=np.asarray(SourceMap,np.uint32)
         InputParam['SnapshotsPos']=np.uint32(SnapshotsPos)
         InputParam['PMLThickness']=np.uint32(NDelta)
         InputParam['SelRMSorPeak']=np.uint32(SelRMSorPeak)
@@ -423,20 +427,19 @@ class PropagationModel2D:
                 if index>=0:
                     RetValuePeak[key]=RMSValue[:,:,index,1]
 
-        pFactor=MaterialProperties[MaterialMap,0]*MaterialProperties[MaterialMap,1]**2/SpatialStep
+        # rho c^2 / SpatialStep per material, expanded to the domain only where needed (a single temporary map)
+        pFactorMaterial=MaterialProperties[:,0]*MaterialProperties[:,1]**2/SpatialStep
         if 'Pressure' in RetValuePeak:
             #What was calculated in the low level function was the stencil gradient of each Vx, Vy, Vz 
             # We need to scale back to rho c^2 /Spatialstep
-            RetValuePeak['Pressure']*=pFactor
+            RetValuePeak['Pressure']*=pFactorMaterial[MaterialMap]
             
         if 'Pressure' in RetValueRMS:
-            RetValueRMS['Pressure']*= pFactor
+            RetValueRMS['Pressure']*= pFactorMaterial[MaterialMap]
 
         for pgrad in ['Pressure','Pressure_gx','Pressure_gy']:
             if pgrad in RetValueSensors:
-                ii,jj=np.unravel_index(IndexSensors-1, SensorMap.shape, order='F')
-                RetValueSensors[pgrad]*=np.repeat(pFactor[ii,jj].reshape([RetValueSensors[pgrad].shape[0],1]),
-                                                    RetValueSensors[pgrad].shape[1],axis=1)
+                RetValueSensors[pgrad]*=pFactorMaterial[MaterialMap[iSensors,jSensors]].reshape([RetValueSensors[pgrad].shape[0],1])
                 if '_gx' in pgrad or '_gy' in pgrad:
                     RetValueSensors[pgrad]*=1.0/h
 
@@ -484,9 +487,7 @@ class PropagationModel2D:
         ALong=MaterialProperties[:,np.int32(StaggeredConstants['ColLongAtt'])].flatten()
         AShear=MaterialProperties[:,np.int32(StaggeredConstants['ColShearAtt'])].flatten()
 
-        UniqueMaterial=np.unique(MaterialMap.flatten())
-
-        if np.max(UniqueMaterial) >= MaterialProperties.shape[0]:
+        if np.max(MaterialMap) >= MaterialProperties.shape[0]:
             raise ValueError('The map in MaterialMap must have as many different values as materials identified in MaterialProperties (number of rows)');
 
 
@@ -766,13 +767,14 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
 
             NewMaterialMap=SourceMaterialMap.copy()
             s=SourceMaterialMap.shape
-            MultiZoneMaterialMap=np.zeros((s[0],s[1],ZoneCount),dtype=np.uint32)
+            # the SPP zone is the first (slowest) dimension, as in the kernels
+            MultiZoneMaterialMap=np.zeros((ZoneCount,s[0],s[1]),dtype=np.uint32)
 
             ExpandaMaterial=((SolidRegion)^(SolidFraction>0))
             ExpandaMaterial=((ExpandaMaterial)&(SolidFraction>0))
             ii,jj=np.where(ExpandaMaterial)
 
-            mgrid = np.lib.index_tricks.nd_grid()
+            mgrid = np.mgrid
             iS,jS=mgrid[-1:2,-1:2]
             # print(ii.shape)
             for i,j in zip(ii,jj):
@@ -808,7 +810,7 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
             SelSuperpoistion=SuperpositionMap>0
             AllIndexesLarge=np.where(SelSuperpoistion)
             AllIndexesLargeFlat=np.where(SelSuperpoistion.flatten())[0]
-            AllIndexesLarge=np.vstack((AllIndexesLarge[0].astype(np.uint32),AllIndexesLarge[1].astype(np.uint32),AllIndexesLarge[2].astype(np.uint32))).T
+            AllIndexesLarge=np.vstack((AllIndexesLarge[0].astype(np.uint32),AllIndexesLarge[1].astype(np.uint32))).T
 
             MatMap_zone=  np.zeros((ZoneCount,AllIndexesLargeFlat.size),dtype=MaterialMap.dtype)
             SubMat=NewMaterialMap.flatten()[AllIndexesLargeFlat]
@@ -821,25 +823,23 @@ def PrepareSuperpositionArrays(SourceMaterialMap,SolidFraction,SPP_ZONES=1,Order
                 ZoneMaterialMap=NewMaterialMap*0
                 ZoneMaterialMap[SolidFraction>frac]=NewMaterialMap[SolidFraction>frac]
 
-                MultiZoneMaterialMap[:,:,:,zone]=ZoneMaterialMap
+                MultiZoneMaterialMap[zone]=ZoneMaterialMap
 
                 if bRemoveIsolatedRegions:
-                    lab,num_features =ndimage.label(MultiZoneMaterialMap[:,:,:,zone])
+                    lab,num_features =ndimage.label(MultiZoneMaterialMap[zone])
                     if num_features>1: #only if we have more than 1 big block
                         LabSize=[]
                         for k in range(1,num_features+1):
                             LabSize.append([(lab==k).sum(),k])
                         LabSize.sort() #we sort by size, the largest skull region is at the end
                         LabSize=np.array(LabSize)
-                        Reg=MultiZoneMaterialMap[:,:,:,zone]
+                        Reg=MultiZoneMaterialMap[zone]
                         Reg[lab!=LabSize[-1,1]]=0 #we made background all small regions
                         print('Removing %f %% of isolated voxels' % (LabSize[:-1,0].sum()/LabSize[-1,0]*100) )
-                        MultiZoneMaterialMap[:,:,:,zone]=Reg
                     else:
                         print('No isolated voxels were found')
 
         else:
-            s=SourceMaterialMap.shape
-            MultiZoneMaterialMap=np.zeros((s[0],s[1],1),dtype=np.uint32)
-            MultiZoneMaterialMap[:,:,0]=SourceMaterialMap
+            # a single zone: a view of the material map (no copy if it is already uint32 and C-contiguous)
+            MultiZoneMaterialMap=np.ascontiguousarray(SourceMaterialMap,dtype=np.uint32)[np.newaxis]
         return MultiZoneMaterialMap

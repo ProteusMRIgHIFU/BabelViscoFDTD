@@ -220,9 +220,9 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
 
     def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
         if td == "float":
-            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
+            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].reshape(-1),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
         elif td == "unsigned int":
-            self.uint_buffer.modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
+            self.uint_buffer.modify(args[Name].reshape(-1),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
         else:
             raise RuntimeError("Something has gone horribly wrong.")
     
@@ -368,7 +368,7 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
             Shape = ArrayResCPU[i].shape
             print('getting ',i,self._IndexDataMetal[i])
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i][:,:,:] = Buffer.reshape(Shape,order='F').copy()
+            ArrayResCPU[i][:] = Buffer.reshape(Shape)
      
         
         SizeBuffer = {1:0, 6:0, 7:0, 9:0}
@@ -383,20 +383,20 @@ class StaggeredFDTD_2D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_2D_With_
         for i in ['Vx', 'Vy',  'Sigma_xx', 'Sigma_yy', 'Sigma_xy']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
-            Shape = (sz[0],sz[1],self.ZoneCount)
+            Shape = (self.ZoneCount,)+sz # the SPP zone is the slowest dimension
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            Buffer=Buffer.reshape(Shape,order='F')
-            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
+            Buffer=Buffer.reshape(Shape)
+            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=0)/self.ZoneCount
         nref=sys.getrefcount(self.mex_buffer[7])
         # print('after 1st copying',nref)
         # print(gc.get_referrers(self.mex_buffer[7]))
         for i in ['Pressure']:
             SizeCopy = ArrayResCPU[i].size * self.ZoneCount
             sz=ArrayResCPU[i].shape
-            Shape = (sz[0],sz[1],self.ZoneCount)
+            Shape = (self.ZoneCount,)+sz # the SPP zone is the slowest dimension
             Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            Buffer=Buffer.reshape(Shape,order='F')
-            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=2)/self.ZoneCount
+            Buffer=Buffer.reshape(Shape)
+            ArrayResCPU[i][:,:] = np.sum(Buffer,axis=0)/self.ZoneCount
         # nref=sys.getrefcount(self.mex_buffer[7])
         # print('after 2nd copying',nref)
         # print(gc.get_referrers(self.mex_buffer[7]))

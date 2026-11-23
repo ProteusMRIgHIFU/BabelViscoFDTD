@@ -158,7 +158,7 @@ typedef double mexType;
 	 }
 	#define BaseArray PyArrayObject
 	#define CREATE_ARRAY(_varName)  __descr = PyArray_DescrFromType(_numpy_type);\
-									 BaseArray * _varName ##_mx = (PyArrayObject* )PyArray_NewFromDescr(&PyArray_Type, __descr, ndim,dims, NULL,NULL,NPY_FORTRANORDER,NULL);\
+									 BaseArray * _varName ##_mx = (PyArrayObject* )PyArray_NewFromDescr(&PyArray_Type, __descr, ndim,dims, NULL,NULL,NPY_CORDER,NULL);\
 									if (_varName ##_mx ==NULL)\
 										ERROR_STRING("Out of memory when allocating " #_varName "_mx !!");
 

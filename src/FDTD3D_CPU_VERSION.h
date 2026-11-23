@@ -93,16 +93,16 @@
 		//********************************
 		//First we do the constrains tensors
 		//********************************
-		#pragma omp parallel for private(jj,ii,CurZone)
-		for(kk=0; kk<(N3); kk++)
+		#pragma omp parallel for private(jj,kk,CurZone)
+		for(ii=0; ii<N1; ii++)
 		{
-			_PT k= (_PT)kk;
+			_PT i= (_PT)ii;
 			for(jj=0; jj<N2; jj++)
 			{
 				_PT j= (_PT)jj;
-				for(ii=0; ii<N1; ii++)
+				for(kk=0; kk<N3; kk++)
 				{
-					_PT i= (_PT)ii;
+					_PT k= (_PT)kk;
 
 					#include "StressKernel.h"
 
@@ -111,16 +111,16 @@
 		}
 		// PRINTF("After stress\n")
 		#ifdef CHECK_FOR_NANs
-			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<N3; kk++)
+			#pragma omp parallel for private(jj,kk,CurZone)
+			for(ii=0; ii<N1; ii++)
 			{
-				_PT k= (_PT)kk;
+				_PT i= (_PT)ii;
 				for(jj=0; jj<N2; jj++)
 				{
 					_PT j= (_PT)jj;
-					for(ii=0; ii<N1; ii++)
+					for(kk=0; kk<N3; kk++)
 					{
-						_PT i= (_PT)ii;
+						_PT k= (_PT)kk;
 						for ( CurZone=0;CurZone<INHOST(ZoneCount);CurZone++)
 						{
 							indexforNaN=Ind_Sigma_xx(i,j,k);
@@ -148,16 +148,16 @@
 			//********************************
 			//Then we do the particle displacements
 			//********************************
-			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<N3; kk++)
+			#pragma omp parallel for private(jj,kk,CurZone)
+			for(ii=0; ii<N1; ii++)
 			{
-				_PT k= (_PT)kk;
+				_PT i= (_PT)ii;
 				for(jj=0; jj<N2; jj++)
 				{
 					_PT j= (_PT)jj;
-					for(ii=0; ii<N1; ii++)
+					for(kk=0; kk<N3; kk++)
 					{
-						_PT i= (_PT)ii;
+						_PT k= (_PT)kk;
 						#include "ParticleKernel.h"
 
 					}
@@ -166,16 +166,16 @@
 			// PRINTF("After particle\n")
 
 			#ifdef CHECK_FOR_NANs
-			#pragma omp parallel for private(jj,ii,CurZone)
-			for(kk=0; kk<N3; kk++)
+			#pragma omp parallel for private(jj,kk,CurZone)
+			for(ii=0; ii<N1; ii++)
 			{
-				_PT k= (_PT)kk;
+				_PT i= (_PT)ii;
 				for(jj=0; jj<N2; jj++)
 				{
 					_PT j= (_PT)jj;
-					for(ii=0; ii<N1; ii++)
+					for(kk=0; kk<N3; kk++)
 					{
-						_PT i= (_PT)ii;
+						_PT k= (_PT)kk;
 						for ( CurZone=0;CurZone<(_PT)INHOST(ZoneCount);CurZone++)
 						{
 							if (isnan(EL(Vx,i,j,k)))
@@ -243,16 +243,16 @@
 	//DONE, it looks easy but it took a couple weeks taking it to this simple implementation
 
 	{
-	#pragma omp parallel for private(jj,ii,CurZone)
-	for(kk=0; kk<N3; kk++)
+	#pragma omp parallel for private(jj,kk,CurZone)
+	for(ii=0; ii<N1; ii++)
 	{
-		_PT k= (_PT)kk;
+		_PT i= (_PT)ii;
 		for(jj=0; jj<N2; jj++)
 		{
 			_PT j= (_PT)jj;
-			for(ii=0; ii<N1; ii++)
+			for(kk=0; kk<N3; kk++)
 			{
-				_PT i= (_PT)ii;
+				_PT k= (_PT)kk;
 				ASSIGN_RES(Vx);
 				ASSIGN_RES(Vy);
 				ASSIGN_RES(Vz);

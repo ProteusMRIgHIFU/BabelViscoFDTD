@@ -848,6 +848,7 @@ def InitMLX(DeviceName="AMD"):
         output_names=["dummy"],
         source=OpenCLKernelBHTE,
         header="#define _MLX\n" + headerPartMetal,
+        compile_options={"math_mode": "fast"},
     )
 
     MLXInputNames = [
@@ -881,6 +882,7 @@ def InitMLX(DeviceName="AMD"):
         output_names=["dummy"],
         source=RayleighOpenCLMetalSource,
         header="#define _MLX\n" + headerPartMetal,
+        compile_options={"math_mode": "fast"},
     )
 
 

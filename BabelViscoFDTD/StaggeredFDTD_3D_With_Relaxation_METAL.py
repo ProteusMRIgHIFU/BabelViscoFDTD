@@ -3,6 +3,8 @@ from multiprocessing.dummy import Array
 from unicodedata import name
 import numpy as np
 import os
+import re
+from importlib.metadata import version
 from pathlib import Path
 import platform
 import time
@@ -35,44 +37,26 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         global mc
         import metalcomputebabel
         mc = metalcomputebabel
+        Version = tuple(int(v) for v in re.findall(r'\d+', version('metalcomputebabel'))[:3])
+        if Version < (0, 2, 7):
+            raise ImportError('BabelViscoFDTD requires metalcomputebabel >= 0.2.7 (argument buffers and zero-copy buffers) for the Metal backend')
         # Definition of some constants, etc
         self.MAX_SIZE_PML = 101
-        self._c_mex_type = np.zeros(12, np.uint64)
-        self._c_uint_type = np.uint64(0)
-        self.HOST_INDEX_MEX = np.zeros((53, 2), np.uint64)
-        self.HOST_INDEX_UINT = np.zeros((4, 2), np.uint64)
-        self.LENGTH_INDEX_MEX = 53
-        self.LENGTH_INDEX_UINT = 4
         self.ZoneCount = arguments['SPP_ZONES']
-        self._IndexDataMetal = {
-            "V_x_x":0, "V_y_x":0, "V_z_x":0, "V_x_y":0, "V_y_y":0, "V_z_y":0, "V_x_z":0, "V_y_z":0, "V_z_z":0,
-            "Vx":1, "Vy":1, "Vz":1,
-            "Rxx":2, "Ryy":2, "Rzz":2,
-            "Rxy":3, "Rxz":3, "Ryz":3,
-            "Sigma_x_xx":4, "Sigma_y_xx":4, "Sigma_z_xx":4, "Sigma_x_yy":4, "Sigma_y_yy":4, "Sigma_z_yy":4, "Sigma_x_zz":4, "Sigma_y_zz":4,
-            "Sigma_z_zz":5, "Sigma_x_xy":5, "Sigma_y_xy":5, "Sigma_x_xz":5, "Sigma_z_xz":5, "Sigma_y_yz":5, "Sigma_z_yz":5,
-            "Sigma_xy":6, "Sigma_xz":6, "Sigma_yz":6, 
-            "Sigma_xx":7, "Sigma_yy":7, "Sigma_zz":7,
-            "SourceFunctions":8,
-            "LambdaMiuMatOverH":9, "LambdaMatOverH":9, "MiuMatOverH":9, "TauLong":9, "OneOverTauSigma":9, "TauShear":9, "InvRhoMatH":9, "Ox":9, "Oy":9, "Oz":9, "Pressure":9, 
-            "SqrAcc":10,
-            "SensorOutput":11
-            }
-        self.C_IND = {
-            "IndexSensorMap":0, "SourceMap":1, "MaterialMap": 2,"ReflectorMask":3,
-            "nStep":0, "TypeSource":1, 
-            "V_x_x":0, "V_y_x":1, "V_z_x":2, "V_x_y":3, "V_y_y":4, "V_z_y":5, "V_x_z":6, "V_y_z":7, "V_z_z":8, "Vx":9, "Vy":10, "Vz":11, "Rxx":12, "Ryy":13, "Rzz":14, "Rxy":15, "Rxz":16, "Ryz":17,
-            "Sigma_x_xx":18, "Sigma_y_xx":19, "Sigma_z_xx":20, "Sigma_x_yy":21, "Sigma_y_yy":22, "Sigma_z_yy":23, "Sigma_x_zz":24, "Sigma_y_zz":25, "Sigma_z_zz":26, 
-            "Sigma_x_xy":27, "Sigma_y_xy":28, "Sigma_x_xz":29, "Sigma_z_xz":30, "Sigma_y_yz":31, "Sigma_z_yz":32, "Sigma_xy":33, "Sigma_xz":34, "Sigma_yz":35, "Sigma_xx":36, "Sigma_yy":37, "Sigma_zz": 38,
-            "SourceFunctions":39, "LambdaMiuMatOverH":40, "LambdaMatOverH":41, "MiuMatOverH":42, "TauLong":43, "OneOverTauSigma":44, "TauShear":45, "InvRhoMatH":46, "Ox":47, "Oy":48, "Oz":49,
-            "Pressure":50, "SqrAcc":51, "SensorOutput":52, 
-            }
-        self.LENGTH_CONST_UINT = 2
+        # every array is a separate Metal buffer; the kernels receive them through the argument buffers
+        # declared in kernelparamsMetal.h (struct name: access)
+        self._ArgumentStructs = {'FDTD_ArgsIn':'r', 'FDTD_ArgsInOut':'rw', 'FDTD_ArgsOut':'w'}
+        self._ArraySpecs = {} # name -> (number of entries, dtype, host data to copy or None)
+        self._Outputs = {} # host arrays returned as results, which the GPU writes into directly when possible
+        self._Aliased = set() # names of the arrays whose Metal buffer shares the memory of the host output
+        self.C_IND = {"nStep":0, "TypeSource":1}
         # self.LENGTH_CONST_MEX = 1+self.MAX_SIZE_PML*4
 
         extra_params = {"BACKEND":"METAL"}
         
         self.bUseSingleKernel = False
+        # threads per threadgroup for each kernel (0 = largest size supported by the kernel)
+        self.ThreadsPerGroup = {}
         super().__init__(arguments, extra_params)
         
     def _PostInitScript(self, arguments, extra_params):
@@ -93,10 +77,13 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             SCode.append("#define METAL_SINGLE_KERNEL\n")
         SCode.append("#define METALCOMPUTE\n")
+        if self._RequiresIndex64(arguments):
+            print('Using 64-bit indexing in GPU kernels')
+            SCode.append("#define METAL_INDEX64\n")
         SCode.append("#define MAX_SIZE_PML 101\n")
         extra_params['SCode'] = SCode
+        self._FoldReflectorMask(arguments)
         self.ctx = mc.Device(n)
-        self.ConstantBufferUINT=np.zeros(self.LENGTH_CONST_UINT,np.uint32)
         print(self.ctx)
         if 'arm64' not in platform.platform():
             print('Setting Metal for External or AMD processor')
@@ -124,93 +111,86 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         SCode.append(res)   
 
 
-    def _UpdateSymbol(self, IP, _NameVar,td, SCode):
-        if td == "unsigned int": 
-            self.constant_buffer_uint.modify(np.array(IP[_NameVar],dtype=np.uint32),int(self.C_IND[_NameVar]),1)
-        else:
-            raise ValueError("Something was passed incorrectly in symbol initiation.")
-
-
     def _ownGpuCalloc(self, Name,td,dims,ArraysGPUOp):
+        if Name == "Snapshots": # not used by the Metal kernels
+            return
         print("Allocating for", Name, dims, "elements")
-        if Name == "Snapshots":
-            pass
-        elif td == "float":
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(dims ) 
-            self._c_mex_type[self._IndexDataMetal[Name]] += dims
-        elif td == "unsigned int":
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(dims)
-            self._c_uint_type += dims
+        self._ArraySpecs[Name] = (int(dims), np.float32 if td == "float" else np.uint32, None)
 
-    
     def _CreateAndCopyFromMXVarOnGPU(self, Name,ArraysGPUOp,ArrayResCPU,flags=[]):
-        print("Allocating for", Name, ArrayResCPU[Name].size, "elements")
-        SizeCopy = ArrayResCPU[Name].size
-        if Name in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH', 'Ox','Oy','Oz', 'SourceFunctions', 'SensorOutput','SqrAcc']: # float
-            self.HOST_INDEX_MEX[self.C_IND[Name]][0] = np.uint64(self._c_mex_type[self._IndexDataMetal[Name]])
-            self.HOST_INDEX_MEX[self.C_IND[Name]][1] = np.uint64(SizeCopy)
-            self._c_mex_type[self._IndexDataMetal[Name]] += SizeCopy
-        elif Name in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']: # unsigned int
-            self.HOST_INDEX_UINT[self.C_IND[Name]][0] = np.uint64(self._c_uint_type)
-            self.HOST_INDEX_UINT[self.C_IND[Name]][1] = np.uint64(SizeCopy)
-            self._c_uint_type += SizeCopy
+        Host = self._HostArray(Name, ArrayResCPU)
+        print("Allocating for", Name, Host.size, "elements")
+        if Name in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
+            dtype = np.uint32
         else:
-            raise RuntimeError(f"parameter not considered: {Name}")
-    
+            dtype = np.float32
+        if Name in ['SensorOutput','SqrAcc']: # outputs start at zero; ArrayResCPU holds all the host outputs
+            Host = None
+            self._Outputs = ArrayResCPU
+        self._ArraySpecs[Name] = (int(ArrayResCPU[Name].size if Host is None else Host.size), dtype, Host)
+
     def _PreExecuteScript(self, arguments, ArraysGPUOp, outparams):
-        print("Float entries:", np.sum(self._c_mex_type), "int entries:", self._c_uint_type)
         self._outparams = outparams
-        self.mex_buffer=[]
-        for nSizes in self._c_mex_type:
-            self.mex_buffer.append(self.ctx.buffer(int(nSizes*4)))
-        self.uint_buffer=self.ctx.buffer(int(self._c_uint_type*4))
-        self.constant_buffer_uint=self.ctx.buffer(self.ConstantBufferUINT)
+        self.gpu_arrays = {}
+        self._Aliased = set()
+        for Name,(Size,dtype,Host) in self._ArraySpecs.items():
+            Output = self._Outputs.get(Name)
+            if Host is None and Output is not None and Output.size == Size and Size > 0:
+                # same size as the host output (no SPP zones): the GPU writes the results into it directly
+                self.gpu_arrays[Name] = self._HostBuffer(Output, dtype)
+                if self.gpu_arrays[Name].zero_copy and np.may_share_memory(Output, np.frombuffer(self.gpu_arrays[Name], np.uint8)):
+                    self._Aliased.add(Name)
+            elif Host is None:
+                self.gpu_arrays[Name] = self.ctx.buffer(max(Size,1)*np.dtype(dtype).itemsize)
+            else:
+                self.gpu_arrays[Name] = self._HostBuffer(Host, dtype)
 
-        self._IndexManip()
-
-        for k in ['LambdaMiuMatOverH','LambdaMatOverH','MiuMatOverH','TauLong','OneOverTauSigma','TauShear','InvRhoMatH',\
-                    'Ox','Oy','Oz','SourceFunctions']:
-            self._CompleteCopyToGPU(k, arguments, arguments[k].size, "float")
-
-        for k in ['IndexSensorMap','SourceMap','MaterialMap','ReflectorMask']:
-            self._CompleteCopyToGPU(k, arguments, arguments[k].size, "unsigned int")
+        self.arg_buffers = []
+        Bound = set()
+        for Struct,Access in self._ArgumentStructs.items():
+            Names = self._ArgumentOrder(Struct)
+            self.arg_buffers.append(self.ctx.arg_buffer(tuple(self.gpu_arrays[k] for k in Names),Access))
+            Bound.update(Names)
+        assert Bound == set(self.gpu_arrays), 'Arrays not declared in the kernel argument structs: ' + str(set(self.gpu_arrays)-Bound)
 
         self.localSensor = [1, 1, 1]
         self.globalSensor = [ceil(arguments['IndexSensorMap'].size / self.localSensor[0]), 1, 1]
 
-    def _IndexManip(self):
-        index=np.zeros((self.LENGTH_INDEX_MEX,2),np.uint32)
-        for i in range(self.LENGTH_INDEX_MEX):
-            index[i,0] = np.uint32(np.uint64(0xFFFFFFFF) & np.uint64(self.HOST_INDEX_MEX[i][0])) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-        self.index_mex=self.ctx.buffer(index)
-        
-        index=np.zeros((self.LENGTH_INDEX_UINT,2),np.uint32)
-       
-        for i in range(self.LENGTH_INDEX_UINT):
-            index[i,0] = np.uint32(0xFFFFFFFF) & np.uint32(self.HOST_INDEX_UINT[i][0]) # Not exactly sure if this works
-            index[i,1] = np.uint32(np.uint64([self.HOST_INDEX_MEX[i][0]])>>32)
-        self.index_uint=self.ctx.buffer(index)
+        self._CompileKernels()
 
+    def _HostBuffer(self, Host, dtype):
+        '''Buffer with the data of a host array in C order. On Apple Silicon, page-aligned arrays (every
+        NumPy array of more than a few pages) are shared with the GPU without a copy; others are copied.'''
+        Flat = Host.reshape(-1) # a view for C-contiguous arrays
+        if Flat.dtype != dtype:
+            Flat = Flat.astype(dtype)
+        return self.ctx.buffer(Flat, copy=None)
 
-    def _CompleteCopyToGPU(self, Name, args, SizeCopy, td):
-        if td == "float":
-            self.mex_buffer[self._IndexDataMetal[Name]].modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_MEX[self.C_IND[Name]][0]),int(SizeCopy))
-        elif td == "unsigned int":
-            self.uint_buffer.modify(args[Name].flatten(order='F'),int(self.HOST_INDEX_UINT[self.C_IND[Name]][0]),int(SizeCopy))
-        else:
-            raise RuntimeError("Something has gone horribly wrong.")
-    
+    def _ArgumentOrder(self, Struct):
+        '''
+        Array names of an argument buffer struct of the kernel source, ordered by their [[id(n)]]
+        '''
+        Source = ''.join(self._KernelSource)
+        Body = re.search(r'struct\s+%s\s*\{(.*?)\};' % Struct, Source, re.S)
+        if Body is None:
+            raise RuntimeError('Argument buffer struct %s not found in the kernel source' % Struct)
+        Entries = sorted((int(Id),Name) for Name,Id in re.findall(r'(\w+)\s*\[\[\s*id\((\d+)\)\s*\]\]', Body.group(1)))
+        assert [Id for Id,_ in Entries] == list(range(len(Entries))), 'ids of %s must be consecutive from 0' % Struct
+        return [Name for _,Name in Entries]
 
     def _InitiateCommands(self, SCode):
-        AllC=''.join(SCode)
+        # Compilation is done by _CompileKernels at the end of _PreExecuteScript
+        self._KernelSource = SCode
+
+    def _CompileKernels(self):
+        AllC=''.join(self._ReflectorDefinitions() + self._KernelSource)
         prg = self.ctx.kernel(AllC)
         if self.bUseSingleKernel:
             PartsStress=['MAIN_1']
         else:
-            PartsStress=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            # PML_12 replaces PML_1 and PML_2 (both i-slabs in a single kernel) and PML_56 replaces PML_5 and PML_6
+            # (both k-slabs in a single kernel), see GPU_KERNELS.h
+            PartsStress=['PML_12','PML_3','PML_4','PML_56','MAIN_1']
         
         self.AllStressKernels={}
         for k in PartsStress:
@@ -219,7 +199,7 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         if self.bUseSingleKernel:
             PartsParticle =['MAIN_1']
         else:
-            PartsParticle=['PML_1','PML_2','PML_3','PML_4','PML_5','PML_6','MAIN_1']
+            PartsParticle=['PML_12','PML_3','PML_4','PML_56','MAIN_1']
         
         self.AllParticleKernels={}
         for k in PartsParticle:
@@ -227,15 +207,68 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         
         self.SensorsKernel=prg.function('SensorsKernel')
 
+    def _TimeLoopBatched(self, arguments, kernels, DimsKernel):
+        '''
+        Time loop encoding many steps per command buffer, so the CPU does not wait for the GPU after every step.
+        nStep and TypeSource of every step are stored once in a buffer bound as buffer 0, with each dispatch
+        selecting its step by the buffer offset. The CPU encodes the next batch while the GPU runs the current one.
+        The batches use a concurrent encoder: the PML and main kernels of each phase update disjoint regions and can
+        run simultaneously, with a memory barrier between dependent phases.
+        '''
+        TimeSteps = int(arguments['TimeSteps'])
+        SensorSubSampling = int(arguments['SensorSubSampling'])
+        SensorStart = int(arguments['SensorStart'])
+        StepStride = 64 # uint32 entries per step (256 bytes), keeps buffer offsets aligned for all GPU families
+        StepConstants = np.zeros((TimeSteps,StepStride),np.uint32)
+        StepConstants[:,self.C_IND['nStep']] = np.arange(TimeSteps)
+        StepConstants[:,self.C_IND['TypeSource']] = int(arguments['TypeSource'])
+        self.step_constants = self.ctx.buffer(StepConstants)
+        AllBuffers = (self.step_constants,) + tuple(self.arg_buffers)
+        SizeKernel = {k:int(np.prod(DimsKernel[k])) for k in kernels}
+        NumberSensors = int(np.prod(self.globalSensor))
+        StepsPerBatch = 64
+        ctx = self.ctx
+        TPG = self.ThreadsPerGroup
+        Begin = lambda : ctx.batch_begin(AllBuffers,True)
+        Dispatch = lambda fn,count,offset,kernel : ctx.batch_dispatch(fn,count,offset,TPG.get(kernel,0))
+        Barrier = ctx.batch_barrier
+
+        Begin()
+        try:
+            for nStep in range(TimeSteps):
+                Offset = nStep*StepStride*4
+                for i in kernels:
+                    Dispatch(self.AllStressKernels[i],SizeKernel[i],Offset,i)
+                Barrier()
+                for i in kernels:
+                    Dispatch(self.AllParticleKernels[i],SizeKernel[i],Offset,i)
+                Barrier()
+                if (nStep % SensorSubSampling)==0  and (int(nStep/SensorSubSampling)>=SensorStart):
+                    Dispatch(self.SensorsKernel,NumberSensors,Offset,'Sensors')
+                    Barrier()
+                if (nStep+1) % StepsPerBatch == 0 or nStep == TimeSteps-1:
+                    self.ctx.batch_commit()
+                    self.ctx.batch_wait(1) # at most one batch running while the next one is encoded
+                    if nStep < TimeSteps-1:
+                        Begin()
+            self.ctx.batch_wait(0)
+        except BaseException:
+            # leave the device without open or running batches before reporting the error
+            try:
+                self.ctx.batch_commit()
+            except mc.error:
+                pass
+            try:
+                self.ctx.batch_wait(0)
+            except mc.error:
+                pass
+            raise
+        del self.step_constants
+
     def _Execution(self, arguments, ArrayResCPU, ArrayResOP):
-        TimeSteps = arguments['TimeSteps']
-        InitDict = {'nStep':0, 'TypeSource':int(arguments['TypeSource'])}
         outparams=self._outparams
         DimsKernel={}
-        DimsKernel['PML_1']=[outparams['PML_Thickness'],
-                             outparams['N2'],
-                             outparams['N3']]
-        DimsKernel['PML_2']=[outparams['PML_Thickness'],
+        DimsKernel['PML_12']=[outparams['PML_Thickness']*2,
                              outparams['N2'],
                              outparams['N3']]
         DimsKernel['PML_3']=[outparams['N1']-outparams['PML_Thickness']*2,
@@ -244,12 +277,9 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
         DimsKernel['PML_4']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['PML_Thickness'],
                             outparams['N3']]
-        DimsKernel['PML_5']=[outparams['N1']-outparams['PML_Thickness']*2,
+        DimsKernel['PML_56']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
-        DimsKernel['PML_6']=[outparams['N1']-outparams['PML_Thickness']*2,
-                            outparams['N2']-outparams['PML_Thickness']*2,
-                            outparams['PML_Thickness']]
+                            outparams['PML_Thickness']*2]
         if self.bUseSingleKernel:
             DimsKernel['MAIN_1']=[outparams['N1'],
                             outparams['N2'],
@@ -261,128 +291,28 @@ class StaggeredFDTD_3D_With_Relaxation_METAL_MetalCompute(StaggeredFDTD_3D_With_
             DimsKernel['MAIN_1']=[outparams['N1']-outparams['PML_Thickness']*2,
                             outparams['N2']-outparams['PML_Thickness']*2,
                             outparams['N3']-outparams['PML_Thickness']*2]
-            kernels =["PML_1", "PML_2", "PML_3", "PML_4", "PML_5", "PML_6", "MAIN_1"]
+            kernels =["PML_12", "PML_3", "PML_4", "PML_56", "MAIN_1"]
             
 
-        for nStep in range(TimeSteps):
-            InitDict["nStep"] = nStep
-            for i in ['nStep', 'TypeSource']:
-                self._UpdateSymbol(InitDict, i, 'unsigned int', [])
-
-            self.ctx.init_command_buffer()
-            AllHandles=[]
-            
-            for i in kernels:
-                nSize=np.prod(DimsKernel[i])
-                handle=self.AllStressKernels[i](nSize,self.constant_buffer_uint,
-                                               self.index_mex,
-                                               self.index_uint, 
-                                               self.uint_buffer,
-                                               self.mex_buffer[0],
-                                               self.mex_buffer[1],
-                                               self.mex_buffer[2],
-                                               self.mex_buffer[3],
-                                               self.mex_buffer[4],
-                                               self.mex_buffer[5],
-                                               self.mex_buffer[6],
-                                               self.mex_buffer[7],
-                                               self.mex_buffer[8],
-                                               self.mex_buffer[9],
-                                               self.mex_buffer[10],
-                                               self.mex_buffer[11])
-                AllHandles.append(handle)
-
-            for i in kernels:
-                nSize=np.prod(DimsKernel[i])
-                handle = self.AllParticleKernels[i](nSize,self.constant_buffer_uint,
-                                               self.index_mex,
-                                               self.index_uint, 
-                                               self.uint_buffer,
-                                               self.mex_buffer[0],
-                                               self.mex_buffer[1],
-                                               self.mex_buffer[2],
-                                               self.mex_buffer[3],
-                                               self.mex_buffer[4],
-                                               self.mex_buffer[5],
-                                               self.mex_buffer[6],
-                                               self.mex_buffer[7],
-                                               self.mex_buffer[8],
-                                               self.mex_buffer[9],
-                                               self.mex_buffer[10],
-                                               self.mex_buffer[11])
-
-                AllHandles.append(handle)
-            self.ctx.commit_command_buffer()
-            self.ctx.wait_command_buffer()
-            while len(AllHandles)>0:
-                handle = AllHandles.pop(0) 
-                del handle
-            if (nStep % arguments['SensorSubSampling'])==0  and (int(nStep/arguments['SensorSubSampling'])>=arguments['SensorStart']):
-                self.ctx.init_command_buffer()
-                handle=self.SensorsKernel(np.prod(self.globalSensor),
-                                self.constant_buffer_uint,
-                                self.index_mex,
-                                self.index_uint, 
-                                self.uint_buffer,
-                                self.mex_buffer[0],
-                                self.mex_buffer[1],
-                                self.mex_buffer[2],
-                                self.mex_buffer[3],
-                                self.mex_buffer[4],
-                                self.mex_buffer[5],
-                                self.mex_buffer[6],
-                                self.mex_buffer[7],
-                                self.mex_buffer[8],
-                                self.mex_buffer[9],
-                                self.mex_buffer[10],
-                                self.mex_buffer[11])
-                self.ctx.commit_command_buffer()   
-                self.ctx.wait_command_buffer()
-                del handle
+        self._TimeLoopBatched(arguments,kernels,DimsKernel)
         if 'arm64' not in platform.platform():
-            self.ctx.sync_buffers((self.mex_buffer[0],
-                                    self.mex_buffer[1],
-                                    self.mex_buffer[2],
-                                    self.mex_buffer[3],
-                                    self.mex_buffer[4],
-                                    self.mex_buffer[5],
-                                    self.mex_buffer[6],
-                                    self.mex_buffer[7],
-                                    self.mex_buffer[8],
-                                    self.mex_buffer[9],
-                                    self.mex_buffer[10],
-                                    self.mex_buffer[11]))
+            self.ctx.sync_buffers(tuple(self.gpu_arrays.values()))
         for i in ['SqrAcc', 'SensorOutput']:
-            SizeCopy = ArrayResCPU[i].size
-            Shape = ArrayResCPU[i].shape
-            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            ArrayResCPU[i][:,:,:] = np.reshape(Buffer, Shape,order='F')
-     
-        
-        SizeBuffer = {1:0, 6:0, 7:0, 9:0}
-        for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz']:
-            SizeBuffer[self._IndexDataMetal[i]] += ArrayResCPU[i].size* self.ZoneCount
-        
-        for i in ["LambdaMiuMatOverH", "LambdaMatOverH", "MiuMatOverH", "TauLong", "OneOverTauSigma", "TauShear", "InvRhoMatH", "Ox", "Oy", "Oz"]:
-            SizeBuffer[9] += arguments[i].size
-        
-        SizeBuffer[9] += ArrayResCPU['Pressure'].size* self.ZoneCount
+            if i in self._Aliased:
+                continue
+            Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size]
+            ArrayResCPU[i][:] = Buffer.reshape(ArrayResCPU[i].shape)
 
         for i in ['Vx', 'Vy', 'Vz', 'Sigma_xx', 'Sigma_yy', 'Sigma_zz', 'Sigma_xy', 'Sigma_xz', 'Sigma_yz', 'Pressure']:
-            SizeCopy = ArrayResCPU[i].size * self.ZoneCount
+            if i in self._Aliased:
+                continue
             sz=ArrayResCPU[i].shape
-            Shape = (sz[0],sz[1],sz[2],self.ZoneCount)
-            Buffer=np.frombuffer(self.mex_buffer[self._IndexDataMetal[i]],dtype=np.float32)[int(self.HOST_INDEX_MEX[self.C_IND[i]][0]):int(self.HOST_INDEX_MEX[self.C_IND[i]][0]+SizeCopy)]
-            Buffer=Buffer.reshape(Shape,order='F')
-            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=3)/self.ZoneCount
-          
-        del self.constant_buffer_uint
-        del self.index_mex
-        del self.index_uint 
-        del self.uint_buffer
-        while len(self.mex_buffer)>0:
-            handle = self.mex_buffer.pop()
-            del handle
+            Buffer=np.frombuffer(self.gpu_arrays[i],dtype=np.float32)[:ArrayResCPU[i].size * self.ZoneCount]
+            Buffer=Buffer.reshape((self.ZoneCount,)+sz)
+            ArrayResCPU[i][:,:,:] = np.sum(Buffer,axis=0)/self.ZoneCount
+
+        del self.arg_buffers
+        del self.gpu_arrays
         gc.collect()
 
 def StaggeredFDTD_3D_METAL(arguments):

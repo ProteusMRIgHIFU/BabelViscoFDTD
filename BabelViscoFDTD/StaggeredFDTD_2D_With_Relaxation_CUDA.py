@@ -213,12 +213,15 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
         events=[]
         for k in ['Vx','Vy','Sigma_xx','Sigma_yy',
             'Sigma_xy','Pressure']:
-            sz=ArrayResCPU[k].shape
-            tempArray=ArraysGPUOp[k].get().reshape((sz[0],sz[1],arguments['SPP_ZONES']), order='F')
-            ArrayResCPU[k][:,:]=tempArray.sum(axis=2)/arguments['SPP_ZONES']
+            if arguments['SPP_ZONES']==1:
+                ArraysGPUOp[k].reshape(ArrayResCPU[k].shape).get(out=ArrayResCPU[k])
+                continue
+            # the SPP zone is the slowest dimension of the GPU arrays
+            tempArray=ArraysGPUOp[k].get().reshape((arguments['SPP_ZONES'],)+ArrayResCPU[k].shape)
+            ArrayResCPU[k][:,:]=tempArray.sum(axis=0)/arguments['SPP_ZONES']
 
-        for k in ['SqrAcc','Snapshots','SensorOutput']:
-            ArrayResCPU[k]=ArraysGPUOp[k].get()
+        for k in ['SqrAcc','SensorOutput']:
+            ArraysGPUOp[k].get(out=ArrayResCPU[k])
             
         cp.cuda.Stream.null.synchronize()
         
@@ -232,9 +235,10 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
         N1=arguments['N1']
         N2=arguments['N2']
         
+        # the x dimension of the grid runs along j, the contiguous axis in C order; manual sizes are given as (i,j)
         if arguments['ManualLocalSize'][0]!=-1:
-            AllBlockSizes=(arguments['ManualLocalSize'][0],
-                           arguments['ManualLocalSize'][1])
+            AllBlockSizes=(arguments['ManualLocalSize'][1],
+                           arguments['ManualLocalSize'][0])
         else:
             AllBlockSizes=(8,2)
 
@@ -243,11 +247,11 @@ class StaggeredFDTD_2D_With_Relaxation_CUDA(StaggeredFDTD_2D_With_Relaxation_BAS
         self.AllGridSizes={}
 
         if arguments['ManualGroupSize'][0]!=-1:
-            self.AllGridSizes['MAIN_1']=(arguments['ManualGroupSize'][0],
-                            arguments['ManualGroupSize'][1])
+            self.AllGridSizes['MAIN_1']=(arguments['ManualGroupSize'][1],
+                            arguments['ManualGroupSize'][0])
         else:
-            self.AllGridSizes['MAIN_1']=(int(N1//self.AllBlockSizes['MAIN_1'][0]+1),
-                              int(N2//self.AllBlockSizes['MAIN_1'][1]+1))
+            self.AllGridSizes['MAIN_1']=(int(N2//self.AllBlockSizes['MAIN_1'][0]+1),
+                              int(N1//self.AllBlockSizes['MAIN_1'][1]+1))
 
         self.BlockSensors=(64,1)
         self.GridSensors=(int(arguments['IndexSensorMap'].size//self.BlockSensors[0]+1),1)

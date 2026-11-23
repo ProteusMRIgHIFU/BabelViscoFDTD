@@ -298,14 +298,15 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	if (TimeStepsSource!=INHOST(LengthSource))
 		ERROR_STRING("The limit for time steps in source is different from N-dimension in SourceFunctions ");
 
-	if ((INHOST(N1)+1) != GET_M(MaterialMap))
-		ERROR_STRING("Material map dim 0 must be N1+1");
-	if ((INHOST(N2)+1) != GET_N(MaterialMap))
-			ERROR_STRING("Material map dim 1 must be N2+1");
-	if ((INHOST(N3)+1) != GET_O(MaterialMap))
+	// Arrays are in C order; the SPP zone is the first dimension of the material map
+	if ((INHOST(ZoneCount)) != GET_M(MaterialMap))
+			ERROR_STRING("Material map dim 0 must be ZoneCount ");
+	if ((INHOST(N1)+1) != GET_N(MaterialMap))
+		ERROR_STRING("Material map dim 1 must be N1+1");
+	if ((INHOST(N2)+1) != GET_O(MaterialMap))
+			ERROR_STRING("Material map dim 2 must be N2+1");
+	if ((INHOST(N3)+1) != GET_P(MaterialMap))
 			ERROR_STRING("Material map dim 3 must be N3+1 ");
-	if ((INHOST(ZoneCount)) != GET_P(MaterialMap))
-			ERROR_STRING("Material map dim 4 must be ZoneCount ");
 
 	if ( !((INHOST(SelRMSorPeak))& SEL_PEAK) && !((INHOST(SelRMSorPeak))&SEL_RMS))
 			ERROR_STRING("SelRMSorPeak must be either 1 (RMS), 2 (Peak) or 3 (Both RMS and Peak)");
@@ -417,28 +418,31 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
 	CREATE_ARRAY_AND_INIT(Sigma_yz_res,INHOST(N1)+1,INHOST(N2)+1,INHOST(N3)+1);
 	CREATE_ARRAY_AND_INIT(Pressure_res,INHOST(N1),INHOST(N2),INHOST(N3));
 
+	// C order with the maps as the slowest dimensions (RMS/peak, map, N1, N2, N3);
+	// the Python wrapper returns it as a (N1, N2, N3, map, RMS/peak) view
 	ndim=5;
-	dims[0]=INHOST(N1);
-	dims[1]=INHOST(N2);
-	dims[2]=INHOST(N3);
-	dims[3]=INHOST(NumberSelRMSPeakMaps);
+	dims[2]=INHOST(N1);
+	dims[3]=INHOST(N2);
+	dims[4]=INHOST(N3);
+	dims[1]=INHOST(NumberSelRMSPeakMaps);
 	if 	 ((INHOST(SelRMSorPeak) & SEL_PEAK)  && (INHOST(SelRMSorPeak) & SEL_RMS))
-	 	dims[4]=2; //both peak and RMS
+	 	dims[0]=2; //both peak and RMS
 	else
-		dims[4]=1; //just one of them
+		dims[0]=1; //just one of them
   CREATE_ARRAY(SqrAcc);
 	GET_DATA(SqrAcc);
 	memset(SqrAcc_pr,0,dims[0]*dims[1]*dims[2]*dims[3]*dims[4]*sizeof(mexType));
 
   unsigned int INHOST(CurrSnap)=0;
 
+	// (snapshot, N1, N2), returned as a (N1, N2, snapshot) view
 	ndim=3;
-	dims[0]=INHOST(N1);
-	dims[1]=INHOST(N2);
+	dims[1]=INHOST(N1);
+	dims[2]=INHOST(N2);
 	if (NumberSnapshots>0)
-		dims[2]=NumberSnapshots;
+		dims[0]=NumberSnapshots;
 	else
-		dims[2]=1;
+		dims[0]=1;
 
 	CREATE_ARRAY(Snapshots);
 	GET_DATA(Snapshots);
@@ -447,9 +451,10 @@ static PyObject *mexFunction(PyObject *self, PyObject *args)
     
 	ndim=3;
 	unsigned int MaxSensorSteps=INHOST(TimeSteps)/INHOST(SensorSubSampling)+1-INHOST(SensorStart);
-	dims[0]=INHOST(NumberSensors);
+	// (map, time, sensor), returned as a (sensor, time, map) view
+	dims[2]=INHOST(NumberSensors);
 	dims[1]=MaxSensorSteps;
-	dims[2]=INHOST(NumberSelSensorMaps);
+	dims[0]=INHOST(NumberSelSensorMaps);
 	PRINTF("For sensor, dims %li %li %li, total %li \n",dims[0],dims[1],dims[2],dims[0]*dims[1]*dims[2])
 	CREATE_ARRAY(SensorOutput);
 	GET_DATA(SensorOutput);

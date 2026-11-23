@@ -6,7 +6,16 @@
 #else
 #define CGID uint3
 #endif
-#if !defined(METALCOMPUTE) && !defined(MLX)
+#if defined(METALCOMPUTE)
+// Arrays are passed through argument buffers (see kernelparamsMetal.h)
+#define METAL_PARAMS\
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
+	constant FDTD_ArgsIn & ArgsIn [[ buffer(1) ]],\
+	constant FDTD_ArgsInOut & ArgsInOut [[ buffer(2) ]],\
+	constant FDTD_ArgsOut & ArgsOut [[ buffer(3) ]],\
+	CGID gid[[thread_position_in_grid]])\
+{
+#elif !defined(MLX)
 #define METAL_PARAMS\
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],\
@@ -27,26 +36,6 @@
 	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],\
 	CGID gid[[thread_position_in_grid]])\
 {
-#else
-#define METAL_PARAMS\
-	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],\
-	const device unsigned int *p_INDEX_MEX [[ buffer(1) ]],\
-	const device unsigned int *p_INDEX_UINT [[ buffer(2) ]],\
-	const device unsigned int *p_UINT_BUFFER [[ buffer(3) ]],\
-	device mexType * p_MEX_BUFFER_0 [[ buffer(4) ]],\
-	device mexType * p_MEX_BUFFER_1 [[ buffer(5) ]],\
-	device mexType * p_MEX_BUFFER_2 [[ buffer(6) ]],\
-	device mexType * p_MEX_BUFFER_3 [[ buffer(7) ]],\
-	device mexType * p_MEX_BUFFER_4 [[ buffer(8) ]],\
-	device mexType * p_MEX_BUFFER_5 [[ buffer(9) ]],\
-	device mexType * p_MEX_BUFFER_6 [[ buffer(10) ]],\
-	device mexType * p_MEX_BUFFER_7 [[ buffer(11) ]],\
-	device mexType * p_MEX_BUFFER_8 [[ buffer(12) ]],\
-	device mexType * p_MEX_BUFFER_9 [[ buffer(13) ]],\
-	device mexType * p_MEX_BUFFER_10 [[ buffer(14) ]],\
-	device mexType * p_MEX_BUFFER_11 [[ buffer(15) ]],\
-	CGID gid[[thread_position_in_grid]])\
-{
 #endif
 #endif
 /// PMLS
@@ -61,33 +50,34 @@ extern "C" __global__ void PML_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 //MLX does not need input variable declarations
@@ -95,9 +85,10 @@ kernel void PML_1_StressKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -116,26 +107,26 @@ extern "C" __global__ void PML_2_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_2_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_2_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-	_PT i = (_PT) gid.x;
+	_PT k = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
-	_PT k = (_PT) gid.z;
+	_PT i = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -149,9 +140,10 @@ kernel void PML_2_StressKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 //MLX does not need input variable declarations
@@ -168,9 +160,10 @@ kernel void PML_2_StressKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -180,6 +173,36 @@ kernel void PML_2_StressKernel(
 #endif
 #undef _ST_PML
 //MLX_BLOCK_PML_2_STRESS_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_1 and PML_2 merged in a single kernel (used instead of them by the metalcompute backend).
+// Each i-slab is a contiguous block of memory in C order, so merging them only saves a dispatch.
+#define _ST_PML
+#define _PML_KERNEL_I_BOTH
+kernel void PML_12_StressKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	_PT i = (_PT) (gid/(nN2*nN3));
+	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+	if (i>=nN1) return; // extra threads of the last threadgroup
+	if (i>=PML_Thickness)
+		i+=N1-PML_Thickness*2;
+    #include "StressKernel.h" 
+}
+#undef _PML_KERNEL_I_BOTH
+#undef _ST_PML
+#endif
 //MLX_BLOCK_PML_3_STRESS_START
 #define _ST_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_STRESS)) || !defined(MLX)
@@ -189,26 +212,26 @@ extern "C" __global__ void PML_3_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_3_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_3_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-	_PT i = (_PT) gid.x;
+	_PT k = (_PT) gid.x;
 	_PT j = (_PT) gid.y;
-	_PT k = (_PT) gid.z;
+	_PT i = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -222,9 +245,10 @@ kernel void PML_3_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -240,9 +264,10 @@ kernel void PML_3_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -261,26 +286,26 @@ extern "C" __global__ void PML_4_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_4_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_4_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -294,9 +319,10 @@ kernel void PML_4_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -312,9 +338,10 @@ kernel void PML_4_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -333,26 +360,26 @@ extern "C" __global__ void PML_5_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_5_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_5_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -366,9 +393,10 @@ kernel void PML_5_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -384,9 +412,10 @@ kernel void PML_5_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -405,26 +434,26 @@ extern "C" __global__ void PML_6_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_6_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_6_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -438,9 +467,10 @@ kernel void PML_6_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -456,9 +486,10 @@ kernel void PML_6_StressKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -468,6 +499,40 @@ kernel void PML_6_StressKernel(
 #endif
 #undef _ST_PML
 //MLX_BLOCK_PML_6_STRESS_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_5 and PML_6 merged in a single kernel (used instead of them by the metalcompute backend).
+// Threads follow the memory order of the cells in both k-slabs, so the end of each row (k>=N3-PML)
+// is processed together with the start of the next row (k<PML), which are contiguous in memory.
+// Separately, each slab only has PML_Thickness contiguous cells per row, giving poorly coalesced accesses.
+#define _ST_PML
+#define _PML_KERNEL_K_BOTH
+kernel void PML_56_StressKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT i = (_PT) (gid/(nN2*nN3));
+	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+	if (i>=nN1) return; // extra threads of the last threadgroup
+	i+=PML_Thickness;
+	j+=PML_Thickness;
+	if (k>=PML_Thickness)
+		k+=N3-PML_Thickness*2;
+    #include "StressKernel.h" 
+}
+#undef _PML_KERNEL_K_BOTH
+#undef _ST_PML
+#endif
 #endif
 //MLX_BLOCK_MAIN_1_STRESS_START
 #if ((defined(MLX)) && defined(MLX_MAIN_1_STRESS)) || !defined(MLX)
@@ -481,26 +546,26 @@ extern "C" __global__ void MAIN_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void MAIN_1_StressKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if defined(METAL) && !defined(MLX)
 kernel void MAIN_1_StressKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -520,9 +585,10 @@ kernel void MAIN_1_StressKernel(
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
 	#endif
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -544,9 +610,10 @@ kernel void MAIN_1_StressKernel(
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
 	#endif
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "StressKernel.h" 
 #if !defined(MLX)
@@ -570,26 +637,26 @@ extern "C" __global__ void PML_1_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_1_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -603,9 +670,10 @@ kernel void PML_1_ParticleKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -621,9 +689,10 @@ kernel void PML_1_ParticleKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -642,26 +711,26 @@ extern "C" __global__ void PML_2_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_2_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_2_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -675,9 +744,10 @@ kernel void PML_2_ParticleKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -693,9 +763,10 @@ kernel void PML_2_ParticleKernel(
 	#define nN1 (PML_Thickness)
 	#define nN2 (N2)
 	#define nN3 (N3)
-    _PT k = (_PT) ( thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) (( thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) ( thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+    _PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -705,6 +776,36 @@ kernel void PML_2_ParticleKernel(
 #endif
 #undef _PR_PML
 //MLX_BLOCK_PML_2_PARTICLE_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_1 and PML_2 merged in a single kernel (used instead of them by the metalcompute backend).
+// Each i-slab is a contiguous block of memory in C order, so merging them only saves a dispatch.
+#define _PR_PML
+#define _PML_KERNEL_I_BOTH
+kernel void PML_12_ParticleKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (PML_Thickness*2)
+	#define nN2 (N2)
+	#define nN3 (N3)
+	_PT i = (_PT) (gid/(nN2*nN3));
+	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+	if (i>=nN1) return; // extra threads of the last threadgroup
+	if (i>=PML_Thickness)
+		i+=N1-PML_Thickness*2;
+    #include "ParticleKernel.h" 
+}
+#undef _PML_KERNEL_I_BOTH
+#undef _PR_PML
+#endif
 //MLX_BLOCK_PML_3_PARTICLE_START
 #define _PR_PML
 #if ((defined(MLX)) && defined(MLX_PML_3_PARTICLE)) || !defined(MLX)
@@ -714,26 +815,26 @@ extern "C" __global__ void PML_3_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_3_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_3_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -747,9 +848,10 @@ kernel void PML_3_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -765,9 +867,10 @@ kernel void PML_3_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -786,26 +889,26 @@ extern "C" __global__ void PML_4_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_4_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_4_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -819,9 +922,10 @@ kernel void PML_4_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -837,9 +941,10 @@ kernel void PML_4_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (PML_Thickness)
 	#define nN3 (N3)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -858,26 +963,26 @@ extern "C" __global__ void PML_5_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_5_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_5_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -891,9 +996,10 @@ kernel void PML_5_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -909,9 +1015,10 @@ kernel void PML_5_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -930,26 +1037,26 @@ extern "C" __global__ void PML_6_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	,unsigned int nStep, unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void PML_6_ParticleKernel(
 	#include "kernelparamsOpenCL.h"
 	, unsigned int nStep, unsigned int TypeSource)
 {
-  _PT i = (_PT) get_global_id(0);
+  _PT k = (_PT) get_global_id(0);
   _PT j = (_PT) get_global_id(1);
-  _PT k = (_PT) get_global_id(2);
+  _PT i = (_PT) get_global_id(2);
 #endif
 #if (defined(METAL) && !defined(METAL_SINGLE_KERNEL)) && !defined(MLX)
 kernel void PML_6_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else	
 	#ifdef nN1
 	#undef nN1
@@ -963,9 +1070,10 @@ kernel void PML_6_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -981,9 +1089,10 @@ kernel void PML_6_ParticleKernel(
 	#define nN1 (N1-PML_Thickness*2)
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (PML_Thickness)
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
     #include "ParticleKernel.h" 
 #if !defined(MLX)
@@ -993,6 +1102,40 @@ kernel void PML_6_ParticleKernel(
 #endif
 #undef _PR_PML
 //MLX_BLOCK_PML_6_PARTICLE_END
+#if defined(METAL) && defined(METALCOMPUTE) && !defined(METAL_SINGLE_KERNEL) && !defined(MLX)
+// PML_5 and PML_6 merged in a single kernel (used instead of them by the metalcompute backend).
+// Threads follow the memory order of the cells in both k-slabs, so the end of each row (k>=N3-PML)
+// is processed together with the start of the next row (k<PML), which are contiguous in memory.
+// Separately, each slab only has PML_Thickness contiguous cells per row, giving poorly coalesced accesses.
+#define _PR_PML
+#define _PML_KERNEL_K_BOTH
+kernel void PML_56_ParticleKernel(
+	METAL_PARAMS
+	#ifdef nN1
+	#undef nN1
+	#endif
+	#ifdef nN2
+	#undef nN2
+	#endif
+	#ifdef nN3
+	#undef nN3
+	#endif
+	#define nN1 (N1-PML_Thickness*2)
+	#define nN2 (N2-PML_Thickness*2)
+	#define nN3 (PML_Thickness*2)
+	_PT i = (_PT) (gid/(nN2*nN3));
+	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+	if (i>=nN1) return; // extra threads of the last threadgroup
+	i+=PML_Thickness;
+	j+=PML_Thickness;
+	if (k>=PML_Thickness)
+		k+=N3-PML_Thickness*2;
+    #include "ParticleKernel.h" 
+}
+#undef _PML_KERNEL_K_BOTH
+#undef _PR_PML
+#endif
 #endif
 //MLX_BLOCK_MAIN_1_PARTICLE_START
 #if ((defined(MLX)) && defined(MLX_MAIN_1_PARTICLE)) || !defined(MLX)
@@ -1006,9 +1149,9 @@ extern "C" __global__ void MAIN_1_ParticleKernel(
 			#include "kernelparamsOpenCL.h"
 			,unsigned int nStep,unsigned int TypeSource)
 {
-	_PT i = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
+	_PT k = (_PT) (blockIdx.x * blockDim.x + threadIdx.x);
     _PT j = (_PT) (blockIdx.y * blockDim.y + threadIdx.y);
-    _PT k = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
+    _PT i = (_PT) (blockIdx.z * blockDim.z + threadIdx.z);
 #endif
 #ifdef OPENCL
 __kernel void MAIN_1_ParticleKernel(
@@ -1016,17 +1159,17 @@ __kernel void MAIN_1_ParticleKernel(
 	, unsigned int nStep,
 	unsigned int TypeSource)
 {
-	_PT i = (_PT) get_global_id(0);
+	_PT k = (_PT) get_global_id(0);
 	_PT j = (_PT) get_global_id(1);
-	_PT k = (_PT) get_global_id(2);
+	_PT i = (_PT) get_global_id(2);
 #endif
 #if defined(METAL) && !defined(MLX)
 kernel void MAIN_1_ParticleKernel(
 	METAL_PARAMS
 	#ifndef METALCOMPUTE
-  	_PT i = (_PT) gid.x;
+  	_PT k = (_PT) gid.x;
   	_PT j = (_PT) gid.y;
-  	_PT k = (_PT) gid.z;
+  	_PT i = (_PT) gid.z;
 	#else
 	#ifdef nN1
 	#undef nN1
@@ -1046,9 +1189,10 @@ kernel void MAIN_1_ParticleKernel(
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
 	#endif
-	_PT k = (_PT) (gid/(nN1*nN2));
-  	_PT j = (_PT) ((gid - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (gid - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (gid/(nN2*nN3));
+  	_PT j = (_PT) ((gid - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (gid - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 	#endif
 #endif
 #if defined(MLX)
@@ -1070,9 +1214,10 @@ kernel void MAIN_1_ParticleKernel(
 	#define nN2 (N2-PML_Thickness*2)
 	#define nN3 (N3-PML_Thickness*2)
 	#endif
-	_PT k = (_PT) (thread_position_in_grid.x/(nN1*nN2));
-  	_PT j = (_PT) ((thread_position_in_grid.x - k*nN1*nN2)/nN1);
-  	_PT i = (_PT) (thread_position_in_grid.x - k*nN1*nN2-j*nN1);
+	_PT i = (_PT) (thread_position_in_grid.x/(nN2*nN3));
+  	_PT j = (_PT) ((thread_position_in_grid.x - i*nN2*nN3)/nN3);
+  	_PT k = (_PT) (thread_position_in_grid.x - i*nN2*nN3-j*nN3);
+  	if (i>=nN1) return; // extra threads of the last threadgroup
 #endif
 	#include "ParticleKernel.h"
 #if !defined(MLX)
@@ -1166,7 +1311,14 @@ __kernel void SensorsKernel(
 #endif
 #if defined(METAL) && !defined(MLX)
 #define IndexSensorMap_pr k_IndexSensorMap_pr
-#ifndef METALCOMPUTE
+#if defined(METALCOMPUTE)
+kernel void SensorsKernel(
+	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
+	constant FDTD_ArgsIn & ArgsIn [[ buffer(1) ]],
+	constant FDTD_ArgsInOut & ArgsInOut [[ buffer(2) ]],
+	constant FDTD_ArgsOut & ArgsOut [[ buffer(3) ]],
+	uint gid[[thread_position_in_grid]])
+#else
 kernel void SensorsKernel(
 	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
 	const device mexType * p_CONSTANT_BUFFER_MEX [[ buffer(1) ]],
@@ -1185,25 +1337,6 @@ kernel void SensorsKernel(
 	device mexType * p_MEX_BUFFER_9 [[ buffer(14) ]],
 	device mexType * p_MEX_BUFFER_10 [[ buffer(15) ]],
 	device mexType * p_MEX_BUFFER_11 [[ buffer(16) ]],
-	uint gid[[thread_position_in_grid]])
-#else
-kernel void SensorsKernel(
-	const device unsigned int *p_CONSTANT_BUFFER_UINT [[ buffer(0) ]],
-	const device unsigned int *p_INDEX_MEX [[ buffer(1) ]],
-	const device unsigned int *p_INDEX_UINT [[ buffer(2) ]],
-	const device unsigned int *p_UINT_BUFFER [[ buffer(3) ]],
-	device mexType * p_MEX_BUFFER_0 [[ buffer(4) ]],
-	device mexType * p_MEX_BUFFER_1 [[ buffer(5) ]],
-	device mexType * p_MEX_BUFFER_2 [[ buffer(6) ]],
-	device mexType * p_MEX_BUFFER_3 [[ buffer(7) ]],
-	device mexType * p_MEX_BUFFER_4 [[ buffer(8) ]],
-	device mexType * p_MEX_BUFFER_5 [[ buffer(9) ]],
-	device mexType * p_MEX_BUFFER_6 [[ buffer(10) ]],
-	device mexType * p_MEX_BUFFER_7 [[ buffer(11) ]],
-	device mexType * p_MEX_BUFFER_8 [[ buffer(12) ]],
-	device mexType * p_MEX_BUFFER_9 [[ buffer(13) ]],
-	device mexType * p_MEX_BUFFER_10 [[ buffer(14) ]],
-	device mexType * p_MEX_BUFFER_11 [[ buffer(15) ]],
 	uint gid[[thread_position_in_grid]])
 #endif
 {

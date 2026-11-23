@@ -9,6 +9,8 @@ mexType accumX=0.0,accumY=0.0,accumZ=0.0,
         accumXY=0.0, accumXZ=0.0, accumYZ=0.0, accum_p=0;;
 for (_PT CurZone=0;CurZone<ZoneCount;CurZone++)
   {
+    // IndexSensorMap keeps the Fortran-order (column-major) linear index of the sensors, as used by callers;
+    // the fields are then accessed with the C-order indexing of the kernels
     k=index2/(N1*N2);
     j=index2%(N1*N2);
     i=j%(N1);

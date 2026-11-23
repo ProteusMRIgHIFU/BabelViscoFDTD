@@ -85,6 +85,7 @@ def _EnvironmentInfo(Backend, GPU_ID):
             Info['metalcomputebabel'] = version('metalcomputebabel')
             Info['metalcomputebabel_batch_api'] = hasattr(metalcomputebabel.Device, 'batch_begin')
             Info['metalcomputebabel_concurrent_api'] = hasattr(metalcomputebabel.Device, 'batch_barrier')
+            Info['metalcomputebabel_argbuffer_api'] = hasattr(metalcomputebabel.Device, 'arg_buffer')
         except Exception as e:
             Info['metalcomputebabel'] = 'unavailable (%s)' % e
     return Info

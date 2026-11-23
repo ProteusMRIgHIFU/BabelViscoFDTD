@@ -10,9 +10,8 @@ def StaggeredFDTD_3D(arguments):
 
     for key in arguments.keys():
         if type(arguments[key])==np.ndarray:
-            if np.isfortran(arguments[key])==False:
-                #print "StaggeredFDTD_3D: Converting ndarray " + key + " to Fortran convention";
-                arguments[key] = np.asfortranarray(arguments[key]);
+            # the kernels use C order (k is the fastest index); C-contiguous arrays are used without a copy
+            arguments[key] = np.ascontiguousarray(arguments[key])
         elif type(arguments[key])!=str:
             arguments[key]=np.array((arguments[key]))
     t0=time.time()
@@ -24,6 +23,9 @@ def StaggeredFDTD_3D(arguments):
         Results= FDTD_single.FDTDStaggered_3D(arguments)
     else:
         Results = FDTD_double.FDTDStaggered_3D(arguments)
+    SensorOutput,V,SqrAcc,Snapshots=Results
+    # views with the dimension order of the results (the arrays are created with the layout of the kernels)
+    Results = SensorOutput.transpose(2,1,0),V,SqrAcc.transpose(2,3,4,1,0),Snapshots.transpose(1,2,0)
     t0=time.time()-t0
     print ('Time to run low level FDTDStaggered_3D =', t0)
     return Results
